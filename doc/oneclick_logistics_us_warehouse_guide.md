@@ -2,6 +2,7 @@
 
 **Organisation:** Lyfe Hardware
 **Last Updated:** 2026-05-26
+**Reflects commits:** `d6b99b0` (Pending CS Split Review), `55fbd1f` (auto-open split dialog & split banners)
 
 ---
 
@@ -14,7 +15,7 @@
 5. [Use Cases](#use-cases)
    - [Case 1 — All items in US Warehouse](#case-1--all-items-in-us-warehouse)
    - [Case 2 — All items ship from Factory (India direct)](#case-2--all-items-ship-from-factory-india-direct)
-   - [Case 3 — Mixed stock — order auto-split](#case-3--mixed-stock--order-auto-split)
+   - [Case 3 — Mixed stock — CS reviews and confirms split](#case-3--mixed-stock--cs-reviews-and-confirms-split)
    - [Case 4 — Two-leg shipment (Factory → US Warehouse → Customer)](#case-4--two-leg-shipment-factory--us-warehouse--customer)
    - [Case 5 — US warehouse dispatches separately, Factory dispatches separately](#case-5--us-warehouse-dispatches-separately-factory-dispatches-separately)
    - [Case 6 — Factory forwards to US Warehouse, combined shipment to customer](#case-6--factory-forwards-to-us-warehouse-combined-shipment-to-customer)
@@ -45,7 +46,9 @@ When a ShipStation order arrives, the system automatically:
 4. Syncs tracking numbers back to the order every hour
 5. Pushes the **last-leg tracking number** (the final delivery to the customer) to ShipStation automatically — even when the order has two legs
 
-**No manual steps are needed for standard orders.** Staff only need to act when an order shows `1Click Error`, or when a CS team member assigns a factory child order.
+**No manual steps are needed for pure US Warehouse or pure Factory orders.** Staff need to act in two situations:
+- An order shows `1Click Error` — fix the issue and ask admin to retry.
+- An order shows `Pending CS Split Review` — mixed stock detected; CS must review and confirm the split before fulfilment continues.
 
 > This integration only activates for **ShipStation orders**. Orders created manually or from Shopify do not trigger 1Click automatically.
 
@@ -61,7 +64,7 @@ The system checks live US Warehouse inventory for every item and applies these r
 | **Tubing in US stock, other components not** | `MIXED_TUBING_US_COMPONENTS_INDIA_TO_US` | Components ship India → US Warehouse, kit with US tubing, ship combined to customer. Saves volumetric weight vs. shipping tubing internationally |
 | **No items in US stock — US destination** | `INDIA_TO_US_TO_CUSTOMER` | Factory ships to US Warehouse first, then US Warehouse ships to customer (two-leg) |
 | **No items in US stock — non-US destination** | `INDIA_DIRECT_DROPSHIP` | Factory ships direct to customer. CS assigns to Factory via normal workflow |
-| **Some items in US, some not** | Split | Order is split — US items go to 1Click, Factory items go through CS → Factory workflow |
+| **Some items in US, some not** | `PENDING_CS_SPLIT_REVIEW` | Order pauses — CS reviews the split in a popup and clicks **Confirm Split**. Then: US items go to 1Click, Factory items go through CS → Factory workflow |
 
 The routing decision happens automatically in the background within seconds of the order arriving.
 
@@ -175,20 +178,48 @@ Every item row on the order shows a badge indicating where it will be fulfilled 
 
 ---
 
-### Case 3 — Mixed stock — order auto-split
+### Case 3 — Mixed stock — CS reviews and confirms split
 
 **Scenario:** A customer orders 2x Phone Mount (in US stock) and 1x Custom Acrylic Stand (not in US stock).
 
-**What happens automatically:**
+**What happens automatically (before CS action):**
 
-- Phone Mount rows show 🟢 **US Warehouse**, Acrylic Stand shows 🟡 **Factory**
-- The system creates two child orders and archives the original:
+- Item badges are set: Phone Mount rows show 🟢 **US Warehouse**, Acrylic Stand shows 🟡 **Factory**
+- System detects a mixed-stock split is required
+- Order status changes to **Pending CS Split Review** — fulfilment is **paused** until CS approves
+
+**What the CS team sees:**
+
+- A **Split Order Review — Action Required** popup opens automatically when the order is opened
+- The popup shows two panels side by side:
+
+  | 🇺🇸 US Warehouse — ships via 1Click | 🏭 Factory (India) — CS will assign |
+  |---|---|
+  | 2x Phone Mount | 1x Custom Acrylic Stand |
+
+- A yellow info box explains what happens on confirmation:
+  > • A `-US` child order is created and submitted to 1Click immediately
+  > • A `-FC` child order is created in *New* status for you to assign to Factory
+  > • The current order is archived with status *Split*
+
+**CS team action:**
+
+1. Review both panels to verify the split is correct
+2. Click **Confirm Split** — child orders are created and the `-US` child is immediately submitted to 1Click
+3. Click **Cancel — keep on hold** to leave the order paused (it stays in `Pending CS Split Review`)
+
+**After confirmation — three orders exist:**
 
 | Order | Contains | Status |
 |---|---|---|
 | **LYF-SH-2025-0400-US** | 2x Phone Mount | Submitted to 1Click |
 | **LYF-SH-2025-0400-FC** | 1x Custom Acrylic Stand | New |
 | **LYF-SH-2025-0400** (parent) | — archived — | Split |
+
+**Navigating split orders:**
+
+- On the **parent** order (status = Split), a yellow banner at the top lists all child orders with their warehouse and current status, with direct links to each.
+- On each **child** order, a teal banner at the top shows which parent it belongs to and which warehouse it is assigned to.
 
 **What the CS team does for the FC child:**
 
@@ -433,14 +464,18 @@ When an order is split, three orders exist in the system:
 | `LYF-SH-2025-0400-FC` | Factory child | **New** (until CS assigns) |
 
 **Finding split child orders:**
-- Open the parent order and navigate to its child orders, or
+- Open the parent order — a **yellow banner at the top** lists every child with its warehouse, status, and a direct link
 - Search directly for `LYF-SH-2025-0400-US` or `LYF-SH-2025-0400-FC`
+
+**On child orders:**
+- Each child shows a **teal banner** identifying the parent order and the assigned warehouse
 
 **Important:**
 - The parent order (`Split` status) is archived — do not try to work on it
 - All activity happens on the two child orders
 - The `-US` child gets its own 1Click Order ID, tracking number, and status
 - The `-FC` child follows the normal CS → Factory Assignment workflow
+- Mixed-stock orders are **not** split automatically — CS must open the order and click **Confirm Split** in the popup first
 
 ---
 
@@ -480,10 +515,11 @@ Once **Received**, the US Warehouse can proceed to fulfil the customer leg via 1
 | Status | What it means | Action needed |
 |---|---|---|
 | **New** | Order received, routing complete or awaiting CS action | CS team assigns to factory if it is a factory order |
+| **Pending CS Split Review** | Mixed stock detected — system paused fulfilment, waiting for CS to review and confirm the split | Open order → review the split popup → click **Confirm Split** |
 | **Factory Assignment** | CS has assigned to factory | Factory team processes and dispatches |
 | **Submitted to 1Click** | Fulfillment sent to US Warehouse via 1Click | None — tracking syncs automatically every hour |
 | **1Click Error** | Submission to 1Click failed | Check the 1Click Error field, fix the issue, contact admin to retry |
-| **Split** | Parent order archived — child orders are active | Work on the -US and -FC child orders |
+| **Split** | Parent order archived — child orders are active | Work on the -US and -FC child orders (linked in the yellow banner on the parent) |
 | **Pending India Dispatch** | *(Reserved — not currently in active use)* | — |
 
 ---
@@ -542,7 +578,7 @@ The integration is configured in **Oneclick Settings** (single settings page, ad
 | Tubing in US, components not | Auto | → 2-Leg: India components → US Warehouse (kit with tubing) → customer |
 | No items in US stock, non-US address | Auto | → Factory direct — stays New, CS assigns to factory |
 | No items in US stock, US address | Auto | → 2-Leg: Factory → US Warehouse → customer |
-| Some in US, some not (non-tubing) | Auto | → Auto-split: -US child to 1Click, -FC child stays New for CS |
+| Some in US, some not (non-tubing) | Auto | → **Pending CS Split Review**: CS reviews popup, clicks Confirm → -US child to 1Click, -FC child stays New for CS |
 | Need to force US | Force US | → US Warehouse — no stock check |
 | Need to force India | Force India | → Factory — no stock check |
 
@@ -572,6 +608,7 @@ The integration is configured in **Oneclick Settings** (single settings page, ad
 | Wrong warehouse assigned | Set **Route Plan** to Force US or Force India |
 | No tracking after 24 hours | Check **1Click Error** field; if blank, contact 1Click with the **1Click PO** number |
 | ShipStation shows old India tracking, not US tracking | Check if **Leg 2 Tracking** or **US Leg Tracking** is set — system should have re-pushed automatically; if not, contact tech support |
+| Order stuck at `Pending CS Split Review` | Open the order — the split review popup should appear automatically. If not, refresh the page. Click **Confirm Split** to proceed |
 | FC child order not moving | CS team needs to assign it to factory via normal workflow |
 | Fee item affecting routing | Rename item to exactly `Custom Fee` or `Customs Fee` |
 | Split order — where are the child orders? | Search for parent name + `-US` or `-FC` (e.g. `LYF-SH-2025-0400-US`) |
