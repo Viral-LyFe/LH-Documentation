@@ -84,12 +84,14 @@ lh.patches.v1.add_performance_indexes
 # Single value lookup — hits SQL cache
 status = frappe.db.get_value("Lyfe Order", order_id, "status")
 
-# Bulk read — always specify fields and filters
+# Bulk read — always specify fields and filters, no limit
+# Safe for operational queries because the active working set (status-filtered)
+# is always small. Avoid limit= as it silently skips records beyond the cap.
 orders = frappe.db.get_all(
     "Lyfe Order",
     filters={"status": "Ready for Dispatch", "warehouse": warehouse},
     fields=["name", "tracking_number", "carrier"],
-    limit=500
+    order_by="name asc"
 )
 
 # Complex joins — use raw SQL instead of chaining get_all calls
