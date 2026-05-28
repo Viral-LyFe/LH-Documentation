@@ -111,6 +111,8 @@ If anything fails — an order doesn't get created, a Gate Pass can't be submitt
 - **Slack message** — instant notification in the developer's Slack account
 - **Email** — detailed email with the error and a direct link to the affected record
 
+Every alert is also saved in the system's **Error Log** so nothing is ever lost.
+
 ### What the alert looks like
 
 **Slack:**
@@ -124,17 +126,66 @@ Duplicate entry for source_order_id SS-12345
 
 The email includes the exact error message and a clickable link to open the failed document directly in the system.
 
-### Which failures trigger an alert
+---
 
-| What Failed | Slack | Email |
-|---|---|---|
-| Shopify order not created | ✅ | ✅ |
-| ShipStation order not converted to Lyfe Order | ✅ | ✅ |
-| Gate Pass could not be submitted | ✅ | ✅ |
-| ShipStation sync job crashed | ✅ | ✅ |
-| SLA scan job crashed | ✅ | ✅ |
+### We reviewed every part of the system to find where alerts were missing
 
-Every alert is also saved in the system's **Error Log** so nothing is ever lost.
+After going through the entire codebase, we found **14 places** where failures were happening silently — no one was being notified. Here is a plain-English explanation of each:
+
+| # | What Can Fail | Why It Matters | Was Anyone Notified Before? |
+|---|---|---|---|
+| 1 | **Shopify token rotation** (runs every 45 min) | If this fails and the token expires, every Shopify action stops working — payment links, order creation, everything | No — only saved to error log |
+| 2 | **ShipStation order → Lyfe Order creation** | New orders from ShipStation would not appear in our system at all | No — no error handling existed |
+| 3 | **ShipStation order status sync** | Order status in our system would stop reflecting what ShipStation shows | No — no error handling existed |
+| 4 | **Material Issue submit/cancel** | The list of items for CJ shipment would not get updated — Gate Pass and invoices would have wrong items | No — no error handling existed |
+| 5 | **Gate Pass — invoice creation skipped silently** | If an order had no CJ shipment items, the system silently skipped creating its invoice with no warning | No — silent skip, no log at all |
+| 6 | **SLA escalation scan** (runs every hour) | If this crashed, overdue task escalations would stop happening silently | No — no error handling existed |
+| 7 | **Order tracking — India shipments** (runs every hour) | If 17Track API stopped working, orders would get stuck with no tracking updates indefinitely | Only per-order logs, no batch alert |
+| 8 | **Order tracking — US warehouse shipments** (runs every hour) | Same as above for US leg orders | Only per-order logs, no batch alert |
+| 9 | **S3 file uploads** (labels, factory images, invoices) | If S3 credentials expired or the bucket had issues, file uploads would fail with only a user-facing error — no developer notification | User error only, nothing logged |
+| 10 | **Customer payment link redirect** | If a customer clicked their payment link and it crashed, the payment would not be recorded and no one would know | No error handling at all |
+| 11 | **Shopify payment status check** (runs every 5 min) | If Shopify API was down, paid orders would not move forward automatically | Only per-order logs, no alert |
+| 12 | **Gate Pass auto-creation on Lyfe Order** | When an order moves to "Ready for Dispatch", the system auto-creates a Gate Pass. If this failed silently, the order would be stuck | Logged but no one notified |
+| 13 | **FedEx token fetch** | If the token could not be retrieved, the error was re-raised without even being logged | Not logged at all |
+| 14 | **SLA stale task cleanup** (runs at 3 AM daily) | If cleanup crashed, old resolved SLA tasks would keep piling up in the database | Per-item log only, no top-level alert |
+
+---
+
+### What already had good alerting (kept as-is)
+
+These parts of the system already had proper notifications and were used as the reference pattern for fixing everything else:
+
+- ShipStation order **push failures** → email sent to configured recipients
+- ShipStation **bulk import failures** → email sent to configured recipients
+- Shopify **draft order update failure** → in-app notification sent to the sales rep
+
+---
+
+### After all fixes — complete alert coverage
+
+Every one of the 14 gaps above will now send both a **Slack message** and an **email** to the developer the moment something goes wrong.
+
+| What Failed | Slack | Email | Error Log |
+|---|---|---|---|
+| Shopify token rotation | ✅ | ✅ | ✅ |
+| ShipStation → Lyfe Order creation | ✅ | ✅ | ✅ |
+| ShipStation order status sync | ✅ | ✅ | ✅ |
+| Material Issue submit / cancel | ✅ | ✅ | ✅ |
+| Gate Pass invoice silent skip | ✅ | ✅ | ✅ |
+| SLA escalation scan | ✅ | ✅ | ✅ |
+| Order tracking — India leg | ✅ | ✅ | ✅ |
+| Order tracking — US leg | ✅ | ✅ | ✅ |
+| S3 file upload | ✅ | ✅ | ✅ |
+| Customer payment link redirect | ✅ | ✅ | ✅ |
+| Shopify payment status poll | ✅ | ✅ | ✅ |
+| Gate Pass auto-creation on Lyfe Order | ✅ | ✅ | ✅ |
+| FedEx token fetch | ✅ | ✅ | ✅ |
+| SLA stale cleanup | ✅ | ✅ | ✅ |
+| ShipStation sync job | ✅ | ✅ | ✅ |
+| SLA scan job | ✅ | ✅ | ✅ |
+| Gate Pass submission | ✅ | ✅ | ✅ |
+
+---
 
 ### How to set it up
 Two things need to be configured in the system settings (one-time setup by developer):

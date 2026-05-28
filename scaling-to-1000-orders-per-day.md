@@ -357,15 +357,78 @@ def run():
 
 ---
 
-### Coverage Summary
+### Full Coverage Map
+
+#### Already Has Alerting (Good Patterns — Keep As Reference)
+
+| Location | Function | Current Alerting |
+|---|---|---|
+| `shipstation_orders.py` | `_notify_shipstation_order_failure()` | Email to configured recipients on SS push failure |
+| `shipstation_orders.py` | `_notify_order_import_failures()` | Email on bulk import failures |
+| `shopify.py` | `_notify_rep_draft_order_failed()` | In-app Notification Log to quotation owner |
+| `shipstation_settings.py` | HTTP error handlers | `frappe.log_error` per error variant (401, non-200, etc.) |
+| `lyfe_order.py:on_update()` | Each risky sub-op | Individual try/except + `frappe.log_error` |
+
+---
+
+#### Critical Gaps — Must Add `notify_developer()`
+
+| # | File | Function | Risk if It Fails | Current State |
+|---|---|---|---|---|
+| 1 | `shopify_token_rotation.py` | `rotate_shopify_token()` | Token expires → ALL Shopify API calls fail silently | `log_error` only |
+| 2 | `shipstation_orders.py` | `create_lyfe_order()` | New SS orders never create Lyfe Orders — lost silently | No try/except at all |
+| 3 | `shipstation_orders.py` | `before_save()` | Lyfe Order status not synced from SS | No try/except at all |
+| 4 | `material_issue_for_order.py` | `on_submit()`, `on_cancel()` | CJ shipment items not rebuilt — Gate Pass/SI has wrong items | No try/except at all |
+| 5 | `gate_pass.py` | `_create_sales_invoices()` | Silent early return if `cj_shipment_items` empty — no SI created | Silent `return`, no log |
+| 6 | `escalation_scan.py` | `_run_escalation()` | Escalation engine crash never surfaced | No try/except |
+| 7 | `order_tracking.py` | `scheduled_track_ready_orders()` | All 17Track calls fail (rate limit/key expired) — orders stall indefinitely | Per-order `log_error` only |
+| 8 | `order_tracking.py` | `scheduled_track_ready_orders_us()` | Same as above for US leg | Per-order `log_error` only |
+| 9 | `s3_override.py` | `custom_upload_files_to_s3_with_key()` | S3 upload fails — only user-facing throw, no developer log | `frappe.throw` only |
+| 10 | `shopify.py` | `track_quotation_link()` | Customer payment redirect fails — nothing logged | No try/except |
+| 11 | `shopify.py` | `poll_quotation_payment_statuses()` | Shopify API down — 0 quotations checked, no alert | Per-quotation `log_error` only |
+| 12 | `lyfe_order.py` | Gate Pass auto-creation (~line 375) | Gate Pass not created — order stuck in Ready for Dispatch, no CS notification | `log_error` only |
+| 13 | `fedex_api.py` | `get_fedex_token()` | Generic exceptions re-raised with no logging | Raw `raise`, no `log_error` |
+| 14 | `stale_cleanup.py` | `_cleanup()` | No top-level wrapper — job can die silently | Per-link `log_error` only |
+
+---
+
+#### Security Gap (Separate Fix)
+
+| File | Function | Issue |
+|---|---|---|
+| `shopify.py` | `_verify_shopify_hmac()` | Missing webhook secret → HMAC check silently skipped. Any spoofed webhook can mark quotations as "Payment Received". Must hard-fail if secret is not configured. |
+
+---
+
+#### Code Quality Fix
+
+| File | Line | Issue |
+|---|---|---|
+| `shipstation_settings.py` | ~402 | `print("=============dsadsadsad")` debug statement left in production scheduler — remove immediately |
+
+---
+
+#### After Fix — Full Coverage
 
 | Failure Point | Slack | Email | Error Log |
 |---|---|---|---|
-| Shopify → Order creation | ✅ | ✅ | ✅ |
+| Shopify token rotation | ✅ | ✅ | ✅ |
 | ShipStation → Lyfe Order creation | ✅ | ✅ | ✅ |
-| Gate Pass submission | ✅ | ✅ | ✅ |
+| ShipStation Orders before_save | ✅ | ✅ | ✅ |
+| Material Issue submit/cancel | ✅ | ✅ | ✅ |
+| Gate Pass SI creation (silent return) | ✅ | ✅ | ✅ |
+| SLA escalation scan | ✅ | ✅ | ✅ |
+| 17Track batch tracking (India leg) | ✅ | ✅ | ✅ |
+| 17Track batch tracking (US leg) | ✅ | ✅ | ✅ |
+| S3 file upload failure | ✅ | ✅ | ✅ |
+| Customer payment link redirect | ✅ | ✅ | ✅ |
+| Shopify payment poll | ✅ | ✅ | ✅ |
+| Gate Pass auto-creation on Lyfe Order | ✅ | ✅ | ✅ |
+| FedEx token fetch | ✅ | ✅ | ✅ |
+| SLA stale cleanup | ✅ | ✅ | ✅ |
 | ShipStation sync job | ✅ | ✅ | ✅ |
 | SLA scan job | ✅ | ✅ | ✅ |
+| Gate Pass submission | ✅ | ✅ | ✅ |
 
 ---
 
