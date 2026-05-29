@@ -1,189 +1,94 @@
 # ShipStation Label Generation
 
-## Overview
+## What This Feature Does
 
-Lyfe Order supports generating shipping labels directly via the **Generate ShipStation Label** button on the CJ Shipping tab (Label Generation section). The integration uses the ShipStation classic REST API (`ssapi.shipstation.com`) in production and the ShipEngine API (`api.shipengine.com`) for sandbox/testing.
-
-**Button visibility:** System Manager and Administrator roles only.
+The **Generate ShipStation Label** button on a Lyfe Order lets you create a shipping label directly from the order form, without logging into ShipStation separately. Once the label is generated, it is saved to the order and the tracking number is filled in automatically.
 
 ---
 
-## How It Works
+## Who Can Use It
 
-### Production Mode (`ss_label_sandbox = OFF`)
-
-Calls `POST https://ssapi.shipstation.com/orders/createlabelfororder` using the linked ShipStation Order's numeric ID. Carrier and service are read from ShipStation Settings. Returns a Base64-encoded PDF label saved to `Lyfe Order.shipping_label` and updates `tracking_number`.
-
-### Sandbox Mode (`ss_label_sandbox = ON`)
-
-Calls `POST https://api.shipengine.com/v1/labels` using the ShipEngine API with a `TEST_` key. Builds a full shipment payload from the CJ Shipping tab fields (consignee address + parcel details). No real shipment is created and no charge is applied. Works for all carriers including FedEx.
+This button is visible only to **System Manager** and **Administrator** users.
 
 ---
 
-## Prerequisites
+## Settings to Configure After Deployment
 
-### Production
+Go to **ShipStation Settings** and fill in the following under the **Label Generation Defaults** section:
 
-| Requirement | Where to check |
+| Setting | What to Enter |
 |---|---|
-| ShipStation plan that includes API label generation | ShipStation account billing page |
-| `ss_api_key` and `ss_api_secret` configured | ShipStation Settings → ShipStation section |
-| Lyfe Order must be linked to a ShipStation Order (`shipstation_order` field) | Lyfe Order form |
-| ShipStation Order must have a numeric `shipstation_order_id` | Auto-filled on sync |
+| **Sandbox Mode** | Leave this OFF for live use. Turn it ON only for testing (see Testing section below). |
+| **Default Carrier (Labels)** | Select the carrier you want to use for labels. The carrier list is populated when you click **Sync Carriers** in ShipStation Settings. |
+| **Default Service Code (Labels)** | Type the service code for the shipping service you want to use. For FedEx International Priority, this is `fedex_international_priority`. |
 
-### Sandbox
-
-| Requirement | Where to get it |
-|---|---|
-| ShipEngine account (free) | [app.shipengine.com](https://app.shipengine.com/) |
-| ShipEngine `TEST_` API key | ShipEngine dashboard → API Keys → Sandbox |
-| ShipEngine carrier ID (e.g. `se-123456`) | `GET https://api.shipengine.com/v1/carriers` with your TEST_ key |
+> **Important:** Make sure you have clicked **Sync Carriers** at least once so the carrier list is populated and the correct carrier can be selected.
 
 ---
 
-## Production Deployment Checklist
+## How to Generate a Label
 
-After deploying to production, complete these steps in order.
+1. Open the Lyfe Order.
+2. Go to the **CJ Shipping** tab → **Label Generation** section.
+3. Click **Generate ShipStation Label**.
+4. A dialog will appear showing the carrier and service that will be used.
+5. Choose a **Confirmation** type if needed (default is None).
+6. Click **Generate Label**.
+7. On success, the label PDF is saved to the order and the tracking number is updated.
 
-### Step 1 — Run Migration
+### What the Order Needs Before Generating a Label
 
-```bash
-bench --site <your-site> migrate
-```
+- The order must be linked to a ShipStation order (the **ShipStation Order** field must be filled).
+- The consignee address fields (name, address, city, country, etc.) should be filled on the CJ Shipping tab.
+- At least one row should be present in the **Parcel Details** table with weight and dimensions.
 
-This creates the new `ss_label_carrier`, `ss_label_service_code`, `ss_label_sandbox`, and `se_label_carrier_id` columns in the ShipStation Settings single doctype.
+---
 
-### Step 2 — Sync Carriers
+## Testing (Sandbox Mode)
 
-Open **ShipStation Settings** → click **Sync Carriers**. This populates the Carrier doctype with your live carrier records including their `carrier_id` and `carrier_code` values.
+Before going live, you can test label generation without creating real shipments or being charged.
 
-### Step 3 — Configure Label Generation Defaults
+To use sandbox mode:
 
-Go to **ShipStation Settings → Label Generation Defaults** and set:
+1. Go to **ShipStation Settings**.
+2. Under **Label Generation Defaults**, turn **Sandbox Mode** ON.
+3. Under the **ShipEngine** section, enter the test API key provided for sandbox testing (it starts with `TEST_`).
+4. Select the carrier you want to test with under **Default Carrier (Labels)**.
 
-| Field | Value | Notes |
+When Sandbox Mode is ON, a warning banner will appear in the Generate Label dialog so you always know you are in test mode. Labels generated in sandbox mode are not real — no shipment is created and no charge is applied.
+
+To go back to live mode, simply turn **Sandbox Mode** OFF.
+
+---
+
+## What Happens After a Label Is Generated
+
+- The label PDF is saved to the **Shipping Label** field on the order.
+- The **Tracking Number** field is updated automatically.
+- A record of the API call is saved under **Integrations → Integration Request** — you can check this if something goes wrong.
+
+---
+
+## If Something Goes Wrong
+
+| What you see | What it means | What to do |
 |---|---|---|
-| **Sandbox Mode** | ☐ OFF | Must be OFF for production |
-| **Default Carrier (Labels)** | Select from dropdown | e.g. `FedEx One Balance (USD)` — `carrier_code` and `carrier_id` are read automatically from the selected Carrier record |
-| **Default Service Code (Labels)** | e.g. `fedex_international_priority` | Must match the selected carrier's available service codes |
-
-To find the correct service code for your carrier, check the Carrier record's **Services** child table or refer to the table below.
-
-#### FedEx One Balance — International Service Codes
-
-| Service Code | Service Name |
-|---|---|
-| `fedex_international_priority` | FedEx International Priority® |
-| `fedex_international_economy` | FedEx International Economy® |
-| `fedex_international_first` | FedEx International First® |
-| `fedex_international_priority_express` | FedEx International Priority® Express |
-| `fedex_international_connect_plus` | FedEx International Connect Plus® |
-| `fedex_ground_international` | FedEx International Ground® |
-
-### Step 4 — Verify ShipStation Plan
-
-The `/orders/createlabelfororder` endpoint requires a ShipStation plan that includes API label generation. To verify:
-
-1. Log into ShipStation → Settings → Account → Billing
-2. Confirm the plan includes **API Access** or **Label Generation via API**
-3. If you see `This shipment would exceed your subscription limit` when testing, contact ShipStation support to upgrade
-
-### Step 5 — Test with a Real Order
-
-1. Open a Lyfe Order that has:
-   - `shipstation_order` field linked to a ShipStation Orders record
-   - Consignee address filled (cj_consignee_* fields)
-   - At least one row in `cj_parcel_details` with weight and dimensions
-2. Click **Generate ShipStation Label**
-3. Confirm the carrier/service shown in the dialog is correct
-4. Click **Generate Label**
-5. On success: `shipping_label` field is populated, `tracking_number` is updated, and an Integration Request log is created with service name `ShipStation Label`
+| "This shipment would exceed your subscription limit" | Your ShipStation plan does not include API label generation | Contact ShipStation support to upgrade, or use Sandbox Mode for testing in the meantime |
+| "No carrier is configured" | The Default Carrier field is empty in ShipStation Settings | Go to ShipStation Settings, click Sync Carriers, then select the carrier under Label Generation Defaults |
+| "This Lyfe Order is not linked to a ShipStation order" | The ShipStation Order field on the order is empty | Link the ShipStation order manually, or sync orders from ShipStation Settings |
+| "ShipStation Order ID Missing" | The linked ShipStation order does not have an order ID yet | Go to ShipStation Settings and click Sync Now to fetch the latest order data |
+| "Unauthorized" | The API key or secret stored in ShipStation Settings is incorrect | Check the API Key and API Secret fields in ShipStation Settings |
+| Label saved but tracking number is blank | ShipStation did not return a tracking number for this shipment | Check the Integration Request log for the full response from ShipStation |
+| Sandbox error about access denied | The test API key under ShipEngine section is missing or incorrect | Get a sandbox key from ShipEngine (free account) and enter it in ShipStation Settings → ShipEngine → Api Secret |
 
 ---
 
-## Sandbox / Testing Setup
+## After Deployment — Quick Checklist
 
-### Step 1 — Get a ShipEngine Sandbox Key
+Complete these steps in order before anyone starts generating labels:
 
-1. Sign up at [app.shipengine.com](https://app.shipengine.com/) (free)
-2. Go to **API Management** → **Sandbox** tab
-3. Generate a new API key — it will start with `TEST_`
-
-### Step 2 — Get Your ShipEngine Carrier ID
-
-Run this once with your TEST_ key to find the carrier ID:
-
-```bash
-curl -H "API-Key: TEST_your_key_here" https://api.shipengine.com/v1/carriers
-```
-
-Or in Python:
-
-```python
-import requests
-resp = requests.get(
-    "https://api.shipengine.com/v1/carriers",
-    headers={"API-Key": "TEST_your_key_here"}
-)
-for c in resp.json().get("carriers", []):
-    print(c["carrier_id"], c["carrier_code"], c["friendly_name"])
-```
-
-Note the `carrier_id` for FedEx (e.g. `se-123456`).
-
-### Step 3 — Configure Sandbox Settings
-
-Go to **ShipStation Settings** and set:
-
-| Section | Field | Value |
-|---|---|---|
-| ShipEngine | **Api Secret** (`se_api_secret`) | Your `TEST_xxxx` key |
-| Label Generation Defaults | **Sandbox Mode** | ☑ ON |
-| Label Generation Defaults | **Default Carrier (Labels)** | Select the Carrier record whose `carrier_id` matches what the ShipEngine sandbox returned |
-| Label Generation Defaults | **Default Service Code** | e.g. `fedex_international_priority` |
-
-> **Note:** When Sandbox Mode is ON, the ShipEngine carrier ID (`carrier_id` from the linked Carrier record) is used instead of the carrier code. Make sure the selected Carrier record has the correct `carrier_id` from ShipEngine.
-
-### Step 4 — Test
-
-Click **Generate ShipStation Label** on any Lyfe Order. The dialog will show an orange **Sandbox Mode is ON** banner. After generation, the label PDF is saved but no real shipment or charge is created.
-
----
-
-## Integration Request Logs
-
-Every label generation attempt (success or failure) is logged as a Frappe **Integration Request** document.
-
-| Field | Value |
-|---|---|
-| Integration Request Service | `ShipStation Label` (production) or `ShipEngine Label (Sandbox)` |
-| Reference DocType | `Lyfe Order` |
-| Reference DocName | The Lyfe Order name |
-| Status | `Queued` → `Completed` or `Failed` |
-
-To view logs: **Home → Integrations → Integration Request** → filter by service name.
-
----
-
-## Troubleshooting
-
-| Error | Cause | Fix |
-|---|---|---|
-| `This shipment would exceed your subscription limit` | ShipStation plan does not include API label generation | Upgrade ShipStation plan, or use Sandbox Mode with ShipEngine for testing |
-| `Unauthorized (401)` | Wrong API key or secret | Check `ss_api_key` / `ss_api_secret` in ShipStation Settings |
-| `No carrier is configured` | `Default Carrier (Labels)` not set | Set the carrier in ShipStation Settings → Label Generation Defaults |
-| `ShipStation Order ID Missing` | ShipStation Orders record has no `shipstation_order_id` | Sync orders from ShipStation Settings → Sync Now |
-| `This Lyfe Order is not linked to a ShipStation order` | `shipstation_order` field is empty on Lyfe Order | Link the ShipStation order manually or sync from ShipStation |
-| ShipEngine sandbox `Access denied` | `se_api_secret` is not a valid ShipEngine `TEST_` key | Generate a sandbox key at app.shipengine.com and update `se_api_secret` |
-| Label PDF saved but tracking number blank | ShipStation/ShipEngine returned empty `trackingNumber` | Check Integration Request log output for the full API response |
-
----
-
-## File Reference
-
-| File | Purpose |
-|---|---|
-| `lh/lyfe_hardware/shipping/shipstation_label_api.py` | All label generation logic — production (ShipStation) and sandbox (ShipEngine) paths |
-| `lh/lyfe_hardware/doctype/shipstation_settings/shipstation_settings.json` | ShipStation Settings schema — Label Generation Defaults section |
-| `lh/lyfe_hardware/doctype/lyfe_order/lyfe_order.js` | `_generateShipStationLabel()` dialog and button handler |
-| `lh/lyfe_hardware/doctype/lyfe_order/lyfe_order.json` | `generate_ss_label_btn` button field definition |
+1. **Sync Carriers** — Open ShipStation Settings and click the **Sync Carriers** button. This loads the available carriers into the system.
+2. **Set the Default Carrier** — Under Label Generation Defaults, select the carrier you will use for shipments.
+3. **Set the Default Service Code** — Enter the service code for your preferred shipping service (e.g. `fedex_international_priority` for FedEx International Priority).
+4. **Confirm Sandbox Mode is OFF** — Make sure the Sandbox Mode checkbox is unchecked before going live.
+5. **Test on one order** — Open a Lyfe Order that has a ShipStation order linked and parcel details filled, click Generate ShipStation Label, and confirm the label and tracking number are saved correctly.
