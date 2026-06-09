@@ -200,3 +200,5 @@ GET /api/method/lh.api.get_lyfe_orders?creation_from=2025-06-03&warehouse=Factor
 ```
 GET /api/method/lh.api.get_lyfe_orders?total_amount_gt=1000&total_amount_lt=10000
 ```
+
+<img width="1446" height="986" alt="image" src="https://github.com/user-attachments/assets/3fb839db-7846-4b55-94cf-911f7300bcbf" />
