@@ -1,7 +1,7 @@
 # LH Payment Terms & Milestone System — Full Documentation
 
 > **BRD Reference:** LH-BRD-DEV-004 Payment Terms and Urgent SLA v1.1  
-> **Last updated:** 2026-06-17  
+> **Last updated:** 2026-06-17 (rev 2)  
 > **Status:** Implemented (EC-3, EC-4, EC-6, EC-7, EC-9, EC-11)
 
 ---
@@ -22,8 +22,10 @@
 6. [Payment Block — Reminder & Escalation System](#6-payment-block--reminder--escalation-system)
 7. [Notification Reference](#7-notification-reference)
 8. [Payment Recording](#8-payment-recording)
-9. [Workflow State Map](#9-workflow-state-map)
-10. [Role Reference](#10-role-reference)
+9. [Shopify Order Confirmation on Payment](#9-shopify-order-confirmation-on-payment)
+10. [Quotation Cancellation — Workflow](#10-quotation-cancellation--workflow)
+11. [Workflow State Map](#11-workflow-state-map)
+12. [Role Reference](#12-role-reference)
 
 ---
 
@@ -546,6 +548,63 @@ Same body format as Before Shipped, with stage = `On Delivery` and trigger state
 
 ---
 
+### 7.3 Next-Stage Due Notification (Proactive)
+
+**Trigger:** A Payment Schedule row transitions from `Upcoming` → `Due` as a result of `update_payment_milestone_statuses()` being called. This happens when a previous stage has just been marked `Paid` (i.e. payment was received that satisfies the previous stage's threshold).
+
+**Purpose:** CS receives a proactive heads-up to start collecting the next instalment *before* the order reaches the blocking point and production is held up.
+
+**Recipients:** CS team only (`customer@lyfehardware.com`)
+
+**Email subject:**
+```
+[Next Payment Due] LHQ-2026-0120 — Photo Approval (₹ 3,000.00 outstanding)
+```
+
+**Email body:**
+
+```
+The previous payment stage has been completed for Quotation LHQ-2026-0120
+(Acme Corp). The next stage — Photo Approval — is now Due.
+
+┌──────────────────────────────────────┬──────────────────────────────┐
+│ Quotation                            │ LHQ-2026-0120                │
+│ Customer                             │ Acme Corp                    │
+│ Next Stage                           │ Photo Approval               │
+│ Stage Amount Required (cumulative)   │ ₹ 6,000.00                   │
+│ Received so far                      │ ₹ 3,000.00                   │
+│ Outstanding                          │ ₹ 3,000.00                   │
+│ Order Total                          │ ₹ 10,000.00                  │
+└──────────────────────────────────────┴──────────────────────────────┘
+
+Please follow up with the customer to collect the Photo Approval payment
+before it becomes overdue and blocks the next workflow step.
+```
+
+**Slack notification** is also sent (if webhook is configured in Team Settings):
+
+```
+*Next Payment Stage Due* | Quotation: `LHQ-2026-0120` (Acme Corp)
+Stage: *Photo Approval* is now *Due*.
+Required: ₹ 6,000.00 | Received: ₹ 3,000.00 | Outstanding: *₹ 3,000.00*
+Please collect this payment before the order is blocked.
+```
+
+**This is a one-time notification per stage transition.** It fires once when the stage becomes Due. If CS does not act and the order eventually gets blocked (Lyfe Order tries to advance), the daily block reminder system takes over.
+
+#### Example — 40/30/30 split (₹10,000 order)
+
+| Event | What CS receives |
+|---|---|
+| Quotation Won — Advance (40%) due | Nothing — this is the *first* stage; CS already knows from the won notification |
+| Customer pays ₹4,000 — Advance Paid | ✅ **"Next Payment Due — Photo Approval (₹3,000 outstanding)"** |
+| Customer pays ₹3,000 — Photo Approval Paid | ✅ **"Next Payment Due — Before Dispatch (₹3,000 outstanding)"** |
+| Customer pays ₹3,000 — Before Dispatch Paid | No notification — all stages complete |
+
+> **Important:** If Slack is not configured in Team Settings, the Slack part of this notification is silently skipped. The email still sends.
+
+---
+
 ## 8. Payment Recording
 
 ### How Payments Are Recorded
@@ -580,15 +639,87 @@ No error shown. Returns `{"status": "duplicate_skipped", "total_received": ...}`
 
 ### After Payment Is Recorded
 
-The system automatically runs three post-payment actions:
+The system automatically runs four post-payment actions:
 
 1. **Clear payment blocks** — `clear_payment_blocks_if_resolved` checks all linked Lyfe Orders. If `received ≥ threshold`, the block is cleared and the order can proceed.
 2. **Update milestone statuses** — `update_payment_milestone_statuses` marks stages as `Paid` wherever the threshold is now met.
-3. **Quotation state update** — if total received now equals grand total, state can be advanced to `Won` via normal workflow.
+3. **Next-stage due notification** — if any Payment Schedule row transitions from `Upcoming` → `Due` as a result of the payment (i.e. a previous stage just became Paid), a proactive email + Slack notification is sent to CS. See [Section 7.3](#73-next-stage-due-notification-proactive).
+4. **Quotation state update** — if total received now equals grand total, state can be advanced to `Won` via normal workflow.
 
 ---
 
-## 9. Workflow State Map
+## 9. Shopify Order Confirmation on Payment
+
+When CS clicks **Confirm Payment** or **Confirm Remaining Payment** on a Quotation, a dialog appears to record the payment amount. An optional checkbox is shown if the Shopify draft order has not yet been confirmed as a real Shopify order.
+
+### Checkbox Condition
+
+| Condition | Checkbox Shown? |
+|---|---|
+| `custom_shopify_draft_order_id` is set **and** `custom_shopify_order_name` is blank | ✅ Yes — Shopify draft is still open |
+| `custom_shopify_order_name` is already set | ❌ No — Shopify order already confirmed |
+| No Shopify draft order on the Quotation | ❌ No — not a Shopify order |
+
+### Checkbox Behaviour
+
+**Label:** "Confirm Order in Shopify after Payment Recording"  
+**Default:** Unchecked
+
+When **unchecked:** Only the ERP payment entry is recorded. No Shopify API call is made.
+
+When **checked:**
+1. ERP payment entry is recorded and committed first (always succeeds).
+2. After ERP commit, the Shopify draft order is confirmed via GraphQL `draftOrderComplete` mutation.
+3. On success: `custom_shopify_order_name` is populated (via the Shopify webhook that fires after order creation).
+4. On Shopify API failure: ERP payment remains saved. An orange warning dialog is shown:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ Shopify Confirmation Failed                             (orange)     │
+├─────────────────────────────────────────────────────────────────────┤
+│ Payment was recorded successfully, but the Shopify order            │
+│ confirmation failed.                                                │
+│                                                                     │
+│ Error: <API error detail>                                           │
+│                                                                     │
+│ You may retry Shopify confirmation manually.                        │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+> **Why GraphQL instead of REST?**  
+> The Shopify REST endpoint `POST /draft_orders/{id}/complete.json` returns HTTP 406 when the draft order has no payment gateway set — which is always the case for manual bank transfer orders. The GraphQL `draftOrderComplete` mutation handles this correctly regardless of payment gateway.
+
+### Slack Configuration Note
+
+The Slack webhook field in Team Settings (`custom_payment_reminder_slack_webhook`) is **optional**. If blank, all Slack notifications (payment reminders, stage-due notifications, shipped/delivery alerts) are silently skipped. No error is raised and no email is affected. This applies to all payment notifications throughout the system.
+
+---
+
+## 10. Quotation Cancellation — Workflow
+
+CS can cancel a Quotation from **any submitted state** using the standard workflow action button.
+
+### States Where Cancel Is Available
+
+| From State | Action | Next State | Allowed Role |
+|---|---|---|---|
+| Sent to Customer | Cancel | Cancelled | Customer Service |
+| Bank Transfer Selected | Cancel | Cancelled | Customer Service |
+| Payment Received | Cancel | Cancelled | Customer Service |
+| Won | Cancel | Cancelled | Customer Service |
+| Expired | Cancel | Cancelled | Customer Service |
+| Lost | Cancel | Cancelled | Customer Service |
+| Partially Paid | Cancel | Cancelled | Customer Service |
+
+> **Note:** `Cancelled` state has `doc_status = 2`, which is the standard Frappe cancelled document status. This state also triggers EC-6: all payment blocks on linked Lyfe Orders are automatically released and no further reminders are sent.
+
+### Patch
+
+Added by: `lh.patches.add_cancel_transitions_to_quotation_workflow` (Workflow: `Quotation-3`)
+
+---
+
+## 11. Workflow State Map
 
 ### Quotation States Relevant to Payments
 
@@ -597,8 +728,8 @@ The system automatically runs three post-payment actions:
 | `Draft` | No payment action |
 | `Partially Paid` | Advance stage marked Due; some payment received |
 | `Won` | Full payment received; all stages should be Paid |
-| `Lost` | All payment blocks on linked Lyfe Orders released |
-| `Cancelled` | All payment blocks on linked Lyfe Orders released |
+| `Lost` | All payment blocks on linked Lyfe Orders released (EC-6) |
+| `Cancelled` | All payment blocks on linked Lyfe Orders released (EC-6) |
 
 ### Lyfe Order States Relevant to Payments
 
@@ -612,7 +743,7 @@ The system automatically runs three post-payment actions:
 
 ---
 
-## 10. Role Reference
+## 12. Role Reference
 
 ### Who Can See What
 
@@ -664,6 +795,7 @@ The system automatically runs three post-payment actions:
 | `add_payment_schedule_stage_checkboxes` | 5 stage checkboxes on Payment Schedule |
 | `add_before_shipped_stage_checkbox` | `custom_before_shipped` checkbox on Payment Schedule |
 | `add_payment_milestone_status_field` | `custom_payment_status` (Select) on Payment Schedule |
+| `add_cancel_transitions_to_quotation_workflow` | Cancel action from all 7 submitted Quotation states → Cancelled |
 
 ---
 
@@ -890,6 +1022,27 @@ After all configuration is done, run a quick end-to-end test:
 2. Run the scheduler again
 3. **Expected result:** Founders receive the email alongside CS
 
+#### 9.5 Next-Stage Due Notification Test
+
+1. Set up a Quotation with a 50/50 payment schedule (Advance + Photo Approval)
+2. Record payment for the Advance amount
+3. **Expected result:** CS inbox (`customer@lyfehardware.com`) receives an email with subject `[Next Payment Due] <quotation> — Photo Approval`
+4. If Slack is configured, a message appears in the payment reminder channel
+
+#### 9.6 Shopify Confirmation Checkbox Test
+
+1. Open a Quotation in `Bank Transfer Selected` state that has `custom_shopify_draft_order_id` set and `custom_shopify_order_name` blank
+2. Click **Confirm Payment**
+3. **Expected result:** The payment dialog includes a checkbox "Confirm Order in Shopify after Payment Recording" (unchecked by default)
+4. Check the box and record the payment
+5. **Expected result:** Payment records successfully; Shopify draft order is converted to a real order; no error shown
+
+#### 9.7 Cancel Workflow Test
+
+1. Move a Quotation to `Sent to Customer` state
+2. Click **Cancel** workflow action button
+3. **Expected result:** Quotation moves to `Cancelled` (doc_status=2); all payment blocks on linked Lyfe Orders are released
+
 ---
 
 ### Configuration Summary Table
@@ -923,4 +1076,4 @@ The following values are hardcoded in source and require a code change (not a co
 
 ---
 
-*End of document — LH Payment Terms System*
+*End of document — LH Payment Terms System (rev 2, 2026-06-17)*
