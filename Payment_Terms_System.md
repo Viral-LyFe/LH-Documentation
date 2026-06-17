@@ -667,4 +667,260 @@ The system automatically runs three post-payment actions:
 
 ---
 
+## Post-Deployment Configuration Guide
+
+This section covers everything that must be done **manually on the live system** after running `bench migrate` and the patches. The patches add fields and schema — they do not populate live data or connect external services.
+
+---
+
+### Step 1 — Run the Migration
+
+```bash
+# On the production server, from frappe-bench directory:
+bench --site <your-site> migrate
+```
+
+This runs all pending patches automatically (they are registered in `patches.txt`). Verify each payment-related patch ran without error in the migration output:
+
+```
+lh.patches.add_quotation_payment_tracking_fields    ✓
+lh.patches.add_payment_block_tracking_fields        ✓
+lh.patches.add_payment_reminder_slack_webhook_to_team_settings  ✓
+lh.patches.add_payment_schedule_stage_checkboxes    ✓
+lh.patches.add_payment_terms_template_detail_stage_checkboxes   ✓
+lh.patches.add_payment_stage_summary_html_to_lyfe_order         ✓
+lh.patches.move_quotation_payment_history_section               ✓
+lh.patches.add_payment_milestone_status_field       ✓
+lh.patches.add_before_shipped_stage_checkbox        ✓
+```
+
+If any patch shows an error, investigate before proceeding.
+
+---
+
+### Step 2 — Configure the Slack Webhook (Team Settings)
+
+**Where:** Frappe Desk → Settings → Team Settings → *Payment Reminder Slack Webhook* field
+
+**What to do:**
+
+1. First, create a **Slack Webhook URL** document in Frappe:
+   - Go to: `Integrations → Slack Webhook URL → New`
+   - Paste your Slack incoming webhook URL (from Slack App configuration)
+   - Save
+
+2. Then open **Team Settings** and set the `Payment Reminder Slack Webhook` field to the Slack Webhook URL document you just created.
+
+**If left blank:** Slack notifications are silently skipped. Email notifications still send. This is safe — blank = Slack disabled.
+
+**Which Slack channel receives messages:** Whichever channel is configured in the Slack App's incoming webhook (this is set in Slack's app settings, not in Frappe).
+
+---
+
+### Step 3 — Configure Escalation Recipients (Team Settings → Founders)
+
+**Where:** Frappe Desk → Settings → Team Settings → *Founders* child table
+
+**What to do:**
+
+The `Founders` child table must contain the Frappe User records for anyone who should receive **escalation emails from Day 5 onwards** when a payment block is unresolved.
+
+1. Open **Team Settings**
+2. In the **Founders** child table, add rows for each founder/escalation recipient
+3. Each row links to a **User** — the system uses that user's registered email address
+
+**If the table is empty:** Escalation emails on Day 5+ are sent only to `customer@lyfehardware.com`. No error occurs — the founders list is simply empty.
+
+**Example configuration:**
+
+| User | Email (auto-resolved) |
+|---|---|
+| viralk@lyfehardware.com | viralk@lyfehardware.com |
+| ceo@lyfehardware.com | ceo@lyfehardware.com |
+
+---
+
+### Step 4 — Verify the CS Email Address
+
+**File:** `apps/lh/lh/lyfe_hardware/tasks/payment_reminders.py`, line 21
+
+```python
+CS_EMAIL = "customer@lyfehardware.com"
+```
+
+This address is hardcoded and receives:
+- All payment block reminder emails (Days 1 onwards)
+- Before Shipped payment pending notification
+- On Delivery payment pending notification
+
+**Action:** Confirm `customer@lyfehardware.com` is the correct inbox for the CS team on the live site. If the address needs to change, update the `CS_EMAIL` constant and redeploy.
+
+---
+
+### Step 5 — Verify the Daily Scheduler Is Running
+
+The payment reminder scheduler runs at 9:00 AM every day. After deployment, confirm Frappe's background workers are running:
+
+```bash
+bench status
+```
+
+Look for `frappe-schedule` in the process list. If not running:
+
+```bash
+bench start   # for development
+# or
+sudo supervisorctl start frappe-schedule   # for production
+```
+
+You can manually trigger the scheduler once to test it:
+
+```bash
+bench --site <your-site> execute \
+  lh.lyfe_hardware.tasks.payment_reminders.run_payment_reminder_scheduler
+```
+
+Expected output: runs silently if no blocked orders exist, or sends reminders for any blocked orders found.
+
+---
+
+### Step 6 — Set Up Payment Schedule on Existing Quotations
+
+The new `custom_payment_status` field on Payment Schedule rows defaults to blank for all existing quotations. **Existing live quotations are not retroactively updated.**
+
+For any active quotation (not Lost/Cancelled) that has a Payment Schedule:
+
+1. Open the Quotation
+2. Save it once — this triggers `on_update` which runs `update_payment_milestone_statuses` and fills the status column
+
+Alternatively, run the backfill from the bench console:
+
+```bash
+bench --site <your-site> console
+```
+
+```python
+import frappe
+from lh.lyfe_hardware.doc_events.quotation import update_payment_milestone_statuses
+
+active = frappe.get_all(
+    "Quotation",
+    filters={"workflow_state": ["not in", ["Lost", "Cancelled", "Draft"]]},
+    fields=["name"],
+)
+for q in active:
+    try:
+        update_payment_milestone_statuses(q.name)
+        frappe.db.commit()
+    except Exception as e:
+        print(f"Failed for {q.name}: {e}")
+
+print(f"Done — processed {len(active)} quotations")
+```
+
+---
+
+### Step 7 — Configure the Default Payment Terms Template
+
+**Where:** Frappe Desk → Accounts → Payment Terms Template
+
+The system defaults new Quotations to the template named `"100 % Advance"`. Verify this template exists on the live site:
+
+1. Go to: `Accounts → Payment Terms Template`
+2. Search for `100 % Advance`
+3. If it does not exist, create it with one row: 100%, `custom_advance_amount` checkbox checked
+
+If the template name differs on your live site, update the `validate()` function in `quotation.py`:
+
+```python
+# apps/lh/lh/lyfe_hardware/doc_events/quotation.py, in validate()
+if not doc.payment_terms_template:
+    doc.payment_terms_template = "100 % Advance"   # ← update this name if different
+```
+
+---
+
+### Step 8 — Verify Terms and Conditions Template
+
+The system defaults to a Terms and Conditions doc named `"Terms and Conditions template"`. Verify it exists:
+
+1. Go to: `CRM → Terms and Conditions`
+2. Search for `Terms and Conditions template`
+3. If missing, create the document (content can be your standard T&C text)
+
+---
+
+### Step 9 — Smoke Test the Full Flow
+
+After all configuration is done, run a quick end-to-end test:
+
+#### 9.1 Payment Gate Block Test
+
+1. Create a test Quotation with grand total ₹1,000
+2. Add a Payment Schedule row: 50% (₹500), check `Advance Amount`
+3. Add another row: 50% (₹500), check `Photo Approval`  
+4. Submit / move to `Sent to Customer` state
+5. Create a linked Lyfe Order (or use an existing one with `source_quotation` set)
+6. Set the Lyfe Order `warehouse` to `Factory - LH`
+7. **Expected result:**
+   - As **Factory role** → `Payment Incomplete — This order cannot proceed — payment is pending. The CS team has been notified.`
+   - As **CS role** → `Payment Incomplete — Payment required before assigning order to Factory. Quotation: ... Required: ₹500.00. Received: ₹0.00`
+8. Check the Lyfe Order: `custom_payment_block_stage` should be `custom_advance_amount`, `custom_payment_block_date` should be today
+
+#### 9.2 Payment Recording Test
+
+1. Continue from above — add a payment entry of ₹500 to the Quotation
+2. **Expected result:**
+   - `custom_payment_block_stage` is cleared on the Lyfe Order
+   - Payment Schedule row 1 `custom_payment_status` = `Paid`
+   - Payment Schedule row 2 `custom_payment_status` = `Upcoming`
+
+#### 9.3 Slack Test
+
+1. While a payment block is active, manually run:
+   ```bash
+   bench --site <your-site> execute \
+     lh.lyfe_hardware.tasks.payment_reminders.run_payment_reminder_scheduler
+   ```
+2. **Expected result:** A message appears in your configured Slack channel with order details
+
+#### 9.4 Escalation Test (optional)
+
+1. Set `custom_payment_reminder_count = 5` on a blocked Lyfe Order directly via the console
+2. Run the scheduler again
+3. **Expected result:** Founders receive the email alongside CS
+
+---
+
+### Configuration Summary Table
+
+| # | What | Where in Frappe | Required? |
+|---|---|---|---|
+| 1 | Run `bench migrate` | Server terminal | **Mandatory** |
+| 2 | Set Slack Webhook URL | Team Settings → Payment Reminder Slack Webhook | Optional (disables Slack if blank) |
+| 3 | Add escalation recipients | Team Settings → Founders child table | Optional (CS-only if blank) |
+| 4 | Verify `CS_EMAIL` constant | `payment_reminders.py` line 21 | **Mandatory** — confirm email is correct |
+| 5 | Verify background workers running | `bench status` | **Mandatory** |
+| 6 | Backfill milestone statuses on existing quotations | Bench console script | Recommended |
+| 7 | Verify `100 % Advance` payment terms template exists | Accounts → Payment Terms Template | **Mandatory** |
+| 8 | Verify `Terms and Conditions template` exists | CRM → Terms and Conditions | **Mandatory** |
+| 9 | Run smoke tests | Frappe Desk + bench console | Strongly recommended |
+
+---
+
+### Hardcoded Values Reference
+
+The following values are hardcoded in source and require a code change (not a config change) if they need to differ on the live site:
+
+| Value | Location | Default | When to Change |
+|---|---|---|---|
+| CS email address | `payment_reminders.py:21` | `customer@lyfehardware.com` | If CS inbox changes |
+| Escalation threshold | `payment_reminders.py:22` | Day 5 (`ESCALATION_DAYS = 5`) | If escalation timing needs adjustment |
+| Default payment terms template | `quotation.py` in `validate()` | `"100 % Advance"` | If template name differs on live site |
+| Default T&C template | `quotation.py` in `validate()` | `"Terms and Conditions template"` | If T&C doc name differs on live site |
+| Approval threshold (grand total) | `quotation.py` in `validate()` | ₹10,000 | If approval threshold changes |
+| Factory warehouse name | `lyfe_order.py` | `"Factory - LH"` | If warehouse is renamed |
+
+---
+
 *End of document — LH Payment Terms System*
