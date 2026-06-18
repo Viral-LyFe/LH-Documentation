@@ -339,7 +339,7 @@ These can piggyback on the **existing 15-min SLA scan** (`sla_scan.run`) or a ne
 | 2 | **Aging buckets + Oldest-stuck table** on TW dashboard | None | Pure new SQL on existing columns; high manager value; BR-2-independent |
 | 3 | **Forecasting / throughput** cards | None | Builds on existing date columns; BR-2-independent |
 | 4 | **Bottleneck + on-hold alerts** | Steps 2 | Turns the new aging data into push notifications |
-| 5 | **Exclude Urgent from standard SLA metrics** (§3.1) | BR-2 live | Must happen the moment Urgent orders exist, to stop pollution |
+| 5 | **Exclude Urgent from ALL forward SLA queries** (§3.1 + §11.2) — dashboard AND all detectors (R1/R2/R3/R5/R7) | BR-2 live | Must happen the moment Urgent orders exist, to stop pollution. **Engine-wide, not dispatch-only** — a partial exclusion makes an urgent order vanish from one card while still breaching on another |
 | 6 | **Urgent SLA metric group + drill-through** (§3.2–3.3) | BR-2 live + Step 5 | Replaces the excluded urgent orders with a correct dedicated view |
 | 7 | **Add Dispatch By / Days Left columns** to Priority View | BR-2 live | Completes the Priority View once dispatch-by data exists |
 
@@ -347,6 +347,82 @@ These can piggyback on the **existing 15-min SLA scan** (`sla_scan.run`) or a ne
 
 ---
 
-## 11. One-Paragraph Summary for Management
+## 11. SLA Rule Spec Alignment & BR-2 Edge Cases (from LH_PM_Rules_Developer_Spec)
 
-The two dashboards are already capable, but the upcoming **Reverse-SLA / Urgent feature (BR-2) will silently corrupt the SLA analytics dashboard** — urgent orders on compressed timelines would be measured against the wrong 3-/14-day rule, producing both false "on track" greens (hiding real lateness) and false breach reds (crying wolf). The BRD explicitly requires excluding urgent orders from standard SLA dashboards; we must honor that by adding an exclusion clause **and** a dedicated Urgent SLA card group that tracks them against their real dispatch-by dates. Separately, and independent of BR-2, we recommend adding a **priority-sorted order view** (Urgent → Low) on the operational board, plus **bottleneck/aging analysis** and **dispatch forecasting** on the analytics board, all backed by push **alerts** so managers are told where to act instead of having to watch the screen. The aging, forecasting, and priority-view work can ship first; the SLA-exclusion and Urgent-card work must ship with BR-2.
+The PM Rules spec defines the **forward SLA rules (R1–R7, Q1–Q2)** that already drive the `lh_project` SLA engine. These are the *authoritative thresholds, assignees, and auto-close conditions*. BR-2 (reverse SLA) and the dashboard exclusion logic must stay **consistent with these exact values** — otherwise the dashboard and the engine will disagree.
+
+### 11.1 The forward SLA rules (already implemented — confirmed in code)
+
+Each rule below maps to a detector that **already exists** under `lh/lh_project/sla/detectors/`:
+
+| Rule | Trigger / Monitor state | SLA | Assign To | Auto-close when | Detector file (exists) |
+|---|---|---|---|---|---|
+| **R1** Standard Dispatch | `Factory Assignment` + `order_type=Standard` | **3 working days** | Factory (support@chandakbrothers.net) | `Ready for Dispatch` OR `Dispatched` | `promised_dispatch.py` |
+| **R2** Custom Internal Review | `Factory Assignment` + `order_type=Custom` | **10 working days** | Factory | `Internal Review` or beyond | `internal_review.py` |
+| **R3** Awaiting Tracking | state = `Awaiting Tracking` | **1 working day** | Factory | `Awaiting Shipping` OR `Shipped` | `awaiting_shipping.py` |
+| **R4** Shipped → Delivered | state = `Shipped` | **9 calendar days** | CS (support@lyfehardware.com) | `Completed` | `shipped_to_completion.py` / `delayed_shipment.py` |
+| **R5/R6** Engineer Internal Review | state = `Internal Review` | **1 working day** | Engineer (confirm w/ Careers) | `Size Approved` OR `Pending Customer Approval` (i.e. *changed from* Internal Review) | `internal_review_approval.py` |
+| **R7** Pending Customer Approval | state = `Pending Customer Approval` | **4 working days** | CS | `Approved` | `pending_customer_approval.py` / `approval_pending.py` |
+| **Q1** Drawing Required | Quotation `drawing_required → 1` | **1 working day due** | Engineer | `drawing_uploaded = 1` | (TAR + due date) |
+| **Q2** Feasibility Required | Quotation `feasibility_test_required → 1` | **1 working day due** | Factory | `feasibility_complete = 1` | (TAR + due date) |
+
+**Universal escalation (applies to R1–R7 and Q1–Q2):** if a task is **not actioned within 1 day** of creation, **reassign to Srishti (srishti@lyfehardware.com)** and **raise priority to High**. This is the existing escalation pattern (`escalation_scan.run`, hourly).
+
+### 11.2 ⚠ Threshold discrepancy the dashboard must respect
+
+The spec and the code use **two different custom thresholds for two different rules** — do not confuse them:
+
+| Concept | Threshold | Source |
+|---|---|---|
+| Custom order → reach **Internal Review** | **10 wd** | Spec R2 + `internal_review.py` |
+| Custom order → **Dispatch** (factory→out) | **14 wd** (16 if rejected >1×) | `promised_dispatch.py` (hardcoded) |
+
+The dashboard's `custom_dispatch_*` buckets and `breach_promised_dispatch` use the **14/16** dispatch threshold. The `internal_review` breach uses **10**. When we add the `order_priority != 'Urgent'` exclusion (§3.1), it must be applied to **every** detector query and **every** dashboard SLA query that touches these — not just the dispatch one — so an urgent order is excluded consistently across *all* forward SLA rules, not partially.
+
+**Action:** §3.1 exclusion clause must be added to the dashboard queries backing R1 (dispatch), R2 (internal review), R3 (tracking), R5 (engineer), R7 (customer approval) — wherever an urgent order could appear. A partial exclusion is worse than none (the order vanishes from one card but still shows as a breach on another).
+
+### 11.3 BR-2 edge cases — coverage check against this spec
+
+Confirming the BR-2 reverse calculator (LH-DEV-ANALYSIS-BR2) and these dashboard changes together cover every edge case. **Each row below is a stated edge case; the right column is where it is handled.**
+
+| Edge case (from BRD Table 8 + PM spec) | Handled by | Status |
+|---|---|---|
+| Urgent orders excluded from standard SLA-breach dashboards | §3.1 exclusion + §11.2 (all detectors, not just dispatch) | ✅ Planned |
+| Urgent order tracked against its own dispatch-by date | §3.2 Urgent SLA card group | ✅ Planned |
+| US warehouse fulfilment (transit 3–4 wd, no customs/gatepass) | BR-2 calc US branch; dashboard `us_warehouse_delivery_*` already separate | ✅ Planned |
+| Customs buffer toggle for sample shipments | BR-2 calc input `has_customs_buffer` | ✅ Planned |
+| New product (die/mould) → always Not Possible | BR-2 calc `is_new_product` short-circuit | ✅ Planned |
+| Dispatch-by date in the past/today → Not Possible | BR-2 calc runway check < 0 | ✅ Planned |
+| Required date on weekend/holiday → snap forward | BR-2 `working_days.py` snap (IN + US calendars) | ✅ Planned |
+| Photo-approval window inside compressed custom timeline | BR-2 calc photo_approval_wd step | ✅ Planned |
+| **Client delay eats buffer → auto-flag At Risk + re-notify** | BR-2 §8.7 At Risk scan **+ this doc §3.2 `urgent_approaching` card + §7 alert** | ✅ Planned (now visible on dashboard) |
+| Compressed timeline excluded from SLA breach reporting | §3.1 (the exclusion **is** the mechanism) | ✅ Planned |
+| Order downgraded from Urgent → clean up task + indicators | BR-2 §8.5 downgrade handler; dashboard auto-recounts (no orphan) | ✅ Planned |
+| Required delivery date changed post-placement → recompute | BR-2 §8.4 recompute on date change; dashboard reads new date | ✅ Planned |
+| **Borderline runway (within 2 wd) → manual review, not hard fail** | BR-2 Borderline verdict **+ this doc §3.2 `urgent_approaching` = "within 2 wd"** | ✅ Planned — *note: §3.2 must use the same 2-wd boundary as BR-2's Borderline, see 11.4* |
+| Out-of-stock standard order → treat as custom production time | BR-2 calc `is_stock_available=False` switches to custom path | ✅ Planned |
+| **SLA task not actioned within 1 day → escalate to Srishti, raise to High** | Existing `escalation_scan` (hourly) — applies to urgent tasks too | ✅ Existing — verify urgent PM task is registered so escalation fires |
+| Engineer email for R5/Q1 | **Open** — spec says "confirm with Careers" | ⚠ Blocked on confirmation |
+
+### 11.4 Consistency rules the implementation must enforce
+
+1. **One source of truth for "2 working days."** BR-2's *Borderline* threshold, the dashboard's `urgent_approaching` bucket, and the "At Risk" alert must all use the **same 2-working-day boundary**. Define it once (a constant in `working_days.py` / a config) and import it everywhere.
+2. **Urgent PM task must be escalation-eligible.** The Urgent task BR-2 creates must follow the same R1–R7 escalation pattern: not actioned within 1 day → reassign to Srishti, raise to High. Confirm the urgent task is created with the fields `escalation_scan.run` looks for, or it will silently never escalate.
+3. **Auto-close parity.** BR-2's urgent task auto-closes on `ready_for_dispatch_date` (same signal as R1). Keep this identical to R1 so an order does not show closed on one board and open on another.
+4. **Exclusion applies engine-wide.** As §11.2 states — exclude urgent from R1, R2, R3, R5, R7 dashboard queries, not just dispatch.
+
+### 11.5 Updated file-change note
+
+Add to §8:
+
+| File | Change Type | What Changes |
+|---|---|---|
+| `lh/lyfe_hardware/page/order_analysis/order_analysis.py` | **Edit (expanded)** | Apply the `order_priority != 'Urgent'` exclusion to **all** forward-SLA queries (dispatch R1, internal review R2, tracking R3, engineer R5, customer approval R7) — not only `breach_promised_dispatch` |
+| `lh/lh_project/sla/detectors/*.py` | **Edit** | Same exclusion in each detector's `get_candidates()` (R1, R2, R3, R5, R7) so engine and dashboard agree |
+| `lh/lh_project/sla/utils/working_days.py` | **New (shared constant)** | Define `BORDERLINE_WD = 2` (or config) and reuse for BR-2 Borderline, dashboard `urgent_approaching`, and the At Risk alert |
+
+---
+
+## 12. One-Paragraph Summary for Management
+
+The two dashboards are already capable, but the upcoming **Reverse-SLA / Urgent feature (BR-2) will silently corrupt the SLA analytics dashboard** — urgent orders on compressed timelines would be measured against the wrong 3-/14-day rule, producing both false "on track" greens (hiding real lateness) and false breach reds (crying wolf). The BRD explicitly requires excluding urgent orders from standard SLA dashboards; we must honor that by adding an exclusion clause **and** a dedicated Urgent SLA card group that tracks them against their real dispatch-by dates. Separately, and independent of BR-2, we recommend adding a **priority-sorted order view** (Urgent → Low) on the operational board, plus **bottleneck/aging analysis** and **dispatch forecasting** on the analytics board, all backed by push **alerts** so managers are told where to act instead of having to watch the screen. The aging, forecasting, and priority-view work can ship first; the SLA-exclusion and Urgent-card work must ship with BR-2. Crucially, after cross-checking the PM Rules spec (R1–R7), the urgent exclusion must be applied **engine-wide across every forward SLA rule** — dispatch, internal review, tracking, engineer review, and customer approval — not just the dispatch metric; a partial exclusion would make an urgent order disappear from one card while still firing a false breach on another, and all components (BR-2's Borderline, the dashboard's "approaching" bucket, and the At Risk alert) must share a single 2-working-day boundary so the engine and the dashboards never disagree.
