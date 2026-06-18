@@ -1,86 +1,384 @@
 # BR-2 · Reverse SLA — Dispatch Date Calculator for Urgent Orders
-## Developer Implementation Analysis
 
 **Doc ID:** LH-DEV-ANALYSIS-BR2  
 **Based on:** LH-BRD-DEV-004 v1.1  
-**Date:** 2026-06-17  
-**Prepared for:** Viral (ERPNext Dev)
+**Date:** 2026-06-18  
+**Prepared for:** Viral (ERPNext Dev), CS Team, Operations Manager
 
 ---
 
-## 1. What the Requirement Actually Asks
+## Who Should Read This
 
-BR-2 is a **reverse SLA calculator**. Today's SLA runs *forward* (factory_assignment_date → is the order dispatched on time?). BR-2 adds a *backward* calculation: given a customer's required delivery date, work backward through the pipeline to tell CS:
-
-1. **Latest feasible dispatch date** (from factory/India)
-2. **Latest feasible order-placement date** (for the customer to still hit the delivery date)
-3. **Possibility verdict** — Possible / Borderline / Not Possible
-4. **Visibility on the order** — prominently display the dispatch-by date + Urgent flag
-5. **PM task auto-creation** — create a tracking task in `lh_project` with the dispatch-by date when an order is flagged Urgent
-
----
-
-## 2. Pipeline Stages & Buffer Values (from BRD Table 6)
-
-The reverse calculation works backward through these stages:
-
-| Stage | Standard | Custom |
-|---|---|---|
-| Delivery transit (India factory) | 5–7 wd | 5–7 wd |
-| Customs buffer (commercial, India dispatch) | +2–7 wd | +2–7 wd |
-| Gatepass + ship-out | 1–3 wd | 1–3 wd |
-| Factory production | 1–3 wd (stock-dependent) | ~7+ wd per SOP Section 3 |
-| Photo approval (custom urgent only) | — | +1–4 wd |
-
-**Minimum total runway** (working days from today to promised delivery):
-
-| Order Type | Minimum Runway |
+| Section | Audience |
 |---|---|
-| Standard (in stock) | ~10 wd |
-| Custom | ~20 wd |
+| 1 — What Problem Are We Solving? | Everyone |
+| 2 — How It Works (Plain Language) | CS Team, Managers |
+| 3 — Step-by-Step: How CS Uses It | CS Team (end users) |
+| 4 — How Managers Monitor It | Operations Manager |
+| 5 — The Math Behind It | Managers who want the detail |
+| 6 — What the System Does Automatically | Everyone |
+| 7 — Current State & What Needs to Be Built | Developer |
+| 8 — Detailed Technical Plan | Developer |
+| 9 — Open Questions Before Building | Developer + Management |
 
 ---
 
-## 3. Current State — What Already Exists
+## 1. What Problem Are We Solving?
 
-### 3.1 Fields on Lyfe Order (already present, not yet used for this purpose)
+### Today's situation
 
-| Field | Fieldname | Current State |
+When a customer says *"I need this by June 30"*, CS currently has no tool to quickly answer: **Can we actually do it? And if yes, when must the factory ship it?**
+
+Right now CS either:
+- Makes an educated guess and commits, then discovers too late the date is impossible
+- Is overly cautious and turns down orders that were actually feasible
+- Commits to a date, factory ships late, customer is unhappy
+
+### What this feature does
+
+It gives CS a **calculator button** on every order. CS enters the customer's required delivery date, clicks a button, and instantly gets back:
+
+- **Can we do it?** — Green (Yes), Amber (Tight but possible — needs manual review), or Red (Not possible, escalate to founders)
+- **When must the factory dispatch?** — e.g. "Factory must ship by June 14"
+- **A date range to give the customer** — e.g. "Tell the customer June 20–25 delivery"
+- **When is the latest the customer can place the order?** — e.g. "Order must be placed by June 3"
+
+When the answer is **Possible**, CS confirms and the system:
+1. Stamps the dispatch-by date on the order so the factory cannot miss it
+2. Flags the order as **Urgent** with a prominent visual indicator
+3. Automatically creates a tracking task in the project board so nothing falls through the cracks
+
+---
+
+## 2. How It Works — Plain Language
+
+Think of it like planning a road trip **in reverse**.
+
+Instead of asking *"if I leave today, when do I arrive?"*, we ask: *"I need to arrive by June 30 — what is the latest I can leave, and the latest I can start preparing the car?"*
+
+The calculator works backward through every step of the delivery pipeline:
+
+```
+Customer needs delivery by:  June 30
+                                ↑
+minus  Delivery transit time:   5–7 working days (shipping from India)
+                                ↑
+minus  Customs clearance:       2–7 working days (for international shipments)
+                                ↑
+minus  Gatepass + handover:     1–3 working days (paperwork at factory)
+                                ↑
+minus  Factory production:      1–3 days (standard, if stock exists)
+                                   OR 7+ days (custom / made-to-order)
+                                ↑
+= Latest possible factory dispatch date + order placement deadline
+```
+
+### Real example from the BRD
+
+> *Customer asks: "I need delivery by June 30."*
+
+Working backward:
+
+| Step | Calculation | Result |
 |---|---|---|
-| Order Priority | `order_priority` | Select (High/Medium/Low). Set manually, no business logic attached. |
-| Promised Dispatch By | `promised_dispatch_by` | Data field. Only copied during order merge. Never auto-calculated. |
-| Factory Assignment Date | `factory_assignment_date` | Set automatically when CS transitions order to factory states (lyfe_order.py:356-387). |
-| Total Hold Days | `total_hold_days` | Accumulated correctly when leaving On Hold (lyfe_order.py:528-535). |
-| Ready for Dispatch Date | `ready_for_dispatch_date` | Stamped when order reaches dispatch-ready workflow state. |
-| Warehouse | `warehouse` | Used by existing SLA detector to distinguish Standard vs Custom path. |
+| Customer's required delivery | — | June 30 |
+| Minus transit (5–7 wd) | June 30 − 7 wd | Factory must dispatch by ~June 20 |
+| Minus customs buffer (2–7 wd) | June 20 − 5 wd | Gatepass must be done by ~June 13 |
+| Minus gatepass (1–3 wd) | June 13 − 2 wd | Factory must be ready to ship by ~June 11 |
+| Minus production (1–3 wd std) | June 11 − 2 wd | Order must be in factory by ~June 9 |
 
-### 3.2 Existing SLA Infrastructure (lh_project module)
+**What CS tells the customer:** "We can deliver June 20–25. We need your confirmed order by June 9."  
+**What the factory sees on the order:** "URGENT — Dispatch by June 14."
 
-The `lh_project` SLA module already has a solid foundation:
+### What "working days" means
 
-- **`lh/lh_project/sla/detectors/promised_dispatch.py`** — forward SLA detector (factory → dispatch). Contains working-day calculation logic in SQL (excludes Sundays + hold days).
-- **`lh/lh_project/sla/engine/severity.py`** — priority tiers (Urgent / High / Medium / Low) based on age_hours thresholds.
-- **`lh/lh_project/sla/utils/age.py`** — `hours_since()` utility.
-- **Scheduler** — already runs `sla_scan` every 15 min, `escalation_scan` hourly.
-- **Task auto-creation** — engine already auto-creates PM tasks and auto-closes them.
-
-### 3.3 What Is Missing
-
-| Gap | Impact on BR-2 |
-|---|---|
-| No working-day **addition** utility (Python, not SQL) | Need to calculate `dispatch_by_date = today + N working days` forward, and `latest_order_date` backward from delivery date |
-| No holiday calendar | BRD says exclude IN/US holidays. Currently only Sundays excluded. |
-| `order_priority = "Urgent"` has no trigger code | Setting Urgent must auto-populate `promised_dispatch_by` and create a PM task |
-| No reverse-calc UI | CS needs a dialog/panel on the Quotation or Lyfe Order to input delivery date and see the calc output |
-| `promised_dispatch_by` is Data type, not Date/Datetime | Should be a proper Date for comparisons and scheduling |
-| No "compressed vs standard timeline" distinction | BRD requires showing how much buffer is consumed vs standard |
-| No "Not Possible" / "Borderline" escalation flow | Need founder escalation path |
+All calculations skip Sundays and public holidays (Indian holidays for India dispatch; US holidays for US warehouse orders). A date that falls on a holiday automatically snaps to the next valid working day.
 
 ---
 
-## 4. Detailed Implementation Plan
+## 3. Step-by-Step: How CS Uses This Feature
 
-### 4.1 New Python Utility — `working_days.py`
+### Scenario A — Customer calls asking for a tight delivery date
+
+**Step 1: Open the order (or quotation)**
+
+CS opens the Lyfe Order or Quotation in ERPNext as normal.
+
+**Step 2: Click "Calculate Dispatch Dates"**
+
+A new button appears in the toolbar at the top of the form. It is always visible.
+
+**Step 3: Fill in the small dialog that pops up**
+
+The dialog has just a few fields — most are pre-filled:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  Dispatch Date Calculator                           │
+├─────────────────────────────────────────────────────┤
+│  Customer's Required Delivery Date:  [ June 30 ]   │
+│  Order Type:          [ Standard ▾ ]  (pre-filled) │
+│  Fulfilled From:      [ India     ▾ ]  (pre-filled) │
+│  Stock Available?     [✓]              (check if yes)│
+│  Include Customs Buffer? [✓]          (default: yes)│
+└─────────────────────────────────────────────────────┘
+                              [ Calculate ]
+```
+
+**Step 4: Read the result**
+
+The result appears in the same dialog:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  ✅  POSSIBLE                                        │
+├─────────────────────────────────────────────────────┤
+│  Tell the customer:   Delivery by  June 20–25       │
+│  Factory must ship:   By June 14   (latest)         │
+│  Order must be placed: By June 9   (latest)         │
+│                                                     │
+│  Timeline used:    12 working days (compressed)     │
+│  Standard timeline: 14 working days                 │
+│  Buffer consumed:   2 working days of standard time │
+├─────────────────────────────────────────────────────┤
+│         [ Cancel ]    [ Confirm & Flag Urgent ]     │
+└─────────────────────────────────────────────────────┘
+```
+
+**Step 5: Click "Confirm & Flag Urgent"**
+
+The system automatically:
+- Marks the order as **Urgent**
+- Stamps "Dispatch by June 14" on the order (visible prominently)
+- Creates a factory task: *"URGENT — Dispatch by June 14 — ORDER-001"*
+- Logs the full calculation in the order history
+
+CS can now tell the customer the date range with confidence.
+
+---
+
+### Scenario B — The date is NOT possible
+
+The result dialog shows:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  🔴  NOT POSSIBLE                                   │
+├─────────────────────────────────────────────────────┤
+│  Required delivery:   June 20                       │
+│  Today is:            June 13                       │
+│  Working days available: 5 wd                       │
+│  Minimum needed (standard order): 10 wd             │
+│                                                     │
+│  ⚠ We would need to dispatch by June 10 — that     │
+│    date is already in the past.                     │
+│                                                     │
+│  This order has been flagged for founder review.    │
+├─────────────────────────────────────────────────────┤
+│  [ Close ]     [ Escalate to Founders ]             │
+└─────────────────────────────────────────────────────┘
+```
+
+CS does NOT commit to the customer. Instead:
+- Clicks "Escalate to Founders"
+- Founders receive a notification (Slack / ERP) and decide whether to accept it as a special case
+- CS waits for founder decision before responding to the customer
+
+---
+
+### Scenario C — Borderline (tight but not impossible)
+
+```
+┌─────────────────────────────────────────────────────┐
+│  🟡  BORDERLINE — Manual Review Required            │
+├─────────────────────────────────────────────────────┤
+│  Factory dispatch by:  June 14                      │
+│  Working days available for factory: 2 wd           │
+│                                                     │
+│  ⚠ This is within 2 working days of the minimum.   │
+│    CS must confirm with the factory before          │
+│    committing this date to the customer.            │
+├─────────────────────────────────────────────────────┤
+│  [ Cancel ]   [ I've Confirmed with Factory — Apply ]│
+└─────────────────────────────────────────────────────┘
+```
+
+CS calls/messages the factory floor, gets verbal confirmation, then clicks Apply.
+
+---
+
+### Scenario D — Order was flagged Urgent, but customer changes their delivery date
+
+CS opens the order, clicks "Calculate Dispatch Dates" again with the new date. The system automatically:
+- Recomputes all dates
+- Updates the dispatch-by date on the order
+- Updates the existing factory task (does not create a duplicate)
+- Re-runs the possibility check
+
+If the order is **downgraded from Urgent** (e.g. customer agreed to a later date):
+- CS changes Order Priority from Urgent back to Normal
+- System closes the Urgent factory task automatically
+- Clears the dispatch-by date
+- Logs "Order downgraded from Urgent by [user] on [date]"
+
+---
+
+## 4. How Managers Monitor Urgent Orders
+
+### 4.1 The Urgent Orders List View
+
+A filtered list view will show all currently active Urgent orders at a glance:
+
+```
+Urgent Orders (Active)        [ Refresh ]
+
+Order ID    Customer        Dispatch By    Days Left    Status         At Risk?
+ORDER-001   ABC Corp        June 14        3 wd         In Factory     —
+ORDER-002   XYZ Ltd         June 12        1 wd         In Factory     ⚠ YES
+ORDER-003   Patel Co.       June 18        7 wd         Ready to Ship  —
+ORDER-004   US Client       June 11        0 wd         In Factory     🔴 OVERDUE
+```
+
+**Columns explained:**
+- **Dispatch By** — the date stamped by the calculator when the order was flagged Urgent
+- **Days Left** — working days remaining until that dispatch deadline (calculated in real time)
+- **At Risk** — automatically flagged when Days Left drops to 2 or fewer and the order is still in factory
+
+### 4.2 Automatic Alerts the Manager Receives
+
+The system sends automatic notifications in these situations:
+
+| Situation | Who Is Notified | When |
+|---|---|---|
+| Order flagged as Urgent (new) | CS owner + Factory assignee | Immediately when Urgent is applied |
+| Order is "Not Possible" — needs founder decision | Founders | Immediately when CS escalates |
+| Dispatch deadline is 2 working days away, still in factory | Manager + CS owner + Factory | Daily scan (runs every morning) |
+| Dispatch deadline has passed, order not dispatched | Manager + CS owner + Founders | Daily scan |
+| Client delay (photo approval / payment) has eaten the buffer | CS owner + Factory | Daily scan |
+| Order downgraded from Urgent | Manager (informational) | Immediately when changed |
+
+### 4.3 The Project Board (lh_project)
+
+Every Urgent order automatically gets a task card on the PM project board. Managers can see all Urgent tasks in one place, with:
+
+- Task title: `URGENT — Dispatch by June 14 — ORDER-001`
+- Due date visible on the card
+- Priority badge: **Urgent** (red)
+- Assigned to: the factory team member responsible
+- Description: full calculation breakdown (what timeline was used, how much buffer is left)
+
+Tasks auto-close when the order reaches "Ready for Dispatch" status — no manual cleanup needed.
+
+### 4.4 What a Manager Should Review Daily
+
+1. **Check the "At Risk" column** in the Urgent Orders list — any row with ⚠ needs immediate follow-up with factory or CS
+2. **Check the PM board "Urgent" priority tasks** — overdue tasks (red due date) need escalation
+3. **Check the "Escalated to Founders" queue** — any Not Possible orders waiting for a decision
+
+### 4.5 What the Dashboard Does NOT Do Automatically (requires manager action)
+
+- Deciding whether to accept a "Not Possible" order — this is always a founder/manager decision
+- Chasing the customer when their delay has caused an At Risk situation — CS does this
+- Adjusting the dispatch date if factory confirms they can do it faster — CS updates the order manually
+
+---
+
+## 5. The Math Behind the Calculation
+
+This section is for managers who want to understand exactly how the numbers are derived.
+
+### 5.1 The Buffer Values (from SOP LH-CS-SOP-001 v1.7)
+
+Each stage of the delivery has a minimum and maximum buffer in working days:
+
+| Stage | Min (wd) | Max (wd) | Notes |
+|---|---|---|---|
+| Delivery transit — India to customer | 5 | 7 | International shipping time |
+| Customs clearance | 2 | 7 | Applies to commercial shipments from India. CS can turn off for sample shipments < 20 kg. |
+| Gatepass + handover to carrier | 1 | 3 | Paperwork at factory before handing to courier |
+| Factory production — Standard order | 1 | 3 | Only if stock exists. If out of stock, treated as Custom. |
+| Factory production — Custom order | 7 | 14+ | Per SOP Section 3. New products (requiring die/mould) = 25–30 days → always Not Possible for urgent. |
+| Photo approval — Custom urgent orders | 1 | 4 | Time reserved for client to review factory photos |
+
+**The calculator always uses the maximum buffers** to give the factory the tightest deadline. The date range shown to the customer is built using min vs max transit time, which is why there is a range (e.g. "June 20–25").
+
+### 5.2 US Warehouse Orders — Different Path
+
+US warehouse orders skip the India customs and gatepass steps entirely:
+
+| Stage | US Path |
+|---|---|
+| Transit to customer | 3–4 wd (domestic US shipping) |
+| Customs | None |
+| Gatepass | None |
+| Production | Per US stock availability |
+
+This means US standard orders have a **much shorter minimum runway** than India orders.
+
+### 5.3 Minimum Runway Thresholds
+
+| Order Type | Minimum Working Days from Today to Delivery |
+|---|---|
+| Standard order (India, in stock) | 10 working days |
+| Custom order (India) | 20 working days |
+| New product (die/mould required) | Not Possible — always escalate to founders |
+
+### 5.4 Borderline Zone
+
+If the working days available for the factory fall within **2 working days of the minimum**, the system flags it as Borderline instead of Possible. CS must verbally confirm with the factory before committing the date to the customer.
+
+**Example of Borderline:**
+- Standard order minimum runway: 10 wd
+- Available runway today: 11 wd → only 1 wd of breathing room → **Borderline**
+- Available runway today: 14 wd → 4 wd of breathing room → **Possible**
+
+---
+
+## 6. What the System Does Automatically (No Human Action Needed)
+
+| Event | Automatic Action |
+|---|---|
+| CS clicks "Confirm & Flag Urgent" | Order priority set to Urgent; dispatch-by date stamped on order; PM task created; calculation logged |
+| Order dispatch deadline arrives and order still in factory | "At Risk" flag set; notifications sent to CS + factory + manager |
+| Order reaches "Ready for Dispatch" status | Urgent PM task auto-closed; no manual cleanup needed |
+| Customer's delivery date changes on order | Dispatch-by date recomputed; existing PM task updated |
+| Order priority changed from Urgent to Normal | PM task closed; dispatch-by date cleared; downgrade logged |
+| "Not Possible" escalated to founders | Founder notification sent immediately via ERP/Slack |
+| Urgent order excluded from standard SLA breach reports | This happens automatically — Urgent orders have their own tracking and do not pollute the standard SLA dashboard |
+
+---
+
+## 7. Current State — What Already Exists vs What Is New
+
+### 7.1 Already in the System (No Build Required)
+
+| What | Where It Lives | Status |
+|---|---|---|
+| Order Priority field (High / Medium / Low) | Lyfe Order | Exists, but currently no business logic attached to it |
+| Promised Dispatch By field | Lyfe Order | Exists, but currently filled manually (only during order merges) |
+| Factory Assignment Date | Lyfe Order | Already auto-set when CS assigns to factory |
+| Total Hold Days | Lyfe Order | Already calculated correctly |
+| SLA task auto-creation engine | lh_project module | Already works for standard SLA breaches |
+| 15-minute SLA scanner | Scheduler | Already running |
+| Working-day calculation (SQL, Sundays only) | promised_dispatch.py | Already exists; needs a Python version for the reverse calc |
+
+### 7.2 Gaps — What Needs to Be Built
+
+| Gap | Why It Matters |
+|---|---|
+| No working-day add/subtract in Python | The reverse calculation requires going backward by N working days — this cannot be done in SQL alone |
+| No holiday calendar integration | Currently only Sundays are excluded. Indian public holidays (and US holidays for US orders) need to be respected. |
+| "Urgent" priority has no trigger code | Setting Urgent currently does nothing. It needs to fire: populate dispatch-by date, create PM task, send notifications. |
+| No reverse-calc UI (dialog + button) | CS has no tool to do this today — they calculate manually or guess |
+| `promised_dispatch_by` is a text field, not a date | Cannot be sorted, compared, or used in date math without converting it to a proper Date field |
+| No "Not Possible" / Borderline escalation path | No notification goes to founders today when CS cannot commit to a date |
+| Urgent orders not excluded from standard SLA reports | Without the exclusion, an Urgent order running on a compressed 10-day timeline would incorrectly appear as a standard SLA breach after 3 days |
+
+---
+
+## 8. Detailed Technical Plan (Developer Reference)
+
+### 8.1 New Python Utility — `working_days.py`
 
 **Location:** `lh/lh_project/sla/utils/working_days.py` (new file)
 
@@ -88,9 +386,9 @@ This is the **core building block** for the entire feature. It needs to:
 
 - Add or subtract N working days from a given date
 - Exclude Sundays (current SLA logic)
-- Exclude Indian public holidays (from a configurable list or ERPNext Holiday List)
+- Exclude Indian public holidays (from ERPNext Holiday List or a configurable list)
 - Snap a date that lands on a weekend/holiday to the next valid working day
-- Return the number of working days between two dates (currently done in SQL in `promised_dispatch.py` — this Python version is needed for the reverse calc)
+- Count working days between two dates (currently done in SQL in `promised_dispatch.py` — a Python version is needed for the reverse calc)
 
 ```python
 # Signature sketch:
@@ -99,15 +397,15 @@ def working_days_between(start_date, end_date, holiday_list=None) -> int
 def snap_to_working_day(date, holiday_list=None, direction="forward") -> date
 ```
 
-**Note:** The existing SQL formula in `promised_dispatch.py` only excludes Sundays (no Saturday, no holidays). The new Python utility should at minimum also exclude Saturdays (standard 5-day work week), then optionally holidays. This will be a slight behaviour change — confirm with Viral/Srishti whether the factory runs on Saturdays before coding.
+**Note:** The existing SQL formula in `promised_dispatch.py` only excludes Sundays (no Saturday, no holidays). The new Python utility should at minimum also exclude Saturdays (standard 5-day work week). **Confirm with Viral/Srishti whether the factory runs on Saturdays before coding** — if yes, the utility should only exclude Sundays to stay consistent with the existing SLA.
 
 ---
 
-### 4.2 New Service Class — `dispatch_calculator.py`
+### 8.2 New Service Class — `dispatch_calculator.py`
 
 **Location:** `lh/lh_project/sla/utils/dispatch_calculator.py` (new file)
 
-This class performs the reverse calculation. It is pure business logic — no Frappe DB calls — so it can be unit tested easily.
+This class performs the reverse calculation. It contains pure business logic — no Frappe database calls — so it can be unit tested easily and independently.
 
 **Input:**
 ```python
@@ -126,46 +424,45 @@ class DispatchCalcInput:
 ```python
 @dataclass
 class DispatchCalcResult:
-    verdict: str                     # "Possible" | "Borderline" | "Not Possible"
+    verdict: str                          # "Possible" | "Borderline" | "Not Possible"
     latest_dispatch_date: date | None
-    dispatch_date_range_start: date | None   # e.g. June 20
-    dispatch_date_range_end: date | None     # e.g. June 25 (worked example in BRD)
+    dispatch_date_range_start: date | None    # e.g. June 20
+    dispatch_date_range_end: date | None      # e.g. June 25
     latest_order_placement_date: date | None
     delivery_date_range_start: date | None
     delivery_date_range_end: date | None
-    standard_runway_used: int        # working days from today to dispatch (actual)
-    compressed_runway_available: int # how many factory WD remain after all buffers
-    standard_factory_days: int       # what standard SLA says (3 or 14 WD)
-    is_new_product: bool             # if True, always Not Possible
-    notes: list[str]                 # explanatory messages for CS
+    standard_runway_used: int             # working days from today to dispatch (actual)
+    compressed_runway_available: int      # factory WD remaining after all buffers
+    standard_factory_days: int            # what standard SLA allows (3 or 14 WD)
+    is_new_product: bool                  # if True, always Not Possible
+    notes: list[str]                      # human-readable messages for CS
 ```
 
-**Calculation Logic (backward from required_delivery_date):**
+**Calculation Logic (working backward from required_delivery_date):**
 
 ```
-Step 1:  latest_delivery = snap(required_delivery_date, forward to next working day)
-Step 2:  latest_ship_from_india = latest_delivery - transit_days_max (5 wd for standard, 7 for custom)
-         → dispatch_range_start = latest_delivery - transit_days_max
-         → dispatch_range_end   = latest_delivery - transit_days_min
-Step 3:  if customs_buffer: subtract customs_wd_max (7 wd) → gatepass_by
-Step 4:  subtract gatepass_wd_max (3 wd) → factory_ready_by
-Step 5:  subtract photo_approval_wd (1-4 wd, custom only) → factory_start_by
+Step 1:  latest_delivery = snap(required_delivery_date, to next working day)
+Step 2:  latest_dispatch = latest_delivery − transit_days_max
+         → dispatch_range_start = latest_delivery − transit_days_max
+         → dispatch_range_end   = latest_delivery − transit_days_min
+Step 3:  if customs_buffer: subtract customs_wd_max (7 wd) → gatepass_deadline
+Step 4:  subtract gatepass_wd_max (3 wd) → factory_ready_deadline
+Step 5:  subtract photo_approval_wd (1–4 wd, custom only) → factory_start_deadline
 Step 6:  subtract production_wd_max → latest_order_placement_date
 
 Runway check:
-  working_days_remaining = working_days_between(today, factory_start_by)
-  if working_days_remaining < 0: Not Possible
-  if working_days_remaining <= 2: Borderline (manual review required)
-  else: Possible
+  working_days_remaining = working_days_between(today, factory_start_deadline)
+  if working_days_remaining < 0:   verdict = "Not Possible"
+  if working_days_remaining <= 2:  verdict = "Borderline"
+  else:                            verdict = "Possible"
 
-US path (branch when fulfillment_source == "US"):
-  transit = 3–4 wd (no customs buffer, no gatepass step)
-  production = per US stock (no India factory lead time)
+US path (when fulfillment_source == "US"):
+  transit = 3–4 wd (skip customs buffer and gatepass steps entirely)
 ```
 
 ---
 
-### 4.3 Whitelisted API Endpoint
+### 8.3 Whitelisted API Endpoint
 
 **Location:** `lh/lh_project/api/dispatch_calc.py` (new file)
 
@@ -182,204 +479,217 @@ def calculate_dispatch_dates(
     ...
 ```
 
-This is called from the client script (dialog) and from the `on_update` hook when an order is flagged Urgent.
+Called from: the client-side dialog (button click) and from the `on_update` hook when `order_priority` is set to Urgent and `promised_dispatch_by` is not yet set.
 
 ---
 
-### 4.4 Client Script — Dispatch Calculator Dialog
+### 8.4 Client Script — Dispatch Calculator Dialog
 
 **Where:** Lyfe Order form + Quotation form  
-**Trigger:** 
-- A "Calculate Dispatch Dates" button on the form toolbar (always visible when `order_priority` is empty or Urgent)
-- Auto-fires when `order_priority` is set to "Urgent"
+**Trigger:**
+- A "Calculate Dispatch Dates" button on the form toolbar (always visible)
+- Auto-fires when `order_priority` is changed to "Urgent" and `promised_dispatch_by` is empty
 
 **Dialog fields:**
 - Required Delivery Date (Date, required)
-- Order Type (pre-filled from doc)
+- Order Type (pre-filled from doc, editable)
 - Fulfillment Source (pre-filled from `fulfillment_source` field)
-- Stock Available? (Check, default: True for Standard)
-- Include Customs Buffer? (Check, default: True for India orders)
+- Stock Available? (Check, default: True for Standard orders)
+- Include Customs Buffer? (Check, default: True for India dispatch)
 
-**Output display in dialog:**
+**Output shown in dialog:**
 - Verdict badge (green Possible / amber Borderline / red Not Possible)
-- Latest Dispatch Date (or range)
+- Latest Dispatch Date and date range
 - Latest Order Placement Date
-- Standard runway vs compressed runway comparison
-- Notes/warnings from the calc
+- Standard timeline vs compressed timeline comparison
+- Notes/warnings from the calc result
 
 **On "Confirm & Apply":**
-- Sets `promised_dispatch_by` on the doc
-- Sets `order_priority = "Urgent"` (if not already)
-- Saves the doc (which triggers the task auto-creation hook — see 4.5)
+1. Sets `promised_dispatch_by` on the doc
+2. Sets `order_priority = "Urgent"`
+3. Saves the doc (which fires the `on_update` hook — see 8.5)
 
 ---
 
-### 4.5 Lyfe Order Hook — on_update (Urgent Flag Handler)
+### 8.5 Lyfe Order Hook — on_update (Urgent Flag Handler)
 
-**Location:** `lh/lyfe_hardware/doctype/lyfe_order/lyfe_order.py` — add to existing `on_update()`  
-**Also:** `lh/lh_project/automation/lyfe_order.py` — or a dedicated handler
+**Location:** `lh/lyfe_hardware/doctype/lyfe_order/lyfe_order.py` — add to existing `on_update()`
 
 **Trigger condition:** `order_priority` changed to "Urgent" AND `promised_dispatch_by` is set
 
-**Actions:**
+**Actions on Urgent flag:**
 1. Create (or update) a PM task in `lh_project` with:
    - Subject: `"URGENT — Dispatch by {promised_dispatch_by} — {order_id}"`
-   - Description: Full calc breakdown (compressed timeline vs standard)
+   - Description: full calc breakdown (compressed vs standard timeline, notes from calc result)
    - Priority: "Urgent"
    - Due date: `promised_dispatch_by`
    - Assigned to: factory assignment owner (or `fallback_owner` from SLA Rule)
-2. Log the calc result in the order's `log` field (existing Code field)
-3. If `order_priority` is *downgraded from* Urgent:
-   - Mark the PM task as cancelled/closed
-   - Clear `promised_dispatch_by`
-   - Log the downgrade
+2. Log the calc result in the order's `log` field (existing Code field on Lyfe Order)
+3. Send notification to CS owner + factory assignee
 
-**Anti-orphan guard:** Before creating a new task, check if a task already exists (via `SLA Task Link` or a custom field `urgent_task_link`). If it exists, update rather than duplicate.
+**Actions on Urgent downgrade (priority changed away from Urgent):**
+1. Mark the existing PM task as Cancelled
+2. Clear `promised_dispatch_by`
+3. Log: `"Order downgraded from Urgent by {user} on {date}. Reason: {reason}"`
+
+**Anti-orphan guard:** Before creating a new PM task, check if one already exists (via `SLA Task Link` or a stored `urgent_task_link` field). If it exists, update it rather than creating a duplicate.
 
 ---
 
-### 4.6 SLA Exclusion — Urgent Orders
+### 8.6 SLA Exclusion — Urgent Orders
 
-The BRD says: *"Urgent orders running on compressed timelines must be excluded from standard SLA-breach dashboards."*
+The BRD states: *"Urgent orders running on compressed timelines must be excluded from standard SLA-breach dashboards."*
 
-**Change in `promised_dispatch.py`:**
+**Change required in `promised_dispatch.py`:**
 
-Add an exclusion clause to the `WHERE` condition in `get_candidates()`:
+Add one exclusion clause to the `WHERE` condition inside `get_candidates()`:
 
 ```sql
 AND (order_priority IS NULL OR order_priority != 'Urgent')
 ```
 
-Urgent orders have their own dispatch-by date (`promised_dispatch_by`) and their own PM task. They should not appear as forward-SLA breaches on the standard dashboard.
+Urgent orders have their own `promised_dispatch_by` date and their own PM task. They must not also appear as standard SLA breaches — that would double-count them and pollute the factory workload dashboard.
 
 ---
 
-### 4.7 "At Risk" Re-flag on Client Delay (Edge Case: BRD row 7 in Table 8)
+### 8.7 "At Risk" Re-flag on Client Delay
 
-If client-side delays (photo approval, payment) eat into the compressed buffer after an urgent order is confirmed:
+**Trigger:** Client-side delays (photo approval not done, payment pending) eat into the compressed buffer after an order is already flagged Urgent.
 
-**How:** Add a scheduled check (daily, or piggyback on existing 15-min SLA scan) that:
-1. Finds Urgent orders where `promised_dispatch_by` is within 2 working days
-2. AND `ready_for_dispatch_date` is NOT set (still in factory)
-3. Sets a flag or notification — "Urgent order At Risk: compressed buffer consumed"
-
-This can be a lightweight addition to the existing `sla_scan.run` or a separate daily cron.
-
----
-
-### 4.8 `promised_dispatch_by` Field Type Change
-
-**Current:** Data (text)  
-**Should be:** Date
-
-**Migration:** This is a simple ALTER on the field definition in the DocType JSON. Existing values are mostly null/empty (only populated during merges), so data loss risk is minimal. Confirm with Viral before applying.
+**How — add to existing 15-min SLA scan or as a separate daily cron:**
+1. Find all Urgent orders where `promised_dispatch_by` is within 2 working days from today
+2. AND `ready_for_dispatch_date` is NOT yet set
+3. Set an At Risk indicator (a field or a notification)
+4. Send notification to: CS owner + Factory assignee + Manager
 
 ---
 
-## 5. File Change Summary
+### 8.8 `promised_dispatch_by` Field Type Change
+
+**Current type:** Data (plain text)  
+**Required type:** Date
+
+**Why it matters:** A text field cannot be sorted chronologically, cannot trigger date-based alerts, and cannot be used in working-day arithmetic.
+
+**Migration risk:** Low. The field is currently only populated during order merges. The vast majority of existing records have it empty. A simple DocType field type change in `lyfe_order.json` is all that is needed. Confirm with Viral before applying.
+
+---
+
+## 9. File Change Summary (Developer)
 
 | File | Change Type | What Changes |
 |---|---|---|
-| `lh/lh_project/sla/utils/working_days.py` | **New** | Working-day add/subtract/count utility |
-| `lh/lh_project/sla/utils/dispatch_calculator.py` | **New** | Reverse SLA calc service class |
-| `lh/lh_project/api/dispatch_calc.py` | **New** | `@frappe.whitelist` API endpoint |
-| `lh/lh_project/sla/detectors/promised_dispatch.py` | **Edit** | Add `order_priority != 'Urgent'` exclusion to WHERE clause |
-| `lh/lyfe_hardware/doctype/lyfe_order/lyfe_order.py` | **Edit** | Add Urgent flag handler in `on_update`: auto-create PM task, populate `promised_dispatch_by`, handle downgrade |
-| `lh/lyfe_hardware/doctype/lyfe_order/lyfe_order.js` | **Edit** | Add "Calculate Dispatch Dates" toolbar button + dialog; auto-fire on priority = Urgent |
-| `lh/lyfe_hardware/doctype/lyfe_order/lyfe_order.json` | **Edit** | Change `promised_dispatch_by` field type from Data → Date |
-| `hooks.py` | **Possibly Edit** | Add daily "At Risk" re-check cron if not piggybacked on existing scan |
+| `lh/lh_project/sla/utils/working_days.py` | **New** | Working-day add/subtract/count utility with holiday support |
+| `lh/lh_project/sla/utils/dispatch_calculator.py` | **New** | Reverse SLA calc service class — pure logic, fully testable |
+| `lh/lh_project/api/dispatch_calc.py` | **New** | `@frappe.whitelist` API endpoint called from the dialog |
+| `lh/lh_project/sla/detectors/promised_dispatch.py` | **Edit** | Add `order_priority != 'Urgent'` exclusion to `WHERE` clause |
+| `lh/lyfe_hardware/doctype/lyfe_order/lyfe_order.py` | **Edit** | Add Urgent flag handler in `on_update`: create PM task, populate `promised_dispatch_by`, handle downgrade cleanup |
+| `lh/lyfe_hardware/doctype/lyfe_order/lyfe_order.js` | **Edit** | Add "Calculate Dispatch Dates" toolbar button + dialog; auto-fire on priority change to Urgent |
+| `lh/lyfe_hardware/doctype/lyfe_order/lyfe_order.json` | **Edit** | Change `promised_dispatch_by` field type: Data → Date |
+| `hooks.py` | **Possibly Edit** | Add daily "At Risk" cron if not piggybacked on the existing 15-min scan |
 
 ---
 
-## 6. Data Flow Diagram
+## 10. Full Flow Diagram
 
 ```
-CS opens Quotation / Lyfe Order
-         │
-         ▼
-Sets "Order Priority = Urgent"
-    (or clicks "Calculate Dispatch Dates" button)
-         │
-         ▼
-Dialog opens: enter Required Delivery Date + toggle customs/stock
-         │
-         ▼
-Client calls API: dispatch_calc.calculate_dispatch_dates()
-         │
-         ▼
-dispatch_calculator.py
-  ├── Snap delivery date to working day
-  ├── Subtract transit (5-7 wd India / 3-4 wd US)
-  ├── Subtract customs buffer (2-7 wd, optional)
-  ├── Subtract gatepass (1-3 wd)
-  ├── Subtract photo approval (1-4 wd, custom only)
-  ├── Subtract production (1-3 wd std / 7+ wd custom)
-  └── Compare remaining runway vs minimum_runway
-         │
-         ▼
-Returns: verdict + dispatch_date_range + latest_order_placement_date
-         │
-    ┌────┴──────────────────────────────┐
-    │                                   │
-Not Possible                        Possible / Borderline
-    │                                   │
-Escalate to founders            CS confirms → "Apply"
-(Slack / ERP notif)                     │
-                                        ▼
-                          Sets promised_dispatch_by on order
-                          Sets order_priority = "Urgent"
-                                        │
-                                        ▼
-                          lyfe_order.on_update() fires
-                                        │
-                          ┌─────────────┴──────────────┐
-                          │                            │
-                 Create PM task in lh_project     Log calc result
-                 (subject: URGENT — Dispatch by X)  in order.log
-                 Priority = Urgent
-                 Due = promised_dispatch_by
-                          │
-                          ▼
-                 promised_dispatch.py (forward SLA) EXCLUDES Urgent orders
-                 Urgent order has its own task + timeline
-                          │
-                          ▼ (ongoing — daily or 15-min scan)
-                 If factory stalls AND date within 2 wd:
-                 Flag "At Risk" → notify CS + factory
+CS opens Quotation or Lyfe Order
+             │
+             ▼
+  Clicks "Calculate Dispatch Dates" button
+  (or changes Order Priority to "Urgent")
+             │
+             ▼
+  Dialog opens — CS enters Required Delivery Date
+  (Order Type, Fulfillment Source pre-filled)
+             │
+             ▼
+  System calls dispatch_calculator.py
+    ├── Snap delivery date to next working day
+    ├── Subtract transit (5–7 wd India / 3–4 wd US)
+    ├── Subtract customs buffer (2–7 wd, India only)
+    ├── Subtract gatepass (1–3 wd)
+    ├── Subtract photo approval (1–4 wd, custom only)
+    ├── Subtract production (1–3 wd standard / 7+ wd custom)
+    └── Compare remaining runway vs minimum runway
+             │
+             ▼
+   Result shown to CS in dialog
+             │
+   ┌─────────┼──────────────────┐
+   │         │                  │
+🔴 Not    🟡 Borderline     ✅ Possible
+Possible      │                  │
+   │       CS confirms       CS clicks
+   │       with factory    "Confirm & Apply"
+   │       before applying       │
+   ▼                             ▼
+Escalate to              Sets promised_dispatch_by
+Founders                 Sets order_priority = Urgent
+(Slack / ERP)                    │
+                                 ▼
+                    lyfe_order.on_update() fires
+                                 │
+                    ┌────────────┴─────────────┐
+                    │                          │
+           Create PM task               Log calc result
+           in lh_project                in order.log
+           "URGENT — Dispatch           + send notification
+            by June 14 — ORDER-001"     to CS + factory
+           Priority: Urgent
+           Due: June 14
+                    │
+                    ▼
+   promised_dispatch.py (standard SLA) automatically
+   EXCLUDES this order — it has its own tracking
+                    │
+                    ▼  (runs daily via scheduler)
+   If factory stalls AND dispatch deadline ≤ 2 wd away:
+   → Flag "At Risk" → notify CS + factory + manager
+                    │
+                    ▼
+   Order reaches "Ready for Dispatch"
+   → PM task auto-closes (no manual action needed)
+   → Urgent tracking complete
 ```
 
 ---
 
-## 7. Open Items to Confirm Before Building
+## 11. Open Questions to Confirm Before Building
 
-| # | Question | Why it matters |
+| # | Question | Who Decides | Why It Matters |
+|---|---|---|---|
+| 1 | Does the factory work Saturdays? | Operations / Factory | If yes, the working-day utility should only skip Sundays (to match the existing SLA). If no, it should also skip Saturdays — but then the existing SLA will also need updating to be consistent. |
+| 2 | Holiday calendar source | Operations | ERPNext has a built-in Holiday List. Should the system read from it, or should we hardcode the major Indian public holidays? US holidays also needed for US warehouse path. |
+| 3 | Founder escalation channel for "Not Possible" | Founders / Srishti | BRD says "Slack alert or ERP notification" — which, or both? |
+| 4 | "At Risk" re-notification frequency | Operations | Should the system notify once only, or send a reminder every working day until the order is dispatched or the date passes? |
+| 5 | Should the calculator also appear on the Quotation form? | CS / Srishti | Putting it on the Quotation lets CS check feasibility before the order is even placed — this is earlier and more useful. The BRD does not restrict it to Lyfe Order only. |
+| 6 | How to detect "New Product / Die & Mould" orders | Developer + Operations | BRD says these should always show "Not Possible" for urgent. Is there a field on the Item or Order that marks this? If not, a manual toggle in the dialog is needed. |
+| 7 | Borderline behaviour — block or warn? | CS / Srishti | Should Borderline orders be blocked from saving until CS acknowledges, or just show a warning banner that CS can dismiss? |
+
+---
+
+## 12. What Does NOT Change
+
+These parts of the existing system need no modification:
+
+- The forward SLA `promised_dispatch.py` detector — only a one-line exclusion is added.
+- `SLA Task Link`, `SLA Violation Cache`, `SLA Escalation Log` DocTypes — no schema changes.
+- The `severity.py` priority engine — Urgent PM tasks are created with "Urgent" priority directly; the severity engine handles *breach escalation* on existing tasks, which is a separate path.
+- The `total_hold_days` accumulation logic — already correct; hold time is already excluded from SLA clocks.
+
+---
+
+## 13. Recommended Build Order
+
+| Step | What | Why This Order |
 |---|---|---|
-| 1 | Does the factory work Saturdays? | Current SLA SQL only excludes Sundays. If factory is 6-day, the Python working_days utility must only exclude Sundays too, for consistency. If 5-day, we also exclude Saturdays — and the existing forward SLA will need updating. |
-| 2 | Holiday calendar source | ERPNext has a Holiday List doctype. Should working_days.py read from it, or hardcode major Indian public holidays? US holidays needed too for US fulfilment path. |
-| 3 | Founder escalation channel for "Not Possible" | BRD says "Slack alert or ERP notification" — which one (or both)? |
-| 4 | "At Risk" re-notification frequency | Once only, or every N days while still at risk? |
-| 5 | Should the calc also appear on the Quotation form? | BRD says "input = customer's required delivery date" but doesn't explicitly restrict it to Lyfe Order only. Having it on Quotation gives CS a "can we commit?" check before the order is placed. |
-| 6 | New product / die/mould detection | BRD says new products go straight to Not Possible. Is there a field on Item or Lyfe Order that flags "new product requiring tooling"? If not, needs to be a manual toggle in the dialog. |
-| 7 | Borderline threshold (within 2 wd) | BRD says auto-flag for manual review rather than hard pass/fail. Should this block saving, or just show a warning banner that CS must acknowledge? |
-
----
-
-## 8. What Does NOT Need to Change
-
-- The existing `promised_dispatch.py` forward SLA detector — only a one-line exclusion added.
-- The `SLA Task Link`, `SLA Violation Cache`, `SLA Escalation Log` DocTypes — no schema changes needed.
-- The `severity.py` priority engine — the PM task created for Urgent orders will already be set directly to "Urgent" priority; the severity engine is for auto-escalation of *breached* tasks, which is a separate path.
-- The `total_hold_days` accumulation logic — already correct, already excluded from SLA clocks.
-
----
-
-## 9. Recommended Build Order
-
-1. `working_days.py` — foundation, write tests first
-2. `dispatch_calculator.py` — pure logic, write tests against the worked example in the BRD (June 30 → June 20–25 delivery → June 12–14 dispatch)
-3. API endpoint + client dialog on Lyfe Order
-4. `on_update` Urgent handler + PM task creation
-5. `promised_dispatch_by` field type change (Data → Date)
-6. Exclusion clause in `promised_dispatch.py`
-7. "At Risk" re-notification scan
-8. Quotation form support (if confirmed in Open Items)
+| 1 | `working_days.py` utility | Foundation; everything else depends on this |
+| 2 | `dispatch_calculator.py` | Pure logic; write tests against the June 30 worked example from BRD |
+| 3 | API endpoint | Connects the calculator to the UI |
+| 4 | Client dialog + button on Lyfe Order | First visible result; CS can test end-to-end |
+| 5 | `on_update` Urgent flag handler + PM task creation | Automation layer on top of confirmed UI |
+| 6 | `promised_dispatch_by` field type: Data → Date | Low risk; enables date sorting and alerts |
+| 7 | Exclusion clause in `promised_dispatch.py` | Must be done before Urgent orders go live, to avoid false SLA breaches |
+| 8 | "At Risk" daily re-notification scan | Last — runs independently; can be added after launch |
+| 9 | Quotation form support | Confirm in Open Questions first |
