@@ -511,6 +511,11 @@ Whether both index migration patches — `apps/lh/lh/patches/add_scalability_ind
 ```
 Index Patch is you can check the file
 apps/lh/lh/patches/add_scalability_indexes.py
+
+Index Patch Verification code is here 
+apps/lh/lh/patches/verify_db_indexes.py
+
+based on that we got the result as mentioned below
 ```
 
 ```
