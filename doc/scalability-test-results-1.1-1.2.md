@@ -56,6 +56,9 @@ eventually_succeeded: True
 RESULT: PASS
 ```
 
+<img width="792" height="476" alt="image" src="https://github.com/user-attachments/assets/dd35e2d0-502c-49cd-99b7-6f3d230c3e2f" />
+
+
 **Whether it worked or not:** Worked.
 
 **If it worked, why it worked:**
@@ -85,6 +88,9 @@ gave_up_cleanly: True
 exception_type: ValidationError
 RESULT: PASS
 ```
+
+<img width="882" height="315" alt="image" src="https://github.com/user-attachments/assets/42b1de1f-6a3a-440c-bf96-6e89163b2d9f" />
+
 
 **Whether it worked or not:** Worked.
 
@@ -117,6 +123,9 @@ eventually_succeeded: True
 RESULT: PASS
 ```
 
+<img width="840" height="350" alt="image" src="https://github.com/user-attachments/assets/07ec1806-5855-4fb5-b163-6897228c4db1" />
+
+
 **Whether it worked or not:** Worked.
 
 **If it worked, why it worked:**
@@ -148,6 +157,8 @@ batch_failed_without_crash: True
 RESULT: PASS
 ```
 
+<img width="880" height="397" alt="image" src="https://github.com/user-attachments/assets/1d11f4d9-f530-4369-a2c7-be7990aaca24" />
+
 **Whether it worked or not:** Worked.
 
 **If it worked, why it worked:**
@@ -177,6 +188,7 @@ failed_immediately_no_retry: True
 exception_type: ValidationError
 RESULT: PASS
 ```
+<img width="667" height="292" alt="image" src="https://github.com/user-attachments/assets/8a020dcc-b4df-40c5-b33f-bdbe0e1861d9" />
 
 **Whether it worked or not:** Worked.
 
