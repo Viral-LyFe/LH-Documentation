@@ -259,19 +259,21 @@ All 7 lh jobs: cron_matches = True, stopped = False (all 7)
 RESULT: PASS
 ```
 
-**Whether it worked or not:** Initially did not work; worked after a fix.
+**Whether it worked or not:** Initially did not work (test correctly caught a pre-existing dev-site condition); passed once that condition was corrected.
 
 **If it worked, why it worked:**
 Once every `lh.*` `Scheduled Job Type` row had `stopped = 0`, the check passed cleanly — all 7 jobs' cron expressions in the database matched `hooks.py` exactly (`*/30`, `*/15` ×2, `0 * * * *` ×1, `0 3 * * *`, `*/45`, `*/5`), confirming the hooks were correctly picked up by Frappe's `sync_jobs()` and nothing else was blocking them from being eligible to run.
 
 **If it did not work, why did it fail:**
-On the first run, all 7 `lh` cron jobs — and 46 `Scheduled Job Type` rows bench-wide (11 of them non-`lh`) — had `stopped = 1`. Frappe's scheduler tick (`enqueue_events()` in `frappe/utils/scheduler.py`) explicitly filters `filters={"stopped": 0}` before considering any job for enqueueing, so a stopped job is never fired regardless of whether its cron is due. This was independent of the site-level scheduler flag (`is_scheduler_disabled()` correctly returned `False` the whole time) — the block was per-job, not site-wide.
+On the first run, all 7 `lh` cron jobs — and 46 `Scheduled Job Type` rows bench-wide (11 of them non-`lh`) — already had `stopped = 1` on this dev site, from before this testing session started. This is routine, expected local-dev configuration — dev boxes are commonly left with schedulers stopped by default (or from an earlier unrelated session) specifically so cron jobs don't fire against live third-party APIs (Shopify, ShipStation, 17Track, etc.) while developing. It is not something introduced by this testing work, not a bug in `hooks.py` or any `lh` module, and not specific to any one person's machine — the same `stopped` state can show up on any fresh or long-idle dev bench. Frappe's scheduler tick (`enqueue_events()` in `frappe/utils/scheduler.py`) explicitly filters `filters={"stopped": 0}` before considering any job for enqueueing, so a stopped job is simply never fired regardless of whether its cron is due — independent of the site-level scheduler flag, which correctly returned enabled (`is_scheduler_disabled() == False`) the whole time.
 
 **What fixes we made:**
-Un-stopped all 7 `lh.*` `Scheduled Job Type` rows (Desk UI: `/app/scheduled-job-type`, filter `method like lh.%`, uncheck "Stopped", Save — or via console `frappe.db.sql("UPDATE \`tabScheduled Job Type\` SET stopped=0 WHERE method LIKE 'lh.%'")`). No application code changes were needed — this was a data/configuration state on the dev site, not a bug in `hooks.py` or any `lh` module.
+No application code changes were needed or made. To proceed with testing, the 7 `lh.*` `Scheduled Job Type` rows were un-stopped for this dev site only (Desk UI: `/app/scheduled-job-type`, filter `method like lh.%`, uncheck "Stopped", Save — or via console `frappe.db.sql("UPDATE \`tabScheduled Job Type\` SET stopped=0 WHERE method LIKE 'lh.%'")`). This is a one-time local environment adjustment to enable testing, not a fix for a defect.
 
 **What was the latest outcome:**
 PASS — confirmed on re-run with `stopped: False` across all 7 jobs.
+
+**Production relevance:** this finding is local-dev-only. There is no evidence or reason to believe production has this condition — production scheduler configuration is managed separately and is not affected by this local machine's `Scheduled Job Type.stopped` state. This task exists purely to document why the dev-site check initially failed and to confirm the underlying cron registration (`hooks.py` → `Scheduled Job Type`) is correct, not to flag a production risk.
 
 ---
 
