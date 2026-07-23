@@ -1,6 +1,6 @@
-# Scalability Test Results — Section 1.1, 1.2, 1.3 & 1.4
+# Scalability Test Results — Section 1.1, 1.2, 1.3, 1.4 & 1.5
 
-Format per the Scalability Verification Test document's "Key Details" section. Covers 1.1 (batching), 1.2 (retry mechanisms), 1.3 (scheduler execution), and 1.4 (queue processing / deduplication).
+Format per the Scalability Verification Test document's "Key Details" section. Covers 1.1 (batching), 1.2 (retry mechanisms), 1.3 (scheduler execution), 1.4 (queue processing / deduplication), and 1.5 (database query efficiency).
 
 ---
 
@@ -492,3 +492,125 @@ None needed in application code. The same test-script bug from Task 12 affected 
 | Queue drains after a burst | ✅ Confirmed — 50/50 jobs drained to finished in 20 seconds, no stuck/failed jobs |
 
 **Notable finding (not a defect in `lh`, but worth keeping in mind for future tooling):** `frappe.get_all("RQ Job", filters=...)` only honors `queue` and `status` filters — any other field (including `job_id`/`name`) is silently ignored due to how the virtual doctype's `get_list()` is implemented (`frappe/core/doctype/rq_job/rq_job.py`). Any future dashboard, report, or script built on `RQ Job` should use `frappe.utils.background_jobs.get_job(job_id)` for single-job lookups, or query RQ's queue/registry objects directly for bulk/prefix lookups — not `frappe.get_all` filters.
+
+---
+
+## Task 14: Confirm Index Patches Applied
+
+**Task Name:** Scalability - confirm patches applied
+
+**Asana List:** Scalability Verification — Step 1: Developer Validation
+
+**Status: PENDING screenshot verification** — script written and run once during development; add a fresh screenshot when you re-run this for the record.
+
+**What was tested:**
+Whether both index migration patches — `apps/lh/lh/patches/add_scalability_indexes.py` and `apps/lh/lh/patches/add_sla_query_indexes.py` — show as applied in `Patch Log` on this site. Checked via `apps/lh/lh/patches/verify_db_indexes.py`, `check_patches_applied()`.
+
+**What the outcome was (dev run, to be re-confirmed with screenshot):**
+```
+add_scalability_indexes_applied: True
+add_sla_query_indexes_applied: True
+RESULT: PASS
+```
+
+**Whether it worked or not:** Worked (dev run).
+
+**If it worked, why it worked:** Both patches are registered in `lh/patches.txt` (already committed prior to this session — `17c09fa` and `6f1d82b`) and were applied via a prior `bench migrate` on this site, confirmed by their presence in `Patch Log`.
+
+**If it did not work, why did it fail:** N/A.
+
+**What fixes we made:** None needed.
+
+**What was the latest outcome:** _[To be filled in after re-run + screenshot]_
+
+**To reproduce:**
+```bash
+bench --site <site> execute lh.patches.verify_db_indexes.check_patches_applied
+```
+
+---
+
+## Task 15: EXPLAIN Confirms Index Usage on Hot-Path Queries
+
+**Task Name:** Scalability - EXPLAIN confirms index usage on hot paths
+
+**Asana List:** Scalability Verification — Step 1: Developer Validation
+
+**Status: PENDING screenshot verification** — script written and run once during development; add a fresh screenshot when you re-run this for the record.
+
+**What was tested:**
+Whether MariaDB's query planner actually selects the indexes added by the two patches above for the real hot-path queries they were written for (not just that the patch files mention the right columns). Ran via `apps/lh/lh/patches/verify_db_indexes.py`, `check_all_explains()` — runs real `EXPLAIN` on 12 query shapes copied directly from the calling code: `dedup.py:get_active_link()`, `close_engine.py:check_and_close()`, `stale_cleanup.py`'s status scan and cache purge, `task_linker.py`'s violation-cache upsert, `rule_engine.py`'s Task Automation Rule lookup, `merge_order.py:detect_merge_candidates()`, SLA-detector/quotation-followup `workflow_state` filters, and `item_lookup.py:resolve_erp_item()`'s SKU/product-ID/customer-ID lookups.
+
+**What the outcome was (dev run, to be re-confirmed with screenshot):**
+```
+11 PASS, 1 INCONCLUSIVE, 0 FAIL, 0 SKIPPED
+
+Examples:
+- SLA Task Link dedup lookup: table_row_count=57932, EXPLAIN type=range, key=erp_doctype_erp_docname_status_index — PASS
+- Lyfe Order merge-candidate lookup: table_row_count=2428, key=customer_email_ship_to_postal_code_index — PASS
+- Item custom_sku lookup: table_row_count=12280, key=custom_sku_index — PASS
+- Quotation workflow_state filter: table_row_count=138, EXPLAIN type=ALL, key=None — INCONCLUSIVE (small table)
+
+OVERALL RESULT: PASS
+```
+
+**Whether it worked or not:** Worked (dev run) — 11 of 12 hot-path queries confirmed using their intended index; 1 correctly flagged INCONCLUSIVE rather than a false FAIL.
+
+**If it worked, why it worked:** Each query's real filter shape matches the indexed column order exactly, so MariaDB's optimizer selected the composite/single-column index (`type: range` or `ref`, non-null `key`) instead of a full table scan — confirmed against genuinely large tables in some cases (`SLA Task Link` at 57,932 rows), not just empty dev tables.
+
+**If it did not work, why did it fail:** The one `Quotation.workflow_state` check showed `type: ALL, key: None` (no index used) — but this is expected optimizer behavior on a **138-row table** (below this script's 200-row inconclusive threshold), where a full scan can legitimately be cheaper than an index lookup. Reported as INCONCLUSIVE, not FAIL, and should be re-checked once Quotation volume is larger (staging/production).
+
+**What fixes we made:** None needed in application code. Two bugs were found and fixed in the **test script itself** during development (unrelated to the indexes' correctness): a stray extra parameter in two of the SQL param tuples caused a `TypeError` on the first run, corrected before this result was captured.
+
+**What was the latest outcome:** _[To be filled in after re-run + screenshot, ideally against a dataset large enough to make the Quotation check conclusive too]_
+
+**To reproduce:**
+```bash
+bench --site <site> execute lh.patches.verify_db_indexes.check_all_explains
+```
+
+---
+
+## Task 16: test_hardening.py Index Assertions Pass
+
+**Task Name:** Scalability - test_hardening.py index assertions pass
+
+**Asana List:** Scalability Verification — Step 1: Developer Validation
+
+**Status: PENDING screenshot verification** — run once during development; add a fresh screenshot when you re-run this for the record.
+
+**What was tested:**
+Whether the four index-specific assertions in `lh/lh_project/tests/test_hardening.py` pass: `test_sla_task_link_dedup_index`, `test_sla_violation_cache_index`, `test_task_automation_rule_index`, `test_patch_uses_add_index`. Ran via:
+```bash
+bench --site <site> run-tests --app lh --module lh.lh_project.tests.test_hardening
+```
+
+**What the outcome was (dev run, to be re-confirmed with screenshot):**
+Full module run: 47 tests, 5 failures — but all 4 index-specific tests listed above were **not** among the failures (confirmed by name against the failure list). The 5 failures were in unrelated areas (`TestShipStationDuplicateDefense`, `TestLastWriteWinsProtection`) — pre-existing issues, not connected to database indexing.
+
+**Whether it worked or not:** Worked, for the 4 tests relevant to this task.
+
+**If it worked, why it worked:** These are source-text assertions (they check the patch file contains the expected column/table names and calls `frappe.db.add_index`), which correctly reflects that `add_sla_query_indexes.py` is written as documented.
+
+**If it did not work, why did it fail:** N/A for the 4 relevant tests. (The 5 unrelated failures elsewhere in the same file are a separate, pre-existing concern outside the scope of section 1.5 — not caused by or related to this testing.)
+
+**What fixes we made:** None needed for the 4 index tests.
+
+**What was the latest outcome:** _[To be filled in after re-run + screenshot]_
+
+**Note for whoever re-runs this:** these are static/source-text checks, not runtime proof — Task 15 (`EXPLAIN`) is the test that actually proves the index is *used*, not just present in the patch file.
+
+---
+
+## Overall Section 1.5 Status (Database Query Efficiency)
+
+| Checkbox | Status |
+|---|---|
+| Confirm patches applied | ⏳ Pending screenshot (dev run: PASS) |
+| EXPLAIN confirms index usage on hot paths | ⏳ Pending screenshot (dev run: 11 PASS, 1 INCONCLUSIVE, 0 FAIL) |
+| test_hardening.py index assertions pass | ⏳ Pending screenshot (dev run: all 4 relevant tests passed) |
+
+**Script:** `apps/lh/lh/patches/verify_db_indexes.py` — run via:
+```bash
+bench --site <site> execute lh.patches.verify_db_indexes.execute
+```
