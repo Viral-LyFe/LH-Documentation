@@ -489,6 +489,6 @@ None needed in application code. The same test-script bug from Task 12 affected 
 | Checkbox | Status |
 |---|---|
 | deduplicate=True prevents stacking | ✅ Confirmed — second overlapping enqueue call correctly dropped |
-| Queue drains after a burst | ✅ Confirmed — 50/50 jobs drained to finished in 2 seconds, no stuck/failed jobs |
+| Queue drains after a burst | ✅ Confirmed — 50/50 jobs drained to finished in 20 seconds, no stuck/failed jobs |
 
 **Notable finding (not a defect in `lh`, but worth keeping in mind for future tooling):** `frappe.get_all("RQ Job", filters=...)` only honors `queue` and `status` filters — any other field (including `job_id`/`name`) is silently ignored due to how the virtual doctype's `get_list()` is implemented (`frappe/core/doctype/rq_job/rq_job.py`). Any future dashboard, report, or script built on `RQ Job` should use `frappe.utils.background_jobs.get_job(job_id)` for single-job lookups, or query RQ's queue/registry objects directly for bulk/prefix lookups — not `frappe.get_all` filters.
