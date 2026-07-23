@@ -426,6 +426,13 @@ job_still_exists_single_instance: True
 RESULT: PASS
 ```
 
+`bench --site lyfe.local.local execute lh.patches.verify_queue_dedup.execute`
+
+<img width="1437" height="695" alt="image" src="https://github.com/user-attachments/assets/e95e7d74-fae4-4058-8b4e-a9fcb91c8768" />
+
+<img width="1712" height="722" alt="image" src="https://github.com/user-attachments/assets/99836591-d653-4447-b327-6561764f3602" />
+
+
 **Whether it worked or not:** Worked.
 
 **If it worked, why it worked:**
@@ -452,14 +459,16 @@ Whether a burst of 50 enqueued background jobs drains to zero within a reasonabl
 **What the outcome was:**
 ```
 burst_size: 50
-drain_time_seconds: 2.0
+drain_time_seconds: 20
 drained_within_max_wait: True
-final_status_counts: {'finished': 50}
+final_status_counts: {'finished': 50 Job}
 jobs_no_longer_tracked_in_redis: 0
 failed_job_count: 0
 stuck_job_count: 0
 RESULT: PASS
 ```
+
+<img width="1702" height="847" alt="Screenshot 2026-07-23 174558" src="https://github.com/user-attachments/assets/b3917da4-67c5-406d-b0b0-4edb924bdbeb" />
 
 **Whether it worked or not:** Worked.
 
