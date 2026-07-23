@@ -564,7 +564,6 @@ Examples:
 
 OVERALL RESULT: PASS
 ```
-<img width="1267" height="566" alt="image" src="https://github.com/user-attachments/assets/39e148b2-fbc9-4381-be9e-c68b903b20bf" />
 
 **Whether it worked or not:** Worked (dev run) — 11 of 12 hot-path queries confirmed using their intended index; 1 correctly flagged INCONCLUSIVE rather than a false FAIL.
 
@@ -574,8 +573,12 @@ OVERALL RESULT: PASS
 
 **What fixes we made:** None needed in application code. Two bugs were found and fixed in the **test script itself** during development (unrelated to the indexes' correctness): a stray extra parameter in two of the SQL param tuples caused a `TypeError` on the first run, corrected before this result was captured.
 
-**What was the latest outcome:** _[To be filled in after re-run + screenshot, ideally against a dataset large enough to make the Quotation check conclusive too]_
+**What was the latest outcome:** 
+<img width="1267" height="566" alt="image" src="https://github.com/user-attachments/assets/39e148b2-fbc9-4381-be9e-c68b903b20bf" />
 
+<img width="1031" height="652" alt="image" src="https://github.com/user-attachments/assets/968f279d-24c3-416e-8424-e8f43eb26c6f" />
+
+<img width="1006" height="391" alt="image" src="https://github.com/user-attachments/assets/fb763587-4735-47c3-b655-2e84cb96b0a3" />
 **To reproduce:**
 ```bash
 bench --site <site> execute lh.patches.verify_db_indexes.check_all_explains
