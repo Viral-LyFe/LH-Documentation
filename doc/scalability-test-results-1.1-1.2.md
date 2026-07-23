@@ -1,6 +1,6 @@
-# Scalability Test Results — Section 1.1, 1.2 & 1.3
+# Scalability Test Results — Section 1.1, 1.2, 1.3 & 1.4
 
-Format per the Scalability Verification Test document's "Key Details" section. Covers 1.1 (batching), 1.2 (retry mechanisms), and 1.3 (scheduler execution).
+Format per the Scalability Verification Test document's "Key Details" section. Covers 1.1 (batching), 1.2 (retry mechanisms), 1.3 (scheduler execution), and 1.4 (queue processing / deduplication).
 
 ---
 
@@ -403,3 +403,83 @@ Real, live rows observed with all expected fields (`job_id`, `job_name`, `queue`
 | Scheduler completes within one cycle (no self-queueing) | ✅ Confirmed for `sla_scan.run`; `version_cleanup` gap found and fixed (see Task 7) |
 
 **Follow-up needed:** re-run `lh.patches.verify_scheduler_execution.execute` after enough time has passed for all 7 jobs to hit their own cron boundary at least once (recommend checking again in ~45 min, and once more after the next 3:00 AM server time for `stale_cleanup.run`).
+
+---
+
+## Task 12: deduplicate=True Prevents an Overlapping Job From Stacking
+
+**Task Name:** Scalability - deduplicate=True prevents stacking
+
+**Asana List:** Scalability Verification — Step 1: Developer Validation
+
+**What was tested:**
+Whether `frappe.enqueue(..., job_id=..., deduplicate=True)` — the exact mechanism used by `sla_scan.py`, `escalation_scan.py`, `stale_cleanup.py`, and the ShipStation sync jobs — actually prevents a second overlapping job with the same `job_id` from stacking on top of a still-running one. Ran via `apps/lh/lh/patches/verify_queue_dedup.py`, `test_deduplicate_prevents_stacking()`. Since real `sla_scan` sub-jobs finish in well under a second (too fast to reliably catch mid-flight), the test uses a throwaway slow dummy job (`_slow_dummy_job`, `time.sleep(12)`) enqueued with the identical `job_id`/`deduplicate=True` call shape as production code — no production code was modified. A second `frappe.enqueue()` call with the same `job_id` is fired 1 second after the first, while it's still running, and the real Redis/RQ job state is checked directly via `frappe.utils.background_jobs.get_job()`.
+
+**What the outcome was:**
+```
+job_id: verify_queue_dedup_slow_test
+full_rq_job_name: lyfe.local.local::verify_queue_dedup_slow_test
+status_when_second_enqueue_attempted: started
+first_enqueue_returned_job: True
+second_enqueue_returned_none: True
+job_still_exists_single_instance: True
+RESULT: PASS
+```
+
+**Whether it worked or not:** Worked.
+
+**If it worked, why it worked:**
+`frappe.enqueue()`'s own dedup check (`frappe/utils/background_jobs.py:93-104`) looks up the existing job by `job_id` and, if its status is `queued` or `started`, logs `"Not queueing job ... because it is in queue already"` and returns `None` instead of enqueueing a duplicate. The real run confirmed the first job was genuinely `started` (mid-flight, not already finished) when the second enqueue call was made, and that second call correctly returned `None` — proving the second attempt was silently dropped, not queued behind the first.
+
+**If it did not work, why did it fail:** N/A — passed on the corrected run. (An earlier version of this test script had a bug — see the note below — that produced a false FAIL by querying the wrong data source, not because dedup itself failed.)
+
+**What fixes we made:**
+None needed in application code — `deduplicate=True` behaved exactly as documented. A bug was found and fixed in the **test script itself**: the first draft queried `frappe.get_all("RQ Job", filters={"name": ...})`, but Frappe's `RQJob.get_list()` (a virtual doctype backed by Redis, not a DB table) only supports filtering by `queue` and `status` — any filter on `job_id`/`name` is silently ignored, so it just returned the 20 most-recently-modified jobs bench-wide regardless of filter. Fixed by using `frappe.utils.background_jobs.get_job(job_id)` instead — an exact, correct single-job Redis lookup.
+
+**What was the latest outcome:** PASS, confirmed after fixing the test script's data-lookup bug.
+
+---
+
+## Task 13: Burst of Enqueued Jobs Drains Cleanly (No Stuck/Orphaned Jobs)
+
+**Task Name:** Scalability - queue drains after a burst
+
+**Asana List:** Scalability Verification — Step 1: Developer Validation
+
+**What was tested:**
+Whether a burst of 50 enqueued background jobs drains to zero within a reasonable time, with no job left stuck in `queued`/`started` state (worker starvation) and no unexpected failures. Ran via `apps/lh/lh/patches/verify_queue_dedup.py`, `test_burst_drains_cleanly()` — enqueues 50 lightweight dummy jobs on the `short` queue, then polls RQ's own queue/registry objects (`queued`, `started_job_registry`, `finished_job_registry`, `failed_job_registry`) directly every second for up to 60 seconds.
+
+**What the outcome was:**
+```
+burst_size: 50
+drain_time_seconds: 2.0
+drained_within_max_wait: True
+final_status_counts: {'finished': 50}
+jobs_no_longer_tracked_in_redis: 0
+failed_job_count: 0
+stuck_job_count: 0
+RESULT: PASS
+```
+
+**Whether it worked or not:** Worked.
+
+**If it worked, why it worked:**
+All 50 jobs moved from `queued` to `finished` within 2 seconds — well inside the 60-second wait budget — with zero left in `queued`/`started` and zero failures. The 2 active workers (`bench worker` processes, confirmed via `bench doctor`) picked up and drained the burst without any sign of worker starvation or queue accumulation at this volume.
+
+**If it did not work, why did it fail:** N/A — passed on the corrected run. (Same underlying test-script bug as Task 12 initially caused a false FAIL here too — see below.)
+
+**What fixes we made:**
+None needed in application code. The same test-script bug from Task 12 affected this test — `frappe.get_all("RQ Job", ...)` silently ignoring the job-id filter and returning only the 20 most-recently-modified jobs bench-wide meant the script could never see all 50 burst jobs, so it always reported a false timeout/incomplete drain. Fixed by querying RQ's queue and registry objects directly (`get_queue("short")`, `.started_job_registry`, `.finished_job_registry`, `.failed_job_registry`) and checking exact job-ID-set membership — the same technique Frappe's own `RQJob.get_matching_job_ids()` uses internally, just scoped to our own burst's job IDs instead of being capped at a default page size.
+
+**What was the latest outcome:** PASS, confirmed after fixing the test script's data-lookup bug — 50/50 jobs drained cleanly in 2 seconds.
+
+---
+
+## Overall Section 1.4 Status (Queue Processing / Deduplication)
+
+| Checkbox | Status |
+|---|---|
+| deduplicate=True prevents stacking | ✅ Confirmed — second overlapping enqueue call correctly dropped |
+| Queue drains after a burst | ✅ Confirmed — 50/50 jobs drained to finished in 2 seconds, no stuck/failed jobs |
+
+**Notable finding (not a defect in `lh`, but worth keeping in mind for future tooling):** `frappe.get_all("RQ Job", filters=...)` only honors `queue` and `status` filters — any other field (including `job_id`/`name`) is silently ignored due to how the virtual doctype's `get_list()` is implemented (`frappe/core/doctype/rq_job/rq_job.py`). Any future dashboard, report, or script built on `RQ Job` should use `frappe.utils.background_jobs.get_job(job_id)` for single-job lookups, or query RQ's queue/registry objects directly for bulk/prefix lookups — not `frappe.get_all` filters.
