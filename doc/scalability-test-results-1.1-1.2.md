@@ -507,6 +507,12 @@ None needed in application code. The same test-script bug from Task 12 affected 
 Whether both index migration patches — `apps/lh/lh/patches/add_scalability_indexes.py` and `apps/lh/lh/patches/add_sla_query_indexes.py` — show as applied in `Patch Log` on this site. Checked via `apps/lh/lh/patches/verify_db_indexes.py`, `check_patches_applied()`.
 
 **What the outcome was (dev run, to be re-confirmed with screenshot):**
+
+```
+Index Patch is you can check the file
+apps/lh/lh/patches/add_scalability_indexes.py
+```
+
 ```
 add_scalability_indexes_applied: True
 add_sla_query_indexes_applied: True
