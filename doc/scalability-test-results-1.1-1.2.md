@@ -347,6 +347,13 @@ finished_before_next_cycle: True
 RESULT: PASS
 ```
 
+`bench --site lyfe.local.local execute lh.patches.verify_scheduler_execution.execute`
+
+<img width="1430" height="702" alt="image" src="https://github.com/user-attachments/assets/5d07a6f5-0a40-4f65-8092-000dd2e7a3c5" />
+
+<img width="1437" height="792" alt="image" src="https://github.com/user-attachments/assets/643eb28b-26de-471b-ba41-78a46ff2c6db" />
+
+
 **Whether it worked or not:** Worked, consistently across every run.
 
 **If it worked, why it worked:**
@@ -368,6 +375,9 @@ RESULT: PASS
 
 **What was tested:**
 Whether background jobs enqueued via `frappe.enqueue()` (using `sla_scan.run()`'s 15 per-rule sub-jobs as the test case) are visible with correct status transitions (`queued` → `started` → `finished`/`failed`) through Frappe's built-in `RQ Job` doctype — the v15 replacement for the removed Background Jobs navbar page. Triggered `bench --site lyfe.local.local execute lh.lh_project.sla.scheduler.sla_scan.run`, then queried `frappe.get_list("RQ Job", ...)` and cross-checked directly against Redis (`redis-cli -p 11000`).
+
+<img width="1445" height="752" alt="image" src="https://github.com/user-attachments/assets/b0039c4f-1ba3-4f39-b987-54bb6fd8ad8c" />
+
 
 **What the outcome was:**
 Real, live rows observed with all expected fields (`job_id`, `job_name`, `queue`, `status`, `started_at`, `ended_at`, `time_taken`, `exc_info`) — e.g. `sla_scan_SLAR-0003` (status: started), `sla_scan_SLAR-0014` (status: queued), `sla_scan_SLAR-0015` (status: finished, `time_taken: 0.438662`). Cross-checked against Redis directly (`rq:job:*`, `rq:finished:*` keys) and confirmed identical job IDs and timestamps.
