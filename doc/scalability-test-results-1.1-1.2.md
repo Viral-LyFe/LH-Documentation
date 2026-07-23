@@ -259,6 +259,11 @@ All 7 lh jobs: cron_matches = True, stopped = False (all 7)
 RESULT: PASS
 ```
 
+<img width="1406" height="823" alt="Screenshot 2026-07-23 164657" src="https://github.com/user-attachments/assets/703aae90-fa54-485c-9ea8-894babdbfb96" />
+
+<img width="1412" height="757" alt="image" src="https://github.com/user-attachments/assets/b16eafba-80c5-4d33-b22b-1c5618325849" />
+
+
 **Whether it worked or not:** Initially did not work (test correctly caught a pre-existing dev-site condition); passed once that condition was corrected.
 
 **If it worked, why it worked:**
