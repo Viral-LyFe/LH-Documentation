@@ -307,6 +307,9 @@ stale_cleanup.run     (0 3 * * *)   — still stale                     ❌
 RESULT: FAIL (3 of 7 passed)
 ```
 
+<img width="1362" height="577" alt="image" src="https://github.com/user-attachments/assets/20bf1eee-65c6-498b-b482-368feefbd9bb" />
+
+
 **Whether it worked or not:** Partially worked; not yet fully confirmed at time of last check.
 
 **If it worked, why it worked:**
