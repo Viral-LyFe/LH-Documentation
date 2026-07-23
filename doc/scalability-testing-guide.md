@@ -89,9 +89,59 @@ Goal: confirm architectural correctness — batching, retries, schedulers, queue
 - [ ] **Task: "Scalability - scheduler fires on configured interval"**
   - For each job above, use `bench doctor` and the RQ/scheduler logs (`bench --site <site> show-config`, `logs/scheduler.log`, `logs/worker.log`) to confirm each job actually fired at its cron interval over a test window (e.g. 2 hours).
 
+  **Note:** this cannot be proven on the local dev site (`lyfe.local.local`) as-is — every `lh.*` `Scheduled Job Type` row there is currently `stopped=1` (confirmed via `lh.patches.verify_scheduler_execution.execute`, part 1.3a/1.3b), so no job has actually fired since 2026-07-18 even though the `bench schedule` / `bench worker` processes are alive. Run the steps below on staging or wherever the scheduler is actually un-stopped and ticking.
+
+  **Manual steps:**
+  1. Confirm the scheduler daemon is actually running as a process (not just the site-level flag):
+     ```bash
+     ps aux | grep -E "bench schedule|bench worker"
+     ```
+     You should see `frappe.utils.bench_helper frappe schedule` and `... frappe worker` processes alive.
+  2. Confirm the site itself has the scheduler enabled:
+     ```bash
+     bench --site <site> scheduler status
+     # Expect: "Scheduler is enabled for site <site>"
+     ```
+  3. Confirm each `lh` job is NOT individually stopped and its cron matches `hooks.py`:
+     ```bash
+     bench --site <site> execute lh.patches.verify_scheduler_execution.test_jobs_registered_and_not_stopped
+     ```
+     If any row shows `stopped: True`, un-stop it from the Desk UI (**Scheduled Job Type** list → open the job → uncheck "Stopped" → Save), or via console:
+     ```python
+     frappe.db.set_value("Scheduled Job Type", "<job name>", "stopped", 0)
+     frappe.db.commit()
+     ```
+  4. Let the site run untouched for a real window (recommend 2 hours minimum, matching the doc's suggestion) so every job in the table gets at least one natural fire (the slowest, `stale_cleanup.run`, is daily at `0 3 * * *`, so a 2-hour window will only prove the `*/5`, `*/15`, `*/30`, `*/45`, and `0 * * * *` jobs — note that gap rather than skip it).
+  5. After the window, re-run the same check to see real, fresh `last_execution` timestamps and log counts:
+     ```bash
+     bench --site <site> execute lh.patches.verify_scheduler_execution.test_jobs_fired_within_interval
+     ```
+  6. Cross-check against the raw logs for anything the summary might smooth over (errors, restarts):
+     ```bash
+     tail -200 logs/scheduler.log
+     tail -200 logs/worker.log
+     ```
+  7. Record in the tracking doc: for each job, its cron, its `last_execution` before/after the window, and the count of `Scheduled Job Log` entries created during the window. A job with zero new log entries in a window longer than its own interval is a genuine fail — investigate before moving on.
+
 - [ ] **Task: "Scalability - scheduler completes within one cycle (no self-queueing)"**
   - For the most frequent jobs (`*/5`, `*/15`), seed a data volume that makes a single run take noticeably long (e.g. hundreds of orders for `poll_quotation_payment_statuses`, dozens of SLA rules for `sla_scan`).
   - Confirm the job finishes before its next scheduled fire, OR (if it can't) confirm the `deduplicate=True` / fixed `job_id` mechanism prevents a second instance from stacking behind it (see 1.4).
+
+  **Manual steps:**
+  1. Get a real timed baseline first, without extra data, using the existing proof script:
+     ```bash
+     bench --site <site> execute lh.patches.verify_scheduler_execution.test_job_completes_within_one_cycle
+     ```
+     This times a live run of `sla_scan.run()` (interval `*/15 min` = 900s) against whatever data currently exists on the site and reports `elapsed_seconds` vs. `900`.
+  2. Deliberately inflate the data volume for the job under test so a single run takes meaningfully longer, e.g.:
+     - `sla_scan.run` — create/activate dozens of **SLA Rule** records (each rule gets its own `frappe.enqueue` per the dedup pattern in 1.4, so more rules = more enqueued sub-jobs per scan).
+     - `poll_quotation_payment_statuses` — create/leave pending a large batch of Quotations awaiting payment status (hundreds), since this job polls each one.
+  3. Re-run the same timed check (or the equivalent function for the job you inflated) and record the new `elapsed_seconds`.
+  4. If `elapsed_seconds` still comes in under the job's own cron interval (e.g. < 900s for a `*/15` job) — PASS, no self-queueing risk at this volume.
+  5. If `elapsed_seconds` exceeds the interval — this job WILL still be running when the scheduler tries to fire it again. In that case, confirm the overlap is safely handled, not just "hopefully fine":
+     - Check the job's `frappe.enqueue(...)` call site uses `deduplicate=True` with a fixed `job_id` (see section 1.4) — this is what actually prevents a second overlapping instance from stacking.
+     - Manually trigger the job twice back-to-back (`bench --site <site> execute <method>` run twice in quick succession, or from console) and confirm via the Background Jobs list / `redis-cli` that only one instance runs — the second call is dropped, not queued behind the first.
+  6. Record in the tracking doc: job name, cron interval, data volume used, elapsed time, PASS/FAIL, and — if it exceeded the interval — which dedup mechanism was confirmed to prevent stacking.
 
 ### 1.4 Queue processing / deduplication
 
