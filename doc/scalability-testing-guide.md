@@ -156,6 +156,11 @@ Goal: confirm architectural correctness — batching, retries, schedulers, queue
   - Manually trigger the same job twice in quick succession (e.g. click "Sync Now" on ShipStation Settings twice back-to-back, or call `sla_scan.run()` twice from console before the first returns).
   - Confirm via RQ/Redis (`redis-cli`, or Frappe's Background Jobs list) that only one job with that `job_id` is queued/running at a time — the second call is dropped/ignored, not queued behind.
 
+  <img width="1436" height="901" alt="image" src="https://github.com/user-attachments/assets/e1a2e40f-c1ad-4395-992f-9b524f6ba5d6" />
+
+<img width="1712" height="722" alt="image" src="https://github.com/user-attachments/assets/f66b2125-b654-42ea-ae14-b84be0708e3c" />
+
+
 - [ ] **Task: "Scalability - queue drains after a burst"**
   - Enqueue a burst of background jobs (e.g. trigger notifications for 50+ orders at once via `order_tracking.py` lines ~811/820/835, or bulk-update Lyfe Orders to trigger `on_update` hooks).
   - Watch the RQ queue (`bench --site <site> console` → check `frappe.utils.background_jobs` or the Background Jobs desk page, or `redis-cli llen <queue>`).
