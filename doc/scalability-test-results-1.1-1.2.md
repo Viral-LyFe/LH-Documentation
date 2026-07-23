@@ -564,6 +564,7 @@ Examples:
 
 OVERALL RESULT: PASS
 ```
+<img width="1267" height="566" alt="image" src="https://github.com/user-attachments/assets/39e148b2-fbc9-4381-be9e-c68b903b20bf" />
 
 **Whether it worked or not:** Worked (dev run) — 11 of 12 hot-path queries confirmed using their intended index; 1 correctly flagged INCONCLUSIVE rather than a false FAIL.
 
