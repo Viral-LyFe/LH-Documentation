@@ -611,11 +611,44 @@ Full module run: 47 tests, 5 failures — but all 4 index-specific tests listed 
 
 **If it did not work, why did it fail:** N/A for the 4 relevant tests. (The 5 unrelated failures elsewhere in the same file are a separate, pre-existing concern outside the scope of section 1.5 — not caused by or related to this testing.)
 
-**What fixes we made:** None needed for the 4 index tests.
+**What fixes we made:** None needed for the 4 index tests. (Two of the 5 unrelated failures in this same module — `test_insert_has_unique_error_guard` and `test_save_uses_ignore_version` — were investigated separately and fixed; see Task 17 below.)
 
-**What was the latest outcome:** _[To be filled in after re-run + screenshot]_
+**What was the latest outcome:** Re-confirmed — all 4 index-specific tests still pass. Module-level failure count dropped from 5 to 3 after the Task 17 fix (the 3 remaining failures are unrelated: 2 are test-only artifacts around mocked concurrency checks, 1 is a stale test allowlist — none are real code defects).
 
 **Note for whoever re-runs this:** these are static/source-text checks, not runtime proof — Task 15 (`EXPLAIN`) is the test that actually proves the index is *used*, not just present in the patch file.
+
+---
+
+## Task 17: ShipStation Sync — Duplicate Insert Race + Version Bloat (Code Fix)
+
+**Task Name:** Scalability - ShipStation sync duplicate insert / Version bloat fix
+
+**Asana List:** Scalability Verification — Step 1: Developer Validation
+
+**What was tested:**
+While investigating the 5 pre-existing failures in `test_hardening.py` surfaced during Task 16, two of them (`TestShipStationDuplicateDefense.test_insert_has_unique_error_guard`, `TestShipStationDuplicateDefense.test_save_uses_ignore_version`) were traced to real gaps in `_process_single_order()` in `apps/lh/lh/lyfe_hardware/doctype/shipstation_orders/shipstation_orders.py` — not a false alarm. Verified directly against Frappe core (`frappe.UniqueValidationError`, `ignore_version` behavior in `document.py`) and against the same codebase's own existing correct pattern (`task_linker.py`'s `_upsert_violation_cache`, and a sibling `doc.save(ignore_permissions=True, ignore_version=True)` call elsewhere in the same file).
+
+**What the outcome was:**
+Confirmed two gaps in the save/insert block of `_process_single_order`:
+1. `doc.insert(ignore_permissions=True)` had no try/except, while `shipstation_order_id` is schema-marked unique. Since ShipStation sync runs every 15 minutes and this function does a read-then-decide-then-insert with no locking, two overlapping sync runs (scheduled + manual, or two scheduled runs) could race and crash uncaught with `frappe.UniqueValidationError`.
+2. The save calls omitted `ignore_version=True`, so every sync of an existing order created an unnecessary Version record — unlike a sibling save call already correct elsewhere in the same file.
+
+**Whether it worked or not:** Did not work as originally written — both confirmed as genuine gaps, not false alarms.
+
+**If it worked, why it worked:** N/A.
+
+**If it did not work, why did it fail:**
+No exception handling existed around the insert, and `ignore_version` was never passed (so it defaulted to `frappe.flags.in_test`, i.e. `False` in production per `frappe/model/document.py`), meaning every real-world save created a Version record.
+
+**What fixes we made:**
+In `_process_single_order`'s save/insert block:
+1. Wrapped `doc.insert(ignore_permissions=True)` in a try/except catching `frappe.UniqueValidationError`. On collision, re-fetches the winning doc by `shipstation_order_id` and saves onto it instead of raising — the same recovery pattern already used in `task_linker.py`'s `_upsert_violation_cache`. Logs via `frappe.log_error` per the app's no-silent-except rule.
+2. Added `ignore_version=True` to both the fallback save and the existing update-path save, matching the pattern already used correctly elsewhere in the same file.
+
+Committed as `0b298bc` — "Handle duplicate insert race and skip Version bloat in ShipStation sync".
+
+**What was the latest outcome:**
+Fixed and verified — re-ran `test_hardening.py`: failures dropped from 5 to 3, with `test_insert_has_unique_error_guard` and `test_save_uses_ignore_version` no longer among them. The remaining 3 failures are unrelated (confirmed separately: 2 are test-only artifacts, 1 is a stale test allowlist entry — no further code changes needed for those).
 
 ---
 
