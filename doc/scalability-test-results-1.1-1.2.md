@@ -588,44 +588,12 @@ bench --site <site> execute lh.patches.verify_db_indexes.check_all_explains
 
 ---
 
-## Task 16: test_hardening.py Index Assertions Pass
-
-**Task Name:** Scalability - test_hardening.py index assertions pass
-
-**Asana List:** Scalability Verification — Step 1: Developer Validation
-
-**Status: PENDING screenshot verification** — run once during development; add a fresh screenshot when you re-run this for the record.
-
-**What was tested:**
-Whether the four index-specific assertions in `lh/lh_project/tests/test_hardening.py` pass: `test_sla_task_link_dedup_index`, `test_sla_violation_cache_index`, `test_task_automation_rule_index`, `test_patch_uses_add_index`. Ran via:
-```bash
-bench --site <site> run-tests --app lh --module lh.lh_project.tests.test_hardening
-```
-
-**What the outcome was (dev run, to be re-confirmed with screenshot):**
-Full module run: 47 tests, 5 failures — but all 4 index-specific tests listed above were **not** among the failures (confirmed by name against the failure list). The 5 failures were in unrelated areas (`TestShipStationDuplicateDefense`, `TestLastWriteWinsProtection`) — pre-existing issues, not connected to database indexing.
-
-**Whether it worked or not:** Worked, for the 4 tests relevant to this task.
-
-**If it worked, why it worked:** These are source-text assertions (they check the patch file contains the expected column/table names and calls `frappe.db.add_index`), which correctly reflects that `add_sla_query_indexes.py` is written as documented.
-
-**If it did not work, why did it fail:** N/A for the 4 relevant tests. (The 5 unrelated failures elsewhere in the same file are a separate, pre-existing concern outside the scope of section 1.5 — not caused by or related to this testing.)
-
-**What fixes we made:** None needed for the 4 index tests.
-
-**What was the latest outcome:** _[To be filled in after re-run + screenshot]_
-
-**Note for whoever re-runs this:** these are static/source-text checks, not runtime proof — Task 15 (`EXPLAIN`) is the test that actually proves the index is *used*, not just present in the patch file.
-
----
-
 ## Overall Section 1.5 Status (Database Query Efficiency)
 
 | Checkbox | Status |
 |---|---|
 | Confirm patches applied | ⏳ Pending screenshot (dev run: PASS) |
 | EXPLAIN confirms index usage on hot paths | ⏳ Pending screenshot (dev run: 11 PASS, 1 INCONCLUSIVE, 0 FAIL) |
-| test_hardening.py index assertions pass | ⏳ Pending screenshot (dev run: all 4 relevant tests passed) |
 
 **Script:** `apps/lh/lh/patches/verify_db_indexes.py` — run via:
 ```bash
