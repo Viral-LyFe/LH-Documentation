@@ -518,6 +518,8 @@ apps/lh/lh/patches/verify_db_indexes.py
 based on that we got the result as mentioned below
 ```
 
+<img width="1445" height="555" alt="image" src="https://github.com/user-attachments/assets/2126bb2a-acfb-4229-8d75-cc93d0dae19a" />
+
 ```
 add_scalability_indexes_applied: True
 add_sla_query_indexes_applied: True
