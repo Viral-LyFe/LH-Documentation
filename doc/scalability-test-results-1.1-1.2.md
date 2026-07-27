@@ -534,7 +534,7 @@ RESULT: PASS
 
 **What fixes we made:** None needed.
 
-**What was the latest outcome:** _[To be filled in after re-run + screenshot]_
+**What was the latest outcome:** Index applied : as you can see in above image of lyfe order field index table it is applied 
 
 **To reproduce:**
 ```bash
