@@ -605,6 +605,8 @@ bench --site <site> run-tests --app lh --module lh.lh_project.tests.test_hardeni
 **What the outcome was (dev run, to be re-confirmed with screenshot):**
 Full module run: 47 tests, 5 failures — but all 4 index-specific tests listed above were **not** among the failures (confirmed by name against the failure list). The 5 failures were in unrelated areas (`TestShipStationDuplicateDefense`, `TestLastWriteWinsProtection`) — pre-existing issues, not connected to database indexing.
 
+<img width="1417" height="322" alt="image" src="https://github.com/user-attachments/assets/a21249c8-61ea-4584-b984-ee3fc301ecef" />
+
 **Whether it worked or not:** Worked, for the 4 tests relevant to this task.
 
 **If it worked, why it worked:** These are source-text assertions (they check the patch file contains the expected column/table names and calls `frappe.db.add_index`), which correctly reflects that `add_sla_query_indexes.py` is written as documented.
