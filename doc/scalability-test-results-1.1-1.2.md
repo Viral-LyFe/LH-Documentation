@@ -635,3 +635,76 @@ While digging into why the file reported failures, we found 5 pre-existing issue
 ---
 
 
+## Overall Section 1.5 Status (Database Query Efficiency)
+
+| Checkbox | Status |
+|---|---|
+| Confirm patches applied | ⏳ Pending screenshot (dev run: PASS) |
+| EXPLAIN confirms index usage on hot paths | ⏳ Pending screenshot (dev run: 11 PASS, 1 INCONCLUSIVE, 0 FAIL) |
+| test_hardening.py index assertions pass | ⏳ Pending screenshot (dev run: all 4 relevant tests passed) |
+
+**Script:** `apps/lh/lh/patches/verify_db_indexes.py` — run via:
+```bash
+bench --site <site> execute lh.patches.verify_db_indexes.execute
+```
+
+---
+
+## Task 18: 17Track Mid-Batch Failure Recovers Without Duplication (Section 1.6)
+
+**Task Name:** Scalability - mid-batch failure recovers without duplication
+
+**Asana List:** Scalability Verification — Step 1: Developer Validation
+
+**What was tested:**
+Whether the 17Track tracking scheduler (`lh.lyfe_hardware.doctype.lyfe_order.order_tracking.scheduled_track_ready_orders()`) correctly handles a failure affecting one batch of tracking numbers out of several: does the failure stay isolated to that batch (no cascade into other batches), and does re-running the scheduler afterward recover the failed batch **without duplicating** the orders that already succeeded.
+
+Built two scripts for this:
+- `apps/lh/lh/patches/seed_trackable_orders_for_1_6.py` — seeds 120 real, throwaway `Lyfe Order` records with `tracking_number` + `carrier` set (3 full batches of 40, matching 17Track's real batch size), safely identifiable by a test tracking-number prefix and fully deletable afterward.
+- `apps/lh/lh/patches/verify_mid_batch_failure_recovery.py` — runs the real scheduler function against only those 120 test orders (isolated from real production orders on the same site), intentionally forcing one batch (batch 2, orders 41–80) to fail, then checks the outcome, then re-runs to confirm recovery with no duplication.
+
+**What the outcome was:**
+
+*First run of the proof script initially showed a misleading `failed: 0`* — investigated and found this was **not a bug**, but a real, correct piece of production behavior we hadn't accounted for: `scheduled_track_ready_orders()` has a built-in fallback — if the bulk 17Track call fails for an order, the code automatically retries that order individually within the same run (`# Fallback to individual call`, `order_tracking.py` ~line 1083) before marking it failed. Our first test only broke the bulk call, so the individual fallback quietly succeeded and masked the simulated failure. Once the test was corrected to also force the individual fallback to fail for the same batch (representing a genuine full API outage, not a partial one), the real result was:
+
+```
+--- First pass (batch 2 forced to fail) ---
+processed: 120, success: 80, failed: 40, pending: 0
+batch1_failure_count: 0 (expect 0)
+batch2_failure_count: 40 (expect 40)
+batch3_failure_count: 0 (expect 0)
+RESULT: PASS
+
+--- Second pass (real re-run, no forced failure) ---
+processed: 120, success: 120, failed: 0, pending: 0
+duplicate_tracking_numbers_found: 0 (expect 0)
+RESULT: PASS
+```
+
+A standalone one-shot version (`demo_single_batch_failure()`) is also available for a quick isolated demonstration of exactly one batch intentionally failing, printing a clear pass/fail result without running the full two-pass proof.
+
+**Whether it worked or not:** Worked, on the corrected test.
+
+**If it worked, why it worked:**
+Confirmed against the real, unmodified source (not a copy or a mock of the logic) that 17Track failures have two distinct scopes, both working as designed:
+- **API/transport-level failure** (timeout, connection error, rate-limit, malformed response, non-200/non-zero-code) — the **entire batch of 40 tracking numbers fails together**, since there is no way to know individual results when the whole request itself failed (`seventeentrack.py` lines ~434–465).
+- **Item-level rejection inside an otherwise-successful response** — 17Track can return a mix of `accepted` and `rejected` tracking numbers in one successful call; **only the specifically rejected number(s) fail**, the rest of that same batch succeeds normally (`seventeentrack.py` lines ~476–501).
+
+Batches 1 and 3 were completely unaffected by batch 2's forced failure (0 failures each) — confirming no cascade. Re-running the scheduler afterward recovered all 40 of batch 2's orders to success, and a direct SQL check confirmed zero duplicate `Lyfe Order` records were created for any of the 120 test tracking numbers — confirming the recovery re-processes cleanly rather than creating duplicates.
+
+**If it did not work, why did it fail:** N/A on the corrected/final test. (The *first* draft of the test script was itself flawed — see "What fixes we made" — not the production code.)
+
+**What fixes we made:**
+No application code changes were needed — `scheduled_track_ready_orders()` and `bulk_call_17track()` already behave correctly. The fix was entirely in the **test script**: the initial version only broke the bulk 17Track call for batch 2, which the code's own individual-retry fallback silently absorbed. Corrected by also forcing `track_and_update_order()` (the fallback function) to fail for the same batch's orders, so the test genuinely represents a full API outage for that batch rather than a partial one the code was already designed to self-heal from within a single run.
+
+**What was the latest outcome:**
+PASS — confirmed real, unmodified production code correctly isolates a failed batch (no cascade to other batches) and recovers it cleanly on the next run with zero duplication.
+
+**To reproduce:**
+```bash
+# Full two-pass proof (fail batch 2, then recover):
+bench --site <site> execute lh.patches.verify_mid_batch_failure_recovery.execute
+
+# Quick standalone demo (single intentional batch failure only):
+bench --site <site> execute lh.patches.verify_mid_batch_failure_recovery.demo_single_batch_failure
+```
