@@ -650,7 +650,7 @@ bench --site <site> execute lh.patches.verify_db_indexes.execute
 
 ---
 
-## Task 18: 17Track Mid-Batch Failure Recovers Without Duplication (Section 1.6)
+## Task 17: 17Track Mid-Batch Failure Recovers Without Duplication (Section 1.6)
 
 **Task Name:** Scalability - mid-batch failure recovers without duplication
 
