@@ -775,6 +775,10 @@ SLA scan:            0.09s, no error
 After:  cpu=99.5%, memory=93.2% (3368.1 MB), workers=2, db_connections=4
 RESULT: PASS (per the script's own pass condition — workers alive, no SLA scan error)
 ```
+<img width="1432" height="342" alt="Screenshot 2026-07-28 210251" src="https://github.com/user-attachments/assets/894d16ec-4021-459c-b3c9-5bd85fbcf06b" />
+<img width="1292" height="737" alt="Screenshot 2026-07-28 211343" src="https://github.com/user-attachments/assets/3da969c3-9f4a-4ec0-a05e-9e3f43e4e22b" />
+<img width="1413" height="716" alt="Screenshot 2026-07-28 212204" src="https://github.com/user-attachments/assets/4b163a74-6d29-4ce3-b692-8f81c28d1852" />
+<img width="1182" height="590" alt="Screenshot 2026-07-28 212225" src="https://github.com/user-attachments/assets/b848d3f5-77a1-4764-8b34-f8c82effa1da" />
 
 **Whether it worked or not:** Ran without crashing, but the result is **not yet a clean/trustworthy signal** — two real issues surfaced, neither of which is a scalability defect in the app itself:
 1. **`total_created=0, total_updated=2000`** — the 2,000 orders already existed on the droplet from an earlier, partially-failed setup attempt (before the shared test Customer record existed). This run silently updated those pre-existing records instead of creating 2,000 fresh ones, so the seeding timing (130s) reflects an *update* pipeline, not a *create* pipeline — not the number Step 2.4 actually wants.
@@ -804,13 +808,3 @@ bench --site <site> execute lh.patches.step2_infra_sizing_run.execute --kwargs '
 
 ---
 
-## Step 2 Coverage Status
-
-| Checkbox | Status |
-|---|---|
-| 2.1 Sustained scheduler load | ❌ Not started — needs real cron running over hours, cannot be scripted into a single run |
-| 2.2 Concurrent user load (Locust) | ❌ Not started — needs a separate Locust script/tool |
-| 2.3 Long-duration queue behaviour | ❌ Not started — needs real elapsed hours of monitoring |
-| 2.4 Infrastructure sizing at 2,000 orders/day | ⚠️ In progress — Task 19 above; first run completed but not yet clean (see caveats) |
-| 2.5 Establish monitoring baselines | ❌ Not started — depends on 2.1–2.4 producing clean numbers first |
-| Step 2 sign-off | ❌ Blocked |
