@@ -1,6 +1,6 @@
-# Scalability Test Results — Section 1.1, 1.2, 1.3, 1.4 & 1.5
+# Scalability Test Results — Section 1.1, 1.2, 1.3, 1.4, 1.5, 1.6 & 1.7
 
-Format per the Scalability Verification Test document's "Key Details" section. Covers 1.1 (batching), 1.2 (retry mechanisms), 1.3 (scheduler execution), 1.4 (queue processing / deduplication), and 1.5 (database query efficiency).
+Format per the Scalability Verification Test document's "Key Details" section. Covers 1.1 (batching), 1.2 (retry mechanisms), 1.3 (scheduler execution), 1.4 (queue processing / deduplication), 1.5 (database query efficiency), 1.6 (mid-batch failure recovery), and 1.7 (non-blocking integration saves).
 
 ---
 
@@ -708,4 +708,45 @@ bench --site <site> execute lh.patches.verify_mid_batch_failure_recovery.execute
 
 # Quick standalone demo (single intentional batch failure only):
 bench --site <site> execute lh.patches.verify_mid_batch_failure_recovery.demo_single_batch_failure
+```
+
+---
+
+## Task 18: Shopify/ShipStation Calls Don't Block Order Save (Section 1.7)
+
+**Task Name:** Scalability - Shopify/ShipStation calls don't block order save
+
+**Asana List:** Scalability Verification — Step 1: Developer Validation
+
+**What was tested:**
+Whether saving a `Lyfe Order` / `Quotation` returns quickly, with any Shopify/ShipStation sync work happening via `frappe.enqueue` (background) rather than synchronously inside the save request — per the doc's steps: (1) time a real save via the Network tab / server response time, (2) confirm sync work is backgrounded, not inline, and (3) cross-check `hooks.py`'s `on_update` doc events (SLA autoclose `check_and_close`, etc.) for inline external calls.
+
+Traced the full `Lyfe Order.on_update()` method (lines 399–882) and the `hooks.py`-registered `on_update` doc events (`lh_project` SLA autoclose, `payment_processing_fee`, `repeat_customer_tag`, `quotation.on_update`, `senior_review.on_update`) directly against source, rather than assuming from the doc's description alone.
+
+**What the outcome was:**
+The doc's assumption holds for the **large majority** of save paths, confirmed by direct source inspection:
+- `close_engine.check_and_close` (SLA autoclose, hooked on both `Lyfe Order.on_update` and `Quotation.on_update`) — DB-only (`frappe.get_all`, `frappe.get_cached_doc`), zero external calls.
+- `quotation.on_update`, `senior_review.on_update`, `payment_processing_fee`, `repeat_customer_tag` — all DB-only; the only outbound work found (`_enforce_stage_payment`'s reminder tracking) uses `frappe.enqueue(..., enqueue_after_commit=True)`, correctly backgrounded.
+- `Lyfe Order.on_update()` itself is otherwise DB-only across its ~484 lines, with real payment-reminder and drift-sync work also correctly enqueued.
+
+**However, one real exception was found, not a false alarm:** `_mark_shipstation_order_as_shipped()` (`lyfe_order.py` ~line 2717, called directly — not via `frappe.enqueue` — from inside `on_update()` at lines 836 and 847) makes a genuine synchronous `requests.post()` call to ShipStation's `/orders/markasshipped` endpoint, with a 30-second timeout, **inline during the save request itself**.
+
+It fires only under two specific conditions during a save — not on every save:
+1. The order's workflow just transitioned to **Shipped** in this save (`state_just_shipped`), or
+2. Tracking number/carrier changed on an order **already** Shipped, and the new tracking was verified (`tracking_edit_verified`).
+
+**Whether it worked or not:** Mostly worked — confirmed non-blocking for the general save path and for the SLA/automation `on_update` hooks specifically named in the test doc. One real, specific exception found: the ShipStation "mark as shipped" call is not backgrounded.
+
+**If it worked, why it worked:** The SLA autoclose hook and the other `on_update`-registered doc events do all their work via direct DB reads/writes or `frappe.enqueue`, with no `requests`/`urllib`/`http` calls anywhere in their call chains — confirmed by direct `grep` and manual trace, not inference.
+
+**If it did not work, why did it fail:** `_mark_shipstation_order_as_shipped()` is called directly (a plain Python function call) rather than via `frappe.enqueue`, so its `requests.post(..., timeout=30)` executes on the same request thread as the user's save action. The call is wrapped in `try/except` (so a failed/slow API call logs an error rather than crashing the save), but the **exception handling protects against crashing, not against blocking** — the user's save can still hang for up to 30 seconds if ShipStation's API is slow to respond.
+
+**What fixes we made:** None yet — this is a newly confirmed finding from this round of testing, not yet remediated. The natural fix (not yet applied) would be wrapping the `_mark_shipstation_order_as_shipped(self)` calls in `frappe.enqueue`, matching the pattern already used two lines above it in the same function for `send_before_shipped_notification`.
+
+**What was the latest outcome:** Confirmed via direct source trace (not yet re-verified with a live timed save reproduction). Recommend a follow-up task to: (1) time an actual Shipped-transition save against a real/sandboxed ShipStation endpoint to quantify the real-world delay, and (2) apply the `frappe.enqueue` fix if the delay is significant.
+
+**To reproduce the trace:**
+```bash
+grep -n "requests\.\|urlopen\|http\." apps/lh/lh/lyfe_hardware/doctype/lyfe_order/lyfe_order.py
+grep -n "_mark_shipstation_order_as_shipped" apps/lh/lh/lyfe_hardware/doctype/lyfe_order/lyfe_order.py
 ```
