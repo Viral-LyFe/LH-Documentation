@@ -680,6 +680,7 @@ processed: 120, success: 120, failed: 0, pending: 0
 duplicate_tracking_numbers_found: 0 (expect 0)
 RESULT: PASS
 ```
+<img width="1452" height="542" alt="image" src="https://github.com/user-attachments/assets/84b1dd80-42e9-448c-883f-e1996aa1b404" />
 
 A standalone one-shot version (`demo_single_batch_failure()`) is also available for a quick isolated demonstration of exactly one batch intentionally failing, printing a clear pass/fail result without running the full two-pass proof.
 
