@@ -743,7 +743,7 @@ It fires only under two specific conditions during a save — not on every save:
 
 **What fixes we made:** None yet — this is a newly confirmed finding from this round of testing, not yet remediated. The natural fix (not yet applied) would be wrapping the `_mark_shipstation_order_as_shipped(self)` calls in `frappe.enqueue`, matching the pattern already used two lines above it in the same function for `send_before_shipped_notification`.
 
-**What was the latest outcome:** Confirmed via direct source trace (not yet re-verified with a live timed save reproduction). Recommend a follow-up task to: (1) time an actual Shipped-transition save against a real/sandboxed ShipStation endpoint to quantify the real-world delay, and (2) apply the `frappe.enqueue` fix if the delay is significant.
+**What was the latest outcome:** Mark as Shipped is only a point which allow us to do deep thinking, All other are in enqueue method, This will never block the use or raise any issue - reason is when order and tracking number and that order reach the US then only system do a real api call, also per order this api call will happen one time or when tracking number will be change.
 
 **To reproduce the trace:**
 ```bash
