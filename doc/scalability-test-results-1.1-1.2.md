@@ -750,3 +750,67 @@ It fires only under two specific conditions during a save — not on every save:
 grep -n "requests\.\|urlopen\|http\." apps/lh/lh/lyfe_hardware/doctype/lyfe_order/lyfe_order.py
 grep -n "_mark_shipstation_order_as_shipped" apps/lh/lh/lyfe_hardware/doctype/lyfe_order/lyfe_order.py
 ```
+
+---
+
+## Task 19: Infrastructure Sizing at 2,000 Orders/Day (Section 2.4 — Staging Environment)
+
+**Task Name:** Scalability - infra headroom at target volume
+
+**Asana List:** Scalability Verification — Step 2: Staging / Production-like Infrastructure
+
+**What was tested:**
+Whether the full order pipeline (ShipStation-shaped ingestion → Lyfe Order creation → tracking scheduler → SLA scan) handles a 2,000-order dataset while keeping CPU, memory, and DB connections within safe headroom, per the doc's Step 2.4 checkbox. Unlike Section 1 (dev box), this test ran on a **separate DigitalOcean droplet** set up to mirror production, using two new scripts:
+- `apps/lh/lh/patches/generate_fake_orders_2000.py` — generates synthetic ShipStation-shaped order payloads and posts them to the droplet's real whitelisted endpoint (`process_shipstation_response`) over genuine HTTP, not a direct function call — exercising the actual web server/auth layer, not just business logic.
+- `apps/lh/lh/patches/step2_infra_sizing_run.py` — a single consolidated run: seeds the order pool, runs the real tracking scheduler and SLA scan against the resulting dataset, and snapshots CPU/memory/worker count/DB connections before and after (via `psutil` and the same primitives `bench doctor` itself uses).
+
+**What the outcome was (first run on the droplet):**
+```
+Before: cpu=54.0%, memory=92.4% (3334.9 MB), workers=2, db_connections=2
+
+Seeding 2000 orders: total_created=0, total_updated=2000, errors=0, elapsed=130.08s
+Tracking scheduler:  processed=46, success=0, failed=46 (all: "missing_api_secret")
+SLA scan:            0.09s, no error
+
+After:  cpu=99.5%, memory=93.2% (3368.1 MB), workers=2, db_connections=4
+RESULT: PASS (per the script's own pass condition — workers alive, no SLA scan error)
+```
+
+**Whether it worked or not:** Ran without crashing, but the result is **not yet a clean/trustworthy signal** — two real issues surfaced, neither of which is a scalability defect in the app itself:
+1. **`total_created=0, total_updated=2000`** — the 2,000 orders already existed on the droplet from an earlier, partially-failed setup attempt (before the shared test Customer record existed). This run silently updated those pre-existing records instead of creating 2,000 fresh ones, so the seeding timing (130s) reflects an *update* pipeline, not a *create* pipeline — not the number Step 2.4 actually wants.
+2. **Tracking scheduler: 46/46 failed with `missing_api_secret`** — the droplet's 17Track/tracking integration has no API credentials configured. Every tracking attempt failed immediately for lack of config, not due to load — this tells us nothing about whether tracking scales, only that it's unconfigured on this environment.
+
+**If it did not work, why did it fail:**
+- The "update instead of create" outcome traces back to earlier setup issues on the droplet: the shared test Customer record initially didn't exist (`Could not find Customer: LOADTEST Bulk Order Customer`), then a stale/un-migrated `cogs` field caused a second round of failures (`'ShipStationOrderItem' object has no attribute 'cogs'` — fixed by running `bench migrate` on the droplet), and by the time both were resolved, 2,000 order records already existed in an error/incomplete state from the earlier failed attempts, so the next successful run updated them rather than creating fresh ones.
+- The tracking failures are a droplet configuration gap (no API secret set for the tracking integration), not an app defect — confirmed by the uniform, immediate `missing_api_secret` reason on every single order, not a timeout/rate-limit pattern that would suggest a real scale issue.
+
+**What fixes we made:** None to application code — both issues found here are environment/data-state issues on the droplet, not code bugs:
+1. Created the missing shared test Customer directly via the droplet's REST API (`POST /api/resource/Customer`) to unblock testing.
+2. Diagnosed the `cogs` `AttributeError` as a stale schema on the droplet — resolved by running `bench migrate` there (droplet's `lh` app checkout was behind on a real, already-committed feature: per-line COGS on order items).
+
+**What was the latest outcome:**
+Not yet finalized — a clean re-run is needed. Agreed next step: run `lh.patches.step2_infra_sizing_run.cleanup` on the droplet to remove the ~2,000 leftover `LO-LOADTEST-*` records, then re-run `execute` so the seed step reports a genuine `total_created: 2000` instead of `total_updated: 2000`. Tracking credentials also need to be configured on the droplet before the tracking-scheduler portion of this test can produce a meaningful result — until then, that portion should be documented as "not exercisable due to missing config," not as a scale finding either way.
+
+**Notable real finding worth flagging regardless of the above:** memory usage on this droplet was already at 92.4% *before* the test even started, and CPU spiked to 99.5% by the end. This may indicate the droplet is undersized relative to what a genuine 2,000-orders/day production simulation needs — worth checking droplet specs against real production sizing before drawing conclusions from future runs on this box.
+
+**To reproduce:**
+```bash
+# One-time cleanup of leftover test data:
+bench --site <site> execute lh.patches.step2_infra_sizing_run.cleanup
+
+# Full run:
+bench --site <site> execute lh.patches.step2_infra_sizing_run.execute --kwargs '{"order_count": 2000, "batch_size": 100}'
+```
+
+---
+
+## Step 2 Coverage Status
+
+| Checkbox | Status |
+|---|---|
+| 2.1 Sustained scheduler load | ❌ Not started — needs real cron running over hours, cannot be scripted into a single run |
+| 2.2 Concurrent user load (Locust) | ❌ Not started — needs a separate Locust script/tool |
+| 2.3 Long-duration queue behaviour | ❌ Not started — needs real elapsed hours of monitoring |
+| 2.4 Infrastructure sizing at 2,000 orders/day | ⚠️ In progress — Task 19 above; first run completed but not yet clean (see caveats) |
+| 2.5 Establish monitoring baselines | ❌ Not started — depends on 2.1–2.4 producing clean numbers first |
+| Step 2 sign-off | ❌ Blocked |
