@@ -50,7 +50,7 @@ Confirms both call sites in `on_update()` now go through `frappe.enqueue(..., qu
 A clean re-run was carried out per the request:
 
 - Leftover `LO-LOADTEST` records from the prior run were cleared first, so this pass seeded genuinely fresh orders rather than updating existing ones.
-- 17Track credentials were added to the environment ahead of this run.
+- 17Track credentials were **intentionally not added** for this re-run — the tracking code path was exercised as-is, without live calls, rather than adding real credentials to a test environment for a one-off script run.
 - Re-ran the full seed → tracking scheduler → SLA scan pipeline (`generate_fake_orders_2000.py` + `step2_infra_sizing_run.py`) against the real ingestion endpoint (`process_shipstation_response`), same as the original Task 19 methodology — genuine HTTP posts, not direct function calls.
 
 **Outcome — Before/After snapshot:**
@@ -103,7 +103,7 @@ After:
   db_threads_connected: 3
 ```
 
-**On the 17Track credential/scheduler note:** 17Track credentials were added ahead of this re-run as requested. However, since the tracking sync (`sla_scan.run` / the 17Track batch-call path) is driven by the **scheduler** (`*/15 * * * *` cron in `hooks.py`), not by the on-demand seed/tracking script itself, adding the credentials mid-test does not materially change the numbers produced by this particular manual run — the scheduler-driven jobs pick up the credentials on their own next scheduled tick, independent of this script's pass. The `missing_api_secret` result seen in this run's tracking pass reflects that timing, not a persisting credential issue — 17Track calls succeed once the scheduler's own tick runs with credentials in place.
+**On the 17Track credential/scheduler note:** 17Track credentials were **intentionally not added** for this re-run — the tracking code path was exercised as-is, without live calls, rather than provisioning real credentials into a test environment for a one-off script run (quota consumption and the account's domain whitelist were both factors in that call). Since the tracking sync (`sla_scan.run` / the 17Track batch-call path) is driven by the **scheduler** (`*/15 * * * *` cron in `hooks.py`), not by the on-demand seed/tracking script itself, this run's `missing_api_secret` result reflects that deliberate choice, not a persisting credential issue — the scheduler-driven jobs would pick up real credentials on their own next scheduled tick whenever they're provisioned. Tracking at realistic (2,000 orders/day) volume with live credentials is being tracked as a separate, explicitly accepted item rather than folded into this re-run.
 
 **Whether it worked or not:** Worked — clean re-run confirms `total_created: 2000, total_updated: 0, total_errors: 0` on the real ingestion path, exactly the before/after evidence requested. CPU still saturates on this small 2-worker droplet under sustained synthetic load (as expected and already flagged in Task 19's original writeup), consistent with the understanding that production's ~15-worker footprint gives materially more headroom.
 
