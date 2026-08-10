@@ -136,7 +136,39 @@ Yes, recommended before go-live. Every test completed so far (Tasks 1–19) vali
    - Run via: `env/bin/locust -f apps/lh/lh/patches/locustfile_step2_concurrent_users.py --headless -u 20 -r 2 -t 2h --host http://<droplet-host> --csv step2_locust_results`
    - Output CSVs (`_stats.csv`, `_stats_history.csv`, `_failures.csv`) give p50/p95/p99 response times per endpoint over time — compare against the team's agreed threshold (guide suggests <2s) for pass/fail, not hardcoded in the script itself.
 
-**Status:** Scripts written and ready; not yet executed. Needs to be run directly on the droplet (both scripts started together, soak in the background via `nohup`, Locust in a separate session) once convenient — multi-hour by design, so plan for a window rather than an instant result.
+**Status:** Executed on the droplet — 2-hour Locust run completed clean, 0 failures across every endpoint. See full results and the two real bugs found (and fixed) along the way below.
+
+**Execution history — three runs on the droplet before a clean pass:**
+
+*Run 1 (2026-08-06):* Locust returned `Unknown User(s): LH_USER=..., LH_PASSWORD=...` — Locust's CLI parses trailing bare `KEY=value` tokens as User class names to spawn, not env vars. Fixed by exporting them as real shell env vars before invocation instead of passing as trailing args; also found `http://<site>` 301-redirecting to `https://www.<site>/...`, which broke Locust's POST login (redirects turn POST into GET) — fixed by pointing `--host` at the droplet's bare IP instead, with a pre-flight curl check added to `run_step2_full_test.sh` to catch this automatically on future runs.
+
+*Run 2 (2026-08-06):* Login succeeded, but the save task crashed with `LocustError: Tried to set status on a request that has not yet been made` — `resp.failure()`/`resp.success()` were being called without `catch_response=True` on both the login check and the save task, so Locust had already auto-recorded the request by the time the manual call ran. Fixed by wrapping both in `with self.client.<method>(..., catch_response=True) as resp:`. Also found `Gate Pass [list]`/`[open]` at 100% failure — a genuine 403, since the test account only had the Customer Service role and Gate Pass permissions are System Manager/Administrator/Factory only. Fixed by adding the Factory role to the test account via a new one-off helper, `add_factory_role_to_locust_test_user.py`.
+
+*Run 3 (2026-08-07, first attempt):* Gate Pass and all read-only endpoints now clean, but `PUT /api/resource/Lyfe Order/[name] [save]` still failed 100% — first with `AttributeError: 'LyfeOrder' object has no attribute 'return_reason_category'` (a second DB/JSON schema mismatch on the droplet, resolved with `bench migrate`), then after that fix, with the original `ValidationError: Order Priority cannot be "Medium"` re-appearing. Root cause: the locustfile's sample-pool filter for LOADTEST orders was checking `name LIKE 'LO-LOADTEST%'`, but Lyfe Order's `name` is always autoname()'d as `LYF-{source_abbr}-{year}-####` regardless of source — the `LO-LOADTEST-` prefix only ever appears in `source_order_id`. The filter matched nothing, silently fell back to the unfiltered real-order pool, and let the same legacy bad data back in. Fixed by filtering on `source_order_id` instead of `name`.
+
+**Final clean run (2026-08-07, `step2_locust_results_20260807_163739`):** 2-hour run, 20 simulated staff users, ramped at 2/sec, against `http://159.203.142.29` with real cron active in the background throughout.
+
+```
+Type   Name                                         Request Count  Failure Count  p50   p95   p99   Max
+POST   /api/method/login                            20             0              1300  1900  1900  1864
+GET    /api/resource/Gate Pass [list]                2930           0              29    79    140   2568
+GET    /api/resource/Gate Pass [sample fetch]        20             0              270   1000  1000  1047
+GET    /api/resource/Gate Pass/[name] [open]         1411           0              38    98    170   679
+GET    /api/resource/Lyfe Order [list]               7320           0              45    110   180   993
+GET    /api/resource/Lyfe Order [sample fetch]       20             0              340   1100  1100  1119
+GET    /api/resource/Lyfe Order/[name] [open]        5752           0              92    210   320   1061
+PUT    /api/resource/Lyfe Order/[name] [save]        2848           0              330   640   870   1810
+GET    /api/resource/Material Issue for Order [list] 1508           0              29    74    120   571
+       Aggregated                                    21829          0 (0.00%)      65    370   610   2568
+```
+
+**Whether it worked or not:** Worked — 21,829 total requests, **0 failures (0.00%)** across every endpoint, including the save endpoint that failed on all three prior attempts. All p99 response times are well under the guide's suggested <2s threshold (worst is login itself at 1.9s p99, a one-time per-session cost, not per-request staff load). Ran with the droplet's real cron active throughout (SLA scan, ShipStation sync, tracking scheduler, escalation scan all firing on schedule per Item 4's confirmed-passing check), so this is a genuine "staff load while background jobs run" result, not an isolated benchmark.
+
+**If it worked, why it worked:** Every blocking issue found across the three prior runs was either a Locust-script bug (redirect handling, `catch_response` misuse, wrong sample-pool filter field) or a genuine but unrelated droplet data/schema issue (`bench migrate` gaps, legacy `order_priority` values) — none were capacity/concurrency problems. Once the test harness itself was correct and pointed at clean synthetic data, the actual application handled 20 concurrent staff users plus full background cron load without a single failure or slow response.
+
+**What fixes we made:** Five real, verifiable fixes across the three runs (see execution history above) — all committed and pushed to `apps/lh` (`prod` branch): the redirect pre-flight check, the `catch_response` fix, the Factory role helper, the `source_order_id` filter fix, and (separately) two `bench migrate` runs on the droplet to close real schema gaps (`custom_duty_changes_us_tram`, `return_reason_category`).
+
+**What was the latest outcome:** PASS. Section 2.2's concurrent-user-load checkbox is now satisfied with a real, clean, 2-hour result.
 
 ---
 
