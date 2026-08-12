@@ -27,6 +27,7 @@ A dialog will open asking you to fill in the return details:
 - **Items table** — you'll see all the items on the order. Enter the **Return Qty** for each item the customer is returning. By default it shows the full quantity, so update it if only part of the order is being returned.
 - **Refund details** (if applicable) — refund status, refund amount, and refund date.
 - **Reship details** (if applicable) — reship status and reship date.
+- **Return To Warehouse** — select which warehouse the returned item is going back to (Factory or US Warehouse).
 - **Restock Fee %** — if you're deducting a restocking fee from the refund, enter the percentage and the fee amount will be calculated for you.
 
 > 📷 *[Screenshot: Return Details dialog — reason, dates, items table, refund/reship fields]*
@@ -46,6 +47,7 @@ As the situation develops, reopen the return dialog to keep the order updated:
 - Mark the **Return Received Date** once the item is back in-house.
 - Update the **Refund Status** and **Refund Amount** once a refund is processed.
 - Update the **Reship Status** and **Reship Date** once a replacement is sent out.
+- Set **Return To Warehouse** to confirm where the returned item is being sent back to.
 
 The system automatically determines whether this is a **Refund**, **Reship**, or **Refund & Reship** case based on which of these fields you've filled in — you don't need to select this yourself.
 
