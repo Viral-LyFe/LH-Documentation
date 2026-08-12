@@ -15,7 +15,7 @@ Use this whenever you need to estimate the shipping cost for an order **before**
 Before the shipping rate tool becomes available, the Quotation needs its package size filled in — the system needs to know what it's shipping. Either of the following works:
 
 - **Combined box dimensions** — fill in Box Length, Box Width, and Box Height, **or**
-- **Parcel Size table** — add one or more rows to the Parcel Size table (used when items ship as separate parcels rather than one combined box)
+- **Parcel Size table** — add one or more rows to the Parcel Size table (used when items ship as separate parcels rather than one combined box). The Parcel Size table and its **"Update Parcel Size"** button are visible to all users on the Quotation form — not restricted to the Factory role.
 
 > The **"Get Shipping rate"** button will not appear until one of these is filled in. It's also only available while the Quotation is still in **Draft**.
 
