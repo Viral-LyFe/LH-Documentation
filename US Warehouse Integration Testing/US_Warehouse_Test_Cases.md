@@ -32,7 +32,9 @@ India.
 - The order's status changes to **"Submitted to 1Click"**.
 - A real order number from 1Click appears on the order.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the order form showing status "Submitted to 1Click" and the 1Click order ID field filled in ]**
+><img width="1752" height="917" alt="image" src="https://github.com/user-attachments/assets/e0dc9b2f-0700-4903-b31d-acbb0050e188" />
+><img width="1646" height="867" alt="image" src="https://github.com/user-attachments/assets/3a313162-f3c3-4ded-a2d8-d55d6d5cac08" />
+
 
 **Result:** ☐ Pass ☐ Fail
 **Notes:**
@@ -56,7 +58,9 @@ customer — it should not wait around for the US warehouse at all.
 - The order looks like any other Factory order — nothing unusual stands out
   about it on screen.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the order showing Factory Assignment status ]**
+<img width="1715" height="830" alt="image" src="https://github.com/user-attachments/assets/3da3195c-b677-4d95-bda1-6ea171ad18c8" />
+<img width="1916" height="607" alt="image" src="https://github.com/user-attachments/assets/9f510ff8-07e5-49a4-8e51-e133c639aab8" />
+
 
 **Result:** ☐ Pass ☐ Fail
 **Notes:**
