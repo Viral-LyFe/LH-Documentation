@@ -19,6 +19,8 @@ Pass or Fail.
 
 ## Test Case 1 — Order Ships Fully From the US Warehouse
 
+**Order ID:** `LYF-MN-2026-0029`
+
 **What we're checking:** when everything a customer ordered is already sitting
 in the US warehouse, the order should go straight there — no detour through
 India.
@@ -40,6 +42,8 @@ India.
 ---
 
 ## Test Case 2 — Order Ships Directly From India (Nothing in US Stock)
+
+**Order ID:** `LYF-MN-2026-0030`
 
 **What we're checking:** when nothing the customer ordered is in the US
 warehouse, the order should go straight from the factory in India to the
@@ -64,6 +68,8 @@ customer — it should not wait around for the US warehouse at all.
 ---
 
 ## Test Case 3 — Changing Your Mind: Route an India Order Through the US Warehouse Instead
+
+**Order ID:** `LYF-MN-2026-0031`
 
 **What we're checking:** sometimes an order that was going to ship directly
 from India should instead go through the US warehouse first. There's a
@@ -94,6 +100,8 @@ button for this.
 ---
 
 ## Test Case 4 — Order Automatically Books Once It Arrives at the US Warehouse
+
+**Order ID:** `LYF-MN-2026-0031` (same order as Test Case 3, continued)
 
 **What we're checking:** once the goods physically arrive at the US
 warehouse and someone checks them in, the order should automatically get
@@ -126,6 +134,8 @@ booked with 1Click — no extra clicking needed beyond marking it "received."
 
 ## Test Case 5 — Mixed Order (Some Items From the US, Some From India)
 
+**Order ID:** `LYF-MN-2026-0032`
+
 **What we're checking:** when an order has a mix — some items already at the
 US warehouse, some that still need to come from India — the system should
 correctly split them and wait for a human to review before doing anything
@@ -153,6 +163,8 @@ automatically.
 
 ## Test Case 6 — Shipping Paperwork Shows the Right Address
 
+**Order ID:** _(to be filled in when this test is run)_
+
 **What we're checking:** when an order is going through the US warehouse,
 any shipping labels or invoices generated for the factory's portion should
 show the US warehouse's address — not the customer's address.
@@ -176,6 +188,8 @@ show the US warehouse's address — not the customer's address.
 ---
 
 ## Test Case 7 — Tracking Updates Show Up Correctly
+
+**Order ID:** _(to be filled in when this test is run)_
 
 **What we're checking:** once an order is booked with 1Click, the system
 should automatically check in periodically and pull the tracking number once
@@ -202,15 +216,15 @@ the warehouse ships it.
 
 ## Summary
 
-| Test Case | Result |
-|---|---|
-| 1 — US Full Order | ☐ Pass ☐ Fail |
-| 2 — India Direct | ☐ Pass ☐ Fail |
-| 3 — Route via US Warehouse | ☐ Pass ☐ Fail |
-| 4 — Auto-book on Arrival | ☐ Pass ☐ Fail |
-| 5 — Mixed Order | ☐ Pass ☐ Fail |
-| 6 — Shipping Paperwork Address | ☐ Pass ☐ Fail |
-| 7 — Tracking Updates | ☐ Pass ☐ Fail |
+| Test Case | Order ID | Result |
+|---|---|---|
+| 1 — US Full Order | `LYF-MN-2026-0029` | ☐ Pass ☐ Fail |
+| 2 — India Direct | `LYF-MN-2026-0030` | ☐ Pass ☐ Fail |
+| 3 — Route via US Warehouse | `LYF-MN-2026-0031` | ☐ Pass ☐ Fail |
+| 4 — Auto-book on Arrival | `LYF-MN-2026-0031` | ☐ Pass ☐ Fail |
+| 5 — Mixed Order | `LYF-MN-2026-0032` | ☐ Pass ☐ Fail |
+| 6 — Shipping Paperwork Address | _(pending)_ | ☐ Pass ☐ Fail |
+| 7 — Tracking Updates | _(pending)_ | ☐ Pass ☐ Fail |
 
 **Tested by:**
 **Date:**
