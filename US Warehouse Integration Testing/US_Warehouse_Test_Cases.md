@@ -88,9 +88,10 @@ button for this.
 - The order still looks like a normal Factory order — nothing alarming shows
   up on screen.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the confirmation popup ]**
+<img width="1162" height="492" alt="image" src="https://github.com/user-attachments/assets/5fb1b22f-c600-4521-9832-30da27e4b2b0" />
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the order after clicking Yes, showing the new internal shipping record ]**
+<img width="1676" height="887" alt="image" src="https://github.com/user-attachments/assets/38fb3ba2-5c3c-4711-90a7-dd505b907a6d" />
+
 
 **Result:** ☐ Pass ☐ Fail
 **Notes:**
