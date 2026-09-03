@@ -385,36 +385,36 @@ to India by mistake?
 **Result:** ☑ Pass ☐ Fail
 **Notes:** 
 
-# Handling Inventory Check Failures Before Routing
+### Handling Inventory Check Failures Before Routing
 
-## Step 1 — The check fails, and we know it failed (not just "zero")
+#### Step 1 — The check fails, and we know it failed (not just "zero")
 
 A real error (network/API problem) is now tagged internally as a genuine failure — separate from a clean "0 available" response. A missing/unconfigured setup is still treated as "nothing to check yet" (not an error) — only an actual broken call counts.
 
-## Step 2 — The order stops before any wrong decision gets made
+#### Step 2 — The order stops before any wrong decision gets made
 
 Instead of letting the order proceed on unverified data, the system throws an error right there — before it can route to India, before it can route to US Warehouse, before anything.
 
-## Step 3 — The order lands in a status everyone already recognizes: "1Click Error"
+#### Step 3 — The order lands in a status everyone already recognizes: "1Click Error"
 
 Same status used for a failed order submission. The real cause is saved on the order (`oneclick_error` field) so anyone opening it can see exactly why it failed.
 
-## Step 4 — A "Recheck Inventory" button appears — but only for this specific cause
+#### Step 4 — A "Recheck Inventory" button appears — but only for this specific cause
 
 The button only shows up when the `1Click Error` was actually caused by a failed stock check. If the order failed for a different reason (like a failed order submission), this button stays hidden — that has its own separate retry path.
 
-## Step 5 — Clicking it re-runs everything from scratch
+#### Step 5 — Clicking it re-runs everything from scratch
 
 The order resets to `New` and the whole routing process runs again, exactly like a brand-new order. If 1Click responds correctly this time, it routes normally (US Warehouse, India, or Mixed) and proceeds automatically — no manual data re-entry needed.
 
-## Step 6 — There's also a manual bypass, if someone doesn't want to wait at all
+#### Step 6 — There's also a manual bypass, if someone doesn't want to wait at all
 
 Instead of waiting for the recheck to work, a human can directly assign the order's Warehouse field to:
 
 - **`US Warehouse - LH`** — skips the stock check entirely and submits straight to 1Click.
 - **`Factory - LH`** — sends the order via India instead.
 
-## One-line summary
+#### One-line summary
 
 - **Before:** a broken inventory check silently misrouted the order and left no trace.
 - **Now:** it stops, flags itself clearly as `1Click Error`, lets someone retry the exact same check with one click, or lets someone skip the check entirely and choose the warehouse by hand.
