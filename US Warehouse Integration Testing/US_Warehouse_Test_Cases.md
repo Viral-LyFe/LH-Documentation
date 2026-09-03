@@ -667,7 +667,7 @@ with 1Click?
 - Whatever they do, our system should show that clearly on the order — not
   silently mark it as a normal successful full shipment when it wasn't.
 
-> 📷 **[ IMAGE PLACEHOLDER — pending: needs 1Click's answer before this can be fully tested and screenshotted ]**
+<img width="1657" height="812" alt="image" src="https://github.com/user-attachments/assets/3ef6ed0b-a72c-4dfb-a394-65e4031b6679" />
 
 **Result:** ☐ Pass ☐ Fail
 **Notes:**
