@@ -255,8 +255,13 @@ show the US warehouse's address — not the customer's address.
 
 <img width="1076" height="292" alt="image" src="https://github.com/user-attachments/assets/f1df4c2c-ca3f-42f5-8481-790c9b126e6b" />
 
-**Result:** ☐ Pass ☐ Fail
-**Notes:**
+**Result:** ☑ Pass ☐ Fail
+**Notes:** Verified against the screenshots (2026-09-04) across every
+document type: the Pending List, Packing List, Sales Invoice (both
+Billing and Shipping Address), and Pick-Pack List all correctly show
+"Lyfe Hardware" / the US Warehouse address (270 Old New Brunswick Rd Unit
+#200 Suite 461, Piscataway, NJ 08854) instead of the customer's real
+address — matching the expected result exactly across the board.
 
 ---
 
@@ -1317,7 +1322,7 @@ finish connecting this feature, or remove it if it's no longer needed.
 | 3 — Route via US Warehouse | `LYF-SH-2026-1799` | ☑ Pass |
 | 4 — Auto-book on Arrival | `LYF-MN-2026-0053` | ☑ Pass |
 | 5 — Mixed Order | `LYF-MN-2026-0032` | ☐ Pass ☐ Fail |
-| 6 — Shipping Paperwork Address | _(pending)_ | ☐ Pass ☐ Fail |
+| 6 — Shipping Paperwork Address | `LYF-MN-2026-0053` | ☑ Pass |
 | 7 — Tracking Updates | _(pending)_ | ☐ Pass ☐ Fail |
 | 8 — Silent Failure on Create Order ⭐ | `LYF-MN-2026-0047` | ☑ Pass |
 | 9 — Stock Check Failure Misroutes | `LYF-MN-2026-0048` | ☑ Pass (see note — second code path still needs testing) |
