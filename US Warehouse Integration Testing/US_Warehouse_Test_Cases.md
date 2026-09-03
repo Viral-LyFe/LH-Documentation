@@ -1021,6 +1021,26 @@ real 1Click order ID `1659398`) — confirming this alert's resolution path
 connects cleanly into the rest of the fulfillment flow, not just the SLA
 system in isolation.
 
+**Slack alert added 2026-09-04**, per explicit user request: both rules
+now also post a real Slack message the moment a violation is first
+detected, using the same webhook already configured for tracking alerts
+(`Seventeen Track Settings.tracking_alert_slack_webhook_url`) — no new
+webhook needed. Scoped so **only** these two rules post to Slack; every
+other SLA rule in the system (Quotations, Purchase Orders, etc.) is
+unaffected. Confirmed live: a real message posted successfully to the
+`tracking-cycle-issue` Slack channel for order `LYF-MN-2026-0078`
+(screenshot above), correctly showing the order name, how many hours it's
+been stuck, the threshold, and a link to the created task.
+
+**Screenshot caveat:** the screenshot shows the same alert appearing 3
+times for `LYF-MN-2026-0078`. This is **not** a bug in the real scan
+pipeline — it happened because the alert was sent manually several times
+in a row while confirming the webhook actually worked (once through the
+real code path, twice more as direct manual test sends). Confirmed by
+reading the code: the real path only ever calls the Slack sender once per
+genuine new violation — a normal scheduled scan run will not produce
+duplicates like this.
+
 ---
 
 ## Test Case 22 — Mixed Orders Splitting Into Two Separate Shipments
