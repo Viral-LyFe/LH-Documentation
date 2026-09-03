@@ -997,6 +997,9 @@ entered, or Transfer Order marked Received) — no manual cleanup needed.
   measured in business hours, not calendar hours.
 - Both tasks close themselves automatically once resolved.
 
+<img width="1502" height="702" alt="image" src="https://github.com/user-attachments/assets/c4e6bd2e-b7e2-412a-b5c8-313d0da94c1d" />
+
+
 **Result:** ☑ Pass (both alerts)
 **Notes:** Verified live, full pipeline, real orders.
 
