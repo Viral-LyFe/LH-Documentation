@@ -237,7 +237,7 @@ the warehouse ships it.
 - That same tracking number also shows up on the actual customer-facing
   order (Shopify/Etsy) — this is the part that matters most to the customer.
 
-# Fix: 1Click Orders Stuck at "Submitted to 1Click"
+## Fix: 1Click Orders Stuck at "Submitted to 1Click"
 
 ## Summary
 
