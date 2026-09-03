@@ -872,7 +872,7 @@ US stock.
   produces the same Mixed-order human-review flow as any other
   partially-available order.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot showing the order saved successfully with a missing SKU, and the no-SKU item's row correctly assigned to Factory ]**
+> <img width="1666" height="712" alt="image" src="https://github.com/user-attachments/assets/68f74911-4452-497e-8198-5e5cb540590d" />
 
 **Result:** ☑ Pass
 **Notes:** Executed 2026-09-02, direct system-level test — confirmed the
