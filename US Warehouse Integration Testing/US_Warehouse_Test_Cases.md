@@ -513,7 +513,12 @@ one?
 - Ideally, either our system refuses to submit it a second time, or 1Click
   recognizes it's the same order and doesn't create a duplicate.
 
+**Submitted Order successfully**
+
 <img width="1661" height="902" alt="image" src="https://github.com/user-attachments/assets/76e55c10-5f66-4450-b602-0e3f7aeae3d6" />
+
+**Second Time posting a same error convert to fail**
+
 <img width="1682" height="817" alt="image" src="https://github.com/user-attachments/assets/d1f3997b-5f39-47c7-a7cf-7d98dcb1fef2" />
 
 
@@ -552,10 +557,7 @@ or does it fail cleanly so someone can retry?
 - For the mixed-order version: neither shipment should be left in a
   half-created, orphaned state.
 
-**First Posted order successfully**
-<img width="1661" height="902" alt="image" src="https://github.com/user-attachments/assets/b323b7c6-70d4-448f-a443-c9adbe4ba1d8" />
-**Second time tried to posted changes as error log**
-<img width="1682" height="817" alt="image" src="https://github.com/user-attachments/assets/821a9b8b-c94c-4344-a25b-eea310634406" />
+Image
 
 
 **Result:** ☑ Pass (plain order) ☐ Fail — mixed-order case still needs a run
