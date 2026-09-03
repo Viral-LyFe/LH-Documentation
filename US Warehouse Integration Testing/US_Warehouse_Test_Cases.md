@@ -565,7 +565,12 @@ or does it fail cleanly so someone can retry?
 - For the mixed-order version: neither shipment should be left in a
   half-created, orphaned state.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of `LYF-MN-2026-0065` showing "1Click Error", plus a second screenshot of `LYF-MN-2026-0066`'s Transfer Order still correctly "Received" alongside the Lyfe Order's "1Click Error" ]**
+**For Time Out Error**
+<img width="1642" height="606" alt="image" src="https://github.com/user-attachments/assets/6b2c98d4-a601-4f67-99d9-00129a9031d4" />
+
+**As of Now not able to replicate a second case but that will be visible as 1Click Error only**
+<img width="1611" height="867" alt="image" src="https://github.com/user-attachments/assets/865cc836-f866-4f1e-bcba-294fc9edf494" />
+
 
 **Result:** ☑ Pass (both plain and mixed-order cases)
 **Notes:** Re-run 2026-09-03, both cases completed.
