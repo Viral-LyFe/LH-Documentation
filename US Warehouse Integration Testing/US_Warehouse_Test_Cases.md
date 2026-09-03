@@ -213,7 +213,12 @@ show the US warehouse's address — not the customer's address.
 - If you switch a different order back to "ship direct to customer," the
   address correctly goes back to the real customer address.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the invoice/paperwork showing the US warehouse address ]**
+<img width="1191" height="512" alt="image" src="https://github.com/user-attachments/assets/b19745ba-e11e-437c-848a-a835192a64da" />
+
+----------------------------
+
+<img width="1876" height="382" alt="image" src="https://github.com/user-attachments/assets/7b17f638-531f-4bd6-9bee-cc5364c30c79" />
+
 
 **Result:** ☐ Pass ☐ Fail
 **Notes:**
@@ -240,7 +245,54 @@ the warehouse ships it.
 - That same tracking number also shows up on the actual customer-facing
   order (Shopify/Etsy) — this is the part that matters most to the customer.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the tracking number appearing on the order ]**
+## Fix: 1Click Orders Stuck at "Submitted to 1Click"
+
+## Summary
+
+Orders routed through the US Warehouse (1Click) were getting stuck at the `Submitted to 1Click` status forever, even after the carrier had picked up and delivered the package. The 17Track-based tracking check — the job responsible for advancing order status based on real carrier events — was explicitly skipping any order that originated from 1Click.
+
+This fix removes that skip condition once a real tracking number is present, so 1Click orders flow through the same status pipeline as factory-shipped orders.
+
+## Background: how a 1Click order used to behave
+
+Example: Order `LH#1234`, routed via US Warehouse.
+
+1. **Order submitted to 1Click**
+   Status: `Submitted to 1Click`. No tracking number yet.
+
+2. **Hourly polling begins**
+   Every hour, we ask 1Click: "did you ship it?" Until 1Click actually hands the package to a carrier, there's nothing to report, and the order stays as-is. This repeats hourly.
+
+3. **1Click ships the order**
+   Say it goes out via UPS with tracking number `1Z999AA1`. On the next hourly check, 1Click's response includes that tracking number, and we:
+   - Save `1Z999AA1` to the order's tracking number field, and save `UPS` as the carrier.
+   - Push that same tracking number to Shopify/Etsy so the customer can see it.
+
+   At this exact moment, the order has a real tracking number and carrier on file — this is the trigger point for everything that follows.
+
+4. **The broken part: the normal tracking check ignores it**
+   A separate hourly job watches the actual carrier's tracking page via 17Track and advances order status accordingly. Previously, this job checked whether the order originated from 1Click and, if so, said "not my job, skip it" — leaving the order sitting at `Submitted to 1Click` forever, even while UPS was actively moving the package.
+
+## What changed
+
+Since the order now has a real tracking number, it's no longer skipped by the 17Track check. It's treated exactly like any factory-shipped order:
+
+| Carrier signal | Resulting status |
+|---|---|
+| Label printed, not yet picked up | `Awaiting Shipping` |
+| Package scanned / in transit | `Shipped` |
+| Delivered to customer | `Completed` |
+
+## One-line summary
+
+- **Before:** A 1Click order finds its tracking number, then just stops — stuck at `Submitted to 1Click` forever.
+- **Now:** A 1Click order finds its tracking number, and from that point on it's treated like any normal order — moving automatically through `Awaiting Shipping → Shipped → Completed` via the same carrier-tracking check every other order already uses.
+
+## Manual test plan
+
+1. Take one of the real orders currently sitting at `Submitted to 1Click` (e.g. `LYF-MN-2026-0034`, `-0036`, `-0038`).
+2. Wait for 1Click to provide a real tracking number on its next hourly sync — or enter one manually to simulate it.
+3. Confirm the status advances on the next tracking poll instead of remaining stuck.
 
 **Result:** ☐ Pass ☐ Fail
 **Notes:**
@@ -265,7 +317,47 @@ actually create the order, does our system notice — or does it show
 - The order shows status **"1Click Error,"** not "Submitted to 1Click."
 - No 1Click order number appears on the order.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the order showing "1Click Error" status after the simulated failure ]**
+<img width="1617" height="821" alt="image" src="https://github.com/user-attachments/assets/997cebf0-aed2-48ff-84d2-6f809d48ecec" />
+
+## Root problem being tested
+
+1Click's API returns HTTP `200` even when order creation actually failed on their side. The only real signal that something went wrong is a `"success": false` field buried in the response body. A naive integration that only checks the HTTP status code would think everything worked.
+
+## How we detect it
+
+In `create_order()` (`oneclick_api.py`):
+
+```python
+if isinstance(result, dict) and result.get("success") is False:
+    _update_log(log_name, "Failed", output=result, error=...)
+    _raise_if_failed(result, title="1Click Create Order Failed")
+```
+
+This check runs on **every** response, regardless of HTTP status — it never trusts the status code alone. If 1Click reports `success: false`, this throws an error immediately.
+
+## What happens when it throws — the full chain
+
+1. `create_order()` throws.
+2. The exception bubbles up through `_submit_single_oneclick_order()` — it never reaches the "mark as Submitted to 1Click" step, since the throw happens before that code runs.
+3. The outer `run_oneclick_fulfillment()` catches it in a `try/except` and sets:
+   - `status = "1Click Error"`
+   - `oneclick_error` = the actual error details (so someone can see why it failed)
+   - The order is **never** marked `Submitted to 1Click`.
+4. The failed attempt is also logged in an **Integration Request** record, so the exact request/response is recoverable. A `retry_create_order_from_log()` method exists to resubmit the same payload later without rebuilding it.
+
+## Verification
+
+Already tested and confirmed — this ran on `LYF-MN-2026-0047` on 2026-09-02 with a real simulated failure:
+
+- The order correctly landed in `1Click Error`.
+- `oneclick_order_id` stayed empty.
+- Code was re-verified as unchanged and matching this behavior exactly.
+
+## Bottom line
+
+This one is genuinely solid — **no gap found**. It's the one item on Srishti's list that was already fully correct from the start, and real execution confirmed it.
+
+**Remaining action:** grab the screenshot from `LYF-MN-2026-0047`'s order form for the test doc's proof placeholder.
 
 **Result:** ☑ Pass ☐ Fail
 **Notes:** Executed 2026-09-02 (developer-run, simulated response). Order
