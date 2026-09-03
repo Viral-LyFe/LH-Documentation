@@ -1043,34 +1043,54 @@ duplicates like this.
 
 ---
 
-## Test Case 22 — Mixed Orders Splitting Into Two Separate Shipments
+## Test Case 22 — Mixed Orders Must Always Ship as One Shipment
 
-**Order ID:** _(to be filled in when this test is run)_
+**Order ID:** `LYF-MN-2026-0079` (regression check, single-shipment path still works)
 
-**What we're checking:** there's an older, separate mechanism that can split
-one mixed order into two completely separate shipments to the customer
-(rather than the "wait and send as one shipment" behavior tested in Test
-Case 5). We need to confirm whether this old behavior still exists and get
-a decision on whether it should still be allowed.
+**What we're checking:** there used to be an older, separate mechanism
+that could split one mixed order into two completely separate shipments
+to the customer, instead of the "wait and send as one shipment" behavior
+tested in Test Case 5. **Decision made 2026-09-04:** a customer should
+never receive two separate boxes for one order — the older mechanism has
+been removed entirely, keeping only the single-shipment, human-reviewed
+Mixed flow from Test Case 5.
+
+**What was removed:** the older code (`_split_and_submit_oneclick`) used
+to, on a mixed-stock result, immediately create two brand-new child
+orders — one submitted straight to 1Click for the US-stocked items, one
+left for Factory to fulfill separately — with no human review, producing
+two real shipments for what the customer thinks is one order. This is now
+gone from the codebase entirely.
+
+**What happens now instead:** if the older code path's own mixed-detection
+logic ever produces a mixed result (a separate, narrower trigger than Test
+Case 5's), the whole order now falls back to shipping from Factory as one
+single shipment — same treatment as "nothing in US stock." The only way a
+mixed order gets split between US Warehouse and Factory going forward is
+Test Case 5's flow: hold, show both lists, wait for a human to confirm.
 
 **Steps:**
-1. This requires a developer's help to identify and trigger an order that
-   matches the OLDER split condition specifically (different from Test Case
-   5's scenario).
-2. Observe whether the order ends up creating two separate 1Click order
-   numbers / two separate customer shipments.
+1. Confirm the old two-shipment code path no longer exists.
+2. Confirm a normal single-item order routed to the US Warehouse still
+   submits correctly (regression check — this removal must not break
+   anything else).
 
 **Expected Result:**
-- Confirm whether this still happens today.
-- This is not a pass/fail in the usual sense — it needs a decision from the
-  founder on whether two-shipment splits should still be allowed for this
-  older case, or retired in favor of the newer single-shipment approach
-  (Test Case 5).
+- The two-shipment mechanism is gone — no order can ever create two
+  separate 1Click submissions from one parent order anymore.
+- A mixed result reaching the old code's own logic now correctly routes
+  the whole order to Factory as a single shipment, not a split.
+- Normal orders (single-item, fully in US stock) continue to work exactly
+  as before.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot showing two separate 1Click order numbers coming from one original order, for founder review ]**
-
-**Result:** ☐ Pass ☐ Fail ☐ Needs Founder Decision
-**Notes:**
+**Result:** ☑ Pass — removed per founder decision, regression-checked clean
+**Notes:** Confirmed the old two-shipment code is fully removed — checked
+directly, calling the routing logic with a deliberately mixed result now
+correctly sends the whole order to Factory as one shipment instead of
+creating two. Regression-checked a normal order (`LYF-MN-2026-0079`, real
+SKU, forced to the US Warehouse) still submits correctly with a real
+1Click order ID (`1659399`) — confirms this removal didn't affect the
+normal, single-shipment submission path.
 
 ---
 
@@ -1275,7 +1295,7 @@ finish connecting this feature, or remove it if it's no longer needed.
 | 19 — Missing SKU (never blocks; no-SKU items go to Factory) | `LYF-MN-2026-0046` / `-0072` | ☑ Pass |
 | 20 — 1Click Order Not Dispatched Within 72h = SLA Breach | `LYF-MN-2026-0074` | ☑ Pass — new SLA rule built and verified |
 | 21 — Stuck Shipment Alerts | `LYF-MN-2026-0077` / `ASN-2026-00008` | ☑ Pass (both alerts) |
-| 22 — Two-Shipment Split (Old Path) | _(pending)_ | ☐ Pass ☐ Fail ☐ Needs Founder Decision |
+| 22 — Two-Shipment Split (removed per founder decision) | `LYF-MN-2026-0079` | ☑ Pass |
 | 23 — Cancel After Submission | _(pending — needs CS's manual process documented)_ | ☐ Pass ☐ Fail |
 | 24 — Same-Item Double Order Race | `LYF-MN-2026-0051` / `-0052` | ☐ Inconclusive — needs a real 1-unit SKU |
 | 25 — Manual Tracking Not Auto-Corrected | _(pending)_ | ☐ Pass ☐ Fail |
