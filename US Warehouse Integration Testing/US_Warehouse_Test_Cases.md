@@ -237,7 +237,54 @@ the warehouse ships it.
 - That same tracking number also shows up on the actual customer-facing
   order (Shopify/Etsy) — this is the part that matters most to the customer.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the tracking number appearing on the order ]**
+# Fix: 1Click Orders Stuck at "Submitted to 1Click"
+
+## Summary
+
+Orders routed through the US Warehouse (1Click) were getting stuck at the `Submitted to 1Click` status forever, even after the carrier had picked up and delivered the package. The 17Track-based tracking check — the job responsible for advancing order status based on real carrier events — was explicitly skipping any order that originated from 1Click.
+
+This fix removes that skip condition once a real tracking number is present, so 1Click orders flow through the same status pipeline as factory-shipped orders.
+
+## Background: how a 1Click order used to behave
+
+Example: Order `LH#1234`, routed via US Warehouse.
+
+1. **Order submitted to 1Click**
+   Status: `Submitted to 1Click`. No tracking number yet.
+
+2. **Hourly polling begins**
+   Every hour, we ask 1Click: "did you ship it?" Until 1Click actually hands the package to a carrier, there's nothing to report, and the order stays as-is. This repeats hourly.
+
+3. **1Click ships the order**
+   Say it goes out via UPS with tracking number `1Z999AA1`. On the next hourly check, 1Click's response includes that tracking number, and we:
+   - Save `1Z999AA1` to the order's tracking number field, and save `UPS` as the carrier.
+   - Push that same tracking number to Shopify/Etsy so the customer can see it.
+
+   At this exact moment, the order has a real tracking number and carrier on file — this is the trigger point for everything that follows.
+
+4. **The broken part: the normal tracking check ignores it**
+   A separate hourly job watches the actual carrier's tracking page via 17Track and advances order status accordingly. Previously, this job checked whether the order originated from 1Click and, if so, said "not my job, skip it" — leaving the order sitting at `Submitted to 1Click` forever, even while UPS was actively moving the package.
+
+## What changed
+
+Since the order now has a real tracking number, it's no longer skipped by the 17Track check. It's treated exactly like any factory-shipped order:
+
+| Carrier signal | Resulting status |
+|---|---|
+| Label printed, not yet picked up | `Awaiting Shipping` |
+| Package scanned / in transit | `Shipped` |
+| Delivered to customer | `Completed` |
+
+## One-line summary
+
+- **Before:** A 1Click order finds its tracking number, then just stops — stuck at `Submitted to 1Click` forever.
+- **Now:** A 1Click order finds its tracking number, and from that point on it's treated like any normal order — moving automatically through `Awaiting Shipping → Shipped → Completed` via the same carrier-tracking check every other order already uses.
+
+## Manual test plan
+
+1. Take one of the real orders currently sitting at `Submitted to 1Click` (e.g. `LYF-MN-2026-0034`, `-0036`, `-0038`).
+2. Wait for 1Click to provide a real tracking number on its next hourly sync — or enter one manually to simulate it.
+3. Confirm the status advances on the next tracking poll instead of remaining stuck.
 
 **Result:** ☐ Pass ☐ Fail
 **Notes:**
