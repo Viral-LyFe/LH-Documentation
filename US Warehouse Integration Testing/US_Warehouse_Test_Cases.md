@@ -309,7 +309,47 @@ actually create the order, does our system notice — or does it show
 - The order shows status **"1Click Error,"** not "Submitted to 1Click."
 - No 1Click order number appears on the order.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the order showing "1Click Error" status after the simulated failure ]**
+<img width="1617" height="821" alt="image" src="https://github.com/user-attachments/assets/997cebf0-aed2-48ff-84d2-6f809d48ecec" />
+
+## Root problem being tested
+
+1Click's API returns HTTP `200` even when order creation actually failed on their side. The only real signal that something went wrong is a `"success": false` field buried in the response body. A naive integration that only checks the HTTP status code would think everything worked.
+
+## How we detect it
+
+In `create_order()` (`oneclick_api.py`):
+
+```python
+if isinstance(result, dict) and result.get("success") is False:
+    _update_log(log_name, "Failed", output=result, error=...)
+    _raise_if_failed(result, title="1Click Create Order Failed")
+```
+
+This check runs on **every** response, regardless of HTTP status — it never trusts the status code alone. If 1Click reports `success: false`, this throws an error immediately.
+
+## What happens when it throws — the full chain
+
+1. `create_order()` throws.
+2. The exception bubbles up through `_submit_single_oneclick_order()` — it never reaches the "mark as Submitted to 1Click" step, since the throw happens before that code runs.
+3. The outer `run_oneclick_fulfillment()` catches it in a `try/except` and sets:
+   - `status = "1Click Error"`
+   - `oneclick_error` = the actual error details (so someone can see why it failed)
+   - The order is **never** marked `Submitted to 1Click`.
+4. The failed attempt is also logged in an **Integration Request** record, so the exact request/response is recoverable. A `retry_create_order_from_log()` method exists to resubmit the same payload later without rebuilding it.
+
+## Verification
+
+Already tested and confirmed — this ran on `LYF-MN-2026-0047` on 2026-09-02 with a real simulated failure:
+
+- The order correctly landed in `1Click Error`.
+- `oneclick_order_id` stayed empty.
+- Code was re-verified as unchanged and matching this behavior exactly.
+
+## Bottom line
+
+This one is genuinely solid — **no gap found**. It's the one item on Srishti's list that was already fully correct from the start, and real execution confirmed it.
+
+**Remaining action:** grab the screenshot from `LYF-MN-2026-0047`'s order form for the test doc's proof placeholder.
 
 **Result:** ☑ Pass ☐ Fail
 **Notes:** Executed 2026-09-02 (developer-run, simulated response). Order
