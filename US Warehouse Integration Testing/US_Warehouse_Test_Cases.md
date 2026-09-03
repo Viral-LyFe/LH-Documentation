@@ -1166,7 +1166,8 @@ cancels an order that's already been submitted to 1Click.
 - Step 4 (switching to Factory-only after 1Click submission) — not yet
   separately verified; needs a run against a real Submitted-to-1Click order.
 
-> 📷 **[ IMAGE PLACEHOLDER — screenshot of the real Slack alert, pending upload ]**
+<img width="1497" height="495" alt="image" src="https://github.com/user-attachments/assets/606ead5f-4f22-424c-ad7f-0a3da58fe9b4" />
+
 
 **Result:** ☐ Pass ☐ Fail — **alert sent live to the real Slack channel; awaiting screenshot for final sign-off**
 **Notes:** Alert wired into `shipstation_orders.py`'s cancellation-sync path
