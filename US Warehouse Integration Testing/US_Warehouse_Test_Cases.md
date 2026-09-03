@@ -545,7 +545,7 @@ relying on them to reject it every time.
 
 ## Test Case 13 — 1Click Doesn't Respond At All (Times Out)
 
-**Order ID:** `LYF-MN-2026-0062` (plain order — tested) / _(mixed-order version still pending)_
+**Order ID:** `LYF-MN-2026-0065` (plain order) / `LYF-MN-2026-0066` (mixed/Route B order)
 
 **What we're checking:** if 1Click's system just hangs and never responds
 when we try to submit an order, does our order get stuck in limbo forever,
@@ -565,16 +565,38 @@ or does it fail cleanly so someone can retry?
 - For the mixed-order version: neither shipment should be left in a
   half-created, orphaned state.
 
-Image
+> 📷 **[ IMAGE PLACEHOLDER — Screenshot of `LYF-MN-2026-0065` showing "1Click Error", plus a second screenshot of `LYF-MN-2026-0066`'s Transfer Order still correctly "Received" alongside the Lyfe Order's "1Click Error" ]**
 
+**Result:** ☑ Pass (both plain and mixed-order cases)
+**Notes:** Re-run 2026-09-03, both cases completed.
 
-**Result:** ☑ Pass (plain order) ☐ Fail — mixed-order case still needs a run
-**Notes:** Executed 2026-09-02 for the plain-order case only. Order landed
-cleanly in **"1Click Error"** after the simulated timeout — no stuck/limbo
-state. **Still need to run:** the mixed-order (two-shipment) version of
-this test, which requires setting up a real mixed order first and timing
-the simulated timeout to land between the two child submissions — more
-setup than a single-order test, left for a follow-up run.
+**Plain order (`LYF-MN-2026-0065`):** Force-US order, simulated timeout on
+submission. Landed cleanly in **"1Click Error"**, no order ID — no
+stuck/limbo state.
+
+**Mixed/Route B order (`LYF-MN-2026-0066`):** created via "Route via US
+Warehouse Instead" (Test Case 3 style), Transfer Order `ASN-2026-00007`
+marked Shipped then Received with a simulated timeout during the
+resume-and-submit step. Result: Lyfe Order correctly landed in **"1Click
+Error"**; the Transfer Order correctly stayed at **"Received"** — the goods
+genuinely did arrive, only the 1Click submission afterward failed, so
+nothing was left half-created or orphaned.
+
+**Bonus — recovery confirmed too:** re-ran the resume step on
+`LYF-MN-2026-0066` a second time, this time for real (no simulated
+failure) — it completed successfully with a real 1Click order ID
+(`1659392`), confirming the order isn't just "safely stuck" but can
+actually recover and complete normally afterward.
+
+**Note on the original mechanism this test case was written against:** the
+plan originally described "two separate shipments" (the older
+`_split_and_submit_oneclick` two-child-order mechanism). On investigation,
+that mechanism is only reachable via a legacy per-row split trigger that no
+longer fires for genuinely mixed orders under the current routing logic —
+real mixed orders today go through the newer hold-and-wait path
+(`_hold_for_india_components` → Transfer Order → resume), which is what was
+actually tested above. This matches the real, currently-used code path more
+accurately than the original two-child-order scenario would have.
 
 ---
 
@@ -1061,7 +1083,7 @@ finish connecting this feature, or remove it if it's no longer needed.
 | 10 — Bad Tracking Doesn't Corrupt | `LYF-MN-2026-0034` / `-0040` | ☑ Pass (partial — re-run recommended) |
 | 11 — Unknown SKU / 1Click Hold | _(blocked — needs 1Click's answer)_ | ☐ Pass ☐ Fail |
 | 12 — Duplicate Submission | `LYF-MN-2026-0049` | ☑ Pass (1Click blocked it, not our own code) |
-| 13 — 1Click Timeout | `LYF-MN-2026-0050` | ☑ Pass (plain order) — mixed-order case still pending |
+| 13 — 1Click Timeout | `LYF-MN-2026-0065` / `-0066` | ☑ Pass (both plain and mixed-order cases) |
 | 14 — Stock Race Condition | _(blocked — needs 1Click's answer)_ | ☐ Pass ☐ Fail |
 | 15 — Force US Override | `LYF-MN-2026-0040` | ☑ Pass |
 | 16 — Force India Override | `LYF-MN-2026-0041` | ☑ Pass |
