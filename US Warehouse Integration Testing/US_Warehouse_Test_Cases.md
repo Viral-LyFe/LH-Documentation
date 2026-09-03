@@ -693,7 +693,8 @@ from India even though everything is already sitting in the US warehouse.
 - No order is created on 1Click.
 - The reason you entered is saved and visible on the order.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the order showing Force India override, routed to Factory despite full US stock ]**
+<img width="1656" height="597" alt="image" src="https://github.com/user-attachments/assets/b2cd651b-5e8e-40f1-acf1-5762e8e02b18" />
+
 
 **Result:** ☑ Pass ☐ Fail
 **Notes:** Executed 2026-09-02, using in-stock SKU `3.5FT-TB-200-SB` (100
