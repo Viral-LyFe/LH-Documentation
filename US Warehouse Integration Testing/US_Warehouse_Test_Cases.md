@@ -484,7 +484,9 @@ through fine?
   stuck/on hold. If so, that's the gap — write it down clearly with
   screenshots from both sides.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of our order status next to 1Click's dashboard status for the same order, side by side ]**
+<img width="1657" height="772" alt="image" src="https://github.com/user-attachments/assets/a0f566ee-9c24-45cc-8fb5-24048ec4f6fb" />
+<img width="1567" height="707" alt="image" src="https://github.com/user-attachments/assets/ac4d1ae3-c43f-4ea8-bc32-a3b7830ec1d1" />
+
 
 **Result:** ☐ Pass ☐ Fail
 **Notes:**
