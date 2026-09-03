@@ -513,7 +513,9 @@ one?
 - Ideally, either our system refuses to submit it a second time, or 1Click
   recognizes it's the same order and doesn't create a duplicate.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot showing the 406 error from 1Click on the second submission attempt ]**
+<img width="1661" height="902" alt="image" src="https://github.com/user-attachments/assets/76e55c10-5f66-4450-b602-0e3f7aeae3d6" />
+<img width="1682" height="817" alt="image" src="https://github.com/user-attachments/assets/d1f3997b-5f39-47c7-a7cf-7d98dcb1fef2" />
+
 
 **Result:** ☑ Pass ☐ Fail (safe outcome, but not because of our own code)
 **Notes:** Executed 2026-09-02. First submission succeeded normally (real
