@@ -161,7 +161,21 @@ automatically.
 - A person then needs to review and confirm the split before anything moves
   forward.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the order showing the two separate item lists ]**
+<img width="1722" height="917" alt="image" src="https://github.com/user-attachments/assets/73e530fb-1d1f-4739-b9c8-78ab7620418f" />
+
+**Factory Lag Destination**
+
+<img width="1722" height="917" alt="image" src="https://github.com/user-attachments/assets/8adc477e-8858-40ca-a1e0-b453d13bae0c" />
+
+**Pending List Address**
+
+<img width="1901" height="230" alt="image" src="https://github.com/user-attachments/assets/96e2e4e3-361b-4a98-b4a7-785b5cf36dd4" />
+
+**When Factory Lag Destination is Direct to Customer**
+
+<img width="1892" height="191" alt="image" src="https://github.com/user-attachments/assets/43d200ba-ccca-482f-a81a-5b112caaeb6a" />
+
+
 
 **Result:** ☐ Pass ☐ Fail
 **Notes:**
