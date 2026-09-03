@@ -654,7 +654,10 @@ Does that override work, and what happens on 1Click's side?
 - Check 1Click's own dashboard for what actually happens to that order on
   their side (may go on hold — note whatever you see).
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the order showing Force US override and 1Click submission despite 0 stock ]**
+<img width="1187" height="575" alt="image" src="https://github.com/user-attachments/assets/a6781061-6ff9-4f49-8a84-aa1c5444fb6b" />
+
+<img width="981" height="731" alt="Screenshot 2026-09-03 153643" src="https://github.com/user-attachments/assets/21044e3f-423a-41c9-ab86-4b13f6c47629" />
+
 
 **Result:** ☑ Pass ☐ Fail
 **Notes:** Executed 2026-09-02, using zero-stock SKU `MHRB-200-AC`. Order
