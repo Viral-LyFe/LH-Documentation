@@ -668,15 +668,38 @@ thing worth checking manually: the order's `warehouse` field still showed
 on screen whether that looks right to you, or flag it if it seems off.
 
 **Manual UI re-run (2026-09-03):** `LYF-MN-2026-0067` created for the user
-to manually set Route Plan = "Force US" and save directly in the browser
-(SKU `MHRB-200-AC`, re-confirmed 0 real stock at creation time) — result
-pending user confirmation from the UI.
+to manually set Route Plan = "Force US" in the browser. This surfaced two
+real, confirmed bugs along the way, both now fixed:
+
+1. **Route Plan field was completely invisible on the form.** Root cause:
+   a stale `field_order` Property Setter (created directly on the site at
+   some point, never captured in code) placed `route_plan` inside the
+   gated "Shipping" tab, which only shows once an order already has a US
+   Warehouse/tracking assigned — a chicken-and-egg bug, since Route Plan
+   is the field meant to *set* that in the first place. Fixed via patch
+   (`fix_lyfe_order_route_plan_field_order.py`) — field now lives under
+   the always-visible "1Click Logistics" tab.
+2. **Override Reason had the identical bug**, this time a genuine mistake
+   in the source file itself, not a stale override. Fixed
+   (`move_override_reason_out_of_shipping_tab.py`) — now sits right next
+   to Route Plan.
+3. **Setting Route Plan and saving did nothing at all** — the field was
+   never wired to any routing/submission trigger on a plain save. Per
+   explicit user feedback, this is now a dedicated whitelisted method
+   (`apply_route_plan_override`) triggered by a Route Plan field-change
+   handler in the browser — prompts for the reason, freezes the screen,
+   submits synchronously to 1Click, then reloads. Fires only when the
+   user actively changes the field, never on an unrelated save.
+
+Re-verified end-to-end on `LYF-MN-2026-0067` after all three fixes:
+`routing_outcome = US_FULL`, status `"Submitted to 1Click"`, real 1Click
+order ID `1659393`.
 
 ---
 
 ## Test Case 16 — Force India: Manually Routing an In-Stock Item to India Instead
 
-**Order ID:** `LYF-MN-2026-0041`
+**Order ID:** `LYF-MN-2026-0041` (first run) / `LYF-MN-2026-0070` (re-run, 2026-09-03, via the fixed field + synchronous method)
 
 **What we're checking:** the reverse override — CS forces an order to ship
 from India even though everything is already sitting in the US warehouse.
@@ -701,6 +724,16 @@ from India even though everything is already sitting in the US warehouse.
 units available). Order correctly routed `INDIA_DIRECT_DROPSHIP`, landed in
 "Factory Assignment," no 1Click order was created — exactly as expected.
 
+**Re-run 2026-09-03 (`LYF-MN-2026-0070`), through the now-fixed field +
+trigger:** real US stock was 0 for every SKU at the time, so the stock
+check was simulated (50 units reported available for `KJTFL-16-ABZ`) to
+genuinely prove the override bypasses stock rather than coincidentally
+matching a zero-stock item. Called `apply_route_plan_override` (the same
+function the UI's Force India dialog calls) — result: `routing_outcome =
+INDIA_DIRECT_DROPSHIP`, status `"Factory Assignment"`,
+`warehouse = "Factory - LH"`, no 1Click order created, override reason
+saved — correctly routed to India despite the simulated in-stock item.
+
 ---
 
 ## Test Case 17 — Can't Force a Route Without Giving a Reason
@@ -723,24 +756,31 @@ skipped even by someone going around the normal screen.
 
 <img width="1740" height="561" alt="image" src="https://github.com/user-attachments/assets/81050006-3979-45af-8b4a-53ab4e84281b" />
 
-**Result:** ☐ Pass ☑ **Fail**
-**Notes:** Executed 2026-09-02 via a direct system call (developer-level
-test). **The order saved successfully with `route_plan = "Force US"` and no
-reason at all — nothing blocked it.** This is a real gap: the "reason
-required" check that exists in the code only applies to the specific
-"Force India" button/flow (`force_factory_only_fulfillment`) — there is no
-general check that covers `route_plan` being set directly, including
-through the normal order form if a reason field is simply left blank and
-saved. **Recommend this gets fixed before relying on override reasons being
-present** — please also test directly on the form (not just via a direct
-system call) to confirm whether the screen itself blocks it even though the
-underlying save does not.
+**Result:** ☑ Pass ☐ Fail
+**Notes:** Originally executed 2026-09-02 via a direct system call
+(developer-level test) — **found a real gap**: the order saved successfully
+with `route_plan = "Force US"` and no reason at all, nothing blocked it.
+The "reason required" check only ever applied to the separate "Force
+India" button/flow (`force_factory_only_fulfillment`), not to `route_plan`
+being set directly through the normal order form.
+
+**Fixed 2026-09-03**, as part of wiring up Route Plan to actually trigger
+routing (see Test Case 15). The new dedicated method
+(`apply_route_plan_override`) now enforces the reason server-side —
+confirmed by direct call:
+```
+apply_route_plan_override(name, 'Force US', '')
+→ "An override reason is required."
+```
+The browser dialog also requires the field (`reqd: 1`) before it will even
+submit. Please still confirm on the actual screen that the dialog blocks
+an empty reason, for the record.
 
 ---
 
 ## Test Case 18 — Fee Lines Don't Get Sent to 1Click
 
-**Order ID:** `LYF-MN-2026-0043` (real item + fee) / `LYF-MN-2026-0045` (fee only)
+**Order ID:** `LYF-MN-2026-0043` (real item + fee) / `LYF-MN-2026-0045` (fee only) / `LYF-MN-2026-0071` (re-run, 2026-09-03, real SKU + fee, forced full US delivery)
 
 **What we're checking:** orders sometimes have a "Custom Fee" or "Customs
 Fee" line added — these aren't real physical items and shouldn't be treated
@@ -778,6 +818,19 @@ existing "no items to submit" error only exists on the US-warehouse
 submission path; an order with only a fee line never reaches that path
 because it's routed to India by default instead. **Recommend adding a
 similar check that fires regardless of which route the order takes.**
+(Still open — not fixed as of 2026-09-03.)
+
+**Re-run 2026-09-03 (`LYF-MN-2026-0071`)** — a fresh order with real SKU
+`KJTFL-16-ABZ` + a Custom Fee line, forced to full US delivery via "Force
+US" (real stock was 0 at the time, so Force US was used to guarantee a
+genuine 1Click submission rather than simulating stock). Result:
+`routing_outcome = US_FULL`, status `"Submitted to 1Click"`, real 1Click
+order ID `1659395`. The fee row was correctly badged **"Excluded"** and
+not sent to 1Click — only the real item was submitted. Matches Test 1's
+expected result exactly. Note: because Force US bypasses the real stock
+check, the real item's own per-row badge stayed "Factory" rather than "US
+Warehouse" even though the whole order correctly submitted as US_FULL —
+expected for a Force override, not a bug.
 
 ---
 
@@ -805,7 +858,7 @@ the pipeline.
 
 > 📷 **[ IMAGE PLACEHOLDER — Screenshot showing the order saved successfully despite the missing SKU, once you've reproduced it on screen ]**
 
-**Result:** ☐ Pass ☑ **Fail** (Step 1)
+**Result:** ☐ Pass ☑ **Fail** (Step 1) — still open as of 2026-09-03
 **Notes:** Executed 2026-09-02, direct system-level test. **Step 1 did not
 block the save** — a Standard order in New status with a completely blank
 SKU on a real item row saved without any error. This is a real gap: the
@@ -816,7 +869,34 @@ Standard orders can go through the pipeline with no SKU at all, which is
 exactly what this rule was meant to prevent. Please also confirm on the
 actual screen (not just a direct system test) whether the form blocks it —
 if it does, that means the safety net only exists in the browser and not on
-the server, which is also worth flagging separately.
+the server, which is also worth flagging separately. **This block itself
+remains unfixed** — the fix below addresses what happens once such an
+order already exists, not whether it should have been allowed to save in
+the first place.
+
+### Related fix (2026-09-03): routing for an order that already has a no-SKU item
+
+Since Step 1's block doesn't exist, orders with no-SKU items do reach
+production today — so a separate, real question came up: what should
+happen when the routing/1Click logic encounters one of these orders?
+
+**Found a second, related bug:** a no-SKU item was silently dropped from
+routing entirely — invisible to both the US and Factory shipment tables,
+with Factory never even knowing it existed on the order.
+
+**Fixed:** a no-SKU item is now always treated as "not available in US
+stock" (correct — nothing to look up on 1Click) and routed to the Factory
+Warehouse Shipment table. If the order also has other real items that ARE
+in US stock, this correctly produces the same Mixed-order review flow as
+any other partially-available order — a person opens the order, sees both
+lists, and confirms what to do.
+
+**Order to check: `LYF-MN-2026-0072`** (real SKU `KJTFL-16-ABZ`, simulated
+50 units in US stock, + a second row with no SKU at all). Result:
+`routing_outcome = MIXED_US_COMPONENTS_INDIA_TO_US`, status stayed `"New"`
+for human review, `us_warehouse_shipment_items` has the real SKU,
+`factory_warehouse_shipment_items` correctly has the no-SKU item
+(previously would have been silently absent from both tables).
 
 ---
 
@@ -1104,11 +1184,11 @@ finish connecting this feature, or remove it if it's no longer needed.
 | 12 — Duplicate Submission | `LYF-MN-2026-0049` | ☑ Pass (1Click blocked it, not our own code) |
 | 13 — 1Click Timeout | `LYF-MN-2026-0065` / `-0066` | ☑ Pass (both plain and mixed-order cases) |
 | 14 — Stock Race Condition | _(blocked — needs 1Click's answer)_ | ☐ Pass ☐ Fail |
-| 15 — Force US Override | `LYF-MN-2026-0040` | ☑ Pass |
-| 16 — Force India Override | `LYF-MN-2026-0041` | ☑ Pass |
-| 17 — Override Reason Required | `LYF-MN-2026-0042` | ☑ **Fail** — real gap found |
-| 18 — Fee Line Handling | `LYF-MN-2026-0043` / `-0045` | ☑ Pass (real item) / ☑ **Fail** (fee-only order) |
-| 19 — Missing SKU Block | `LYF-MN-2026-0046` | ☑ **Fail** — real gap found |
+| 15 — Force US Override | `LYF-MN-2026-0040` / `-0067` | ☑ Pass (also fixed: field was invisible + didn't trigger routing) |
+| 16 — Force India Override | `LYF-MN-2026-0041` / `-0070` | ☑ Pass |
+| 17 — Override Reason Required | `LYF-MN-2026-0042` | ☑ Pass — fixed 2026-09-03 |
+| 18 — Fee Line Handling | `LYF-MN-2026-0043` / `-0045` / `-0071` | ☑ Pass (real item) / ☑ **Fail** (fee-only order, still open) |
+| 19 — Missing SKU Block | `LYF-MN-2026-0046` | ☑ **Fail** (Step 1 still open) — but no-SKU routing fixed separately, see `-0072` |
 | 20 — 72h Dispatch Target | `LYF-MN-2026-0046` | ☑ **Fail** — real gap found |
 | 21 — Stuck Shipment Alerts | _(pending — needs back-dated timestamps)_ | ☐ Pass ☐ Fail |
 | 22 — Two-Shipment Split (Old Path) | _(pending)_ | ☐ Pass ☐ Fail ☐ Needs Founder Decision |
@@ -1119,26 +1199,51 @@ finish connecting this feature, or remove it if it's no longer needed.
 | 27 — Received ≠ 1Click Confirmation | _(pending)_ | ☐ Pass ☐ Fail |
 | 28 — SKU Auto-Fill (Not Active) | N/A | ☐ N/A — Dev Follow-up Needed |
 
-## Real Gaps Found During This Execution Round (2026-09-02)
+## Real Gaps Found During This Execution Round (2026-09-02, updated 2026-09-03)
 
-Four genuine bugs were confirmed by actually running these tests, not just
-reading the code — these need developer follow-up before they can be
-marked resolved:
+Genuine bugs confirmed by actually running these tests, not just reading
+the code:
 
-1. **Test Case 17 — Override reason is not actually enforced** when a
-   route is forced directly (only the separate "Force India" button flow
-   checks for it).
+1. ~~**Test Case 17 — Override reason is not actually enforced**~~ —
+   **FIXED 2026-09-03.** Now enforced server-side by the dedicated
+   `apply_route_plan_override` method, and required in the browser dialog.
 2. **Test Case 18 (Test 2) — A fee-only order isn't blocked** with a clear
-   error; it silently becomes a normal-looking order instead.
+   error; it silently becomes a normal-looking order instead. **Still
+   open.**
 3. **Test Case 19 — The "Missing SKU" block never fires** — the check
-   exists in the code but isn't connected to anything.
+   exists in the code but isn't connected to anything. **Still open** —
+   Standard orders can still be saved with a missing SKU. A **related but
+   separate** issue (what happens to a no-SKU item's routing once such an
+   order exists) was found and fixed the same day — see Test Case 19's
+   notes and `LYF-MN-2026-0072`.
 4. **Test Case 20 — The 72-hour dispatch target is never stamped** — same
-   root cause as #3, the code exists but isn't connected.
+   root cause as #3, the code exists but isn't connected. **Still open.**
 
-Items 3 and 4 share the same underlying cause and are likely fixable
-together.
+**Also found and fixed 2026-09-03, not originally on this list:**
 
-**Tested by:** Claude (automated/developer-level execution) — screenshots
-and final sign-off still need a human pass over the UI, per each test
-case's image placeholder.
-**Date:** 2026-09-02
+5. **Route Plan and Override Reason fields were completely invisible** on
+   the order form — a stale site-only field-order override (Route Plan)
+   and a genuine placement mistake in the source (Override Reason) both
+   put them inside a tab gated behind conditions that could only become
+   true *after* routing had already happened — a chicken-and-egg bug.
+   Fixed via two patches; see Test Case 15's notes.
+6. **Setting Route Plan and saving did nothing at all**, even once visible
+   — never wired to any trigger. Fixed with a dedicated synchronous
+   whitelisted method + a Route Plan field-change handler, per explicit
+   user feedback that this must run synchronously (frozen screen, real
+   result, then reload) and only fire on an actual user-driven field
+   change, never as a side effect of any other save.
+7. **No-SKU order items were silently dropped from routing entirely** —
+   invisible to both Warehouse Shipment tables, Factory never aware they
+   existed. Fixed: now always routed to Factory, correctly triggering the
+   Mixed-order human-review flow when the order also has real in-stock
+   items.
+
+Items 3 and 4 (Test Cases 19 and 20) still share the same underlying cause
+and are likely fixable together, when addressed.
+
+**Tested by:** Claude (automated/developer-level execution, plus live
+whitelisted-method calls matching exactly what the browser UI calls) —
+screenshots and final sign-off still need a human pass over the UI, per
+each test case's image placeholder.
+**Date:** 2026-09-02, updated 2026-09-03
