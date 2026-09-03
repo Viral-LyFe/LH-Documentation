@@ -636,7 +636,7 @@ with 1Click?
 
 ## Test Case 15 — Force US: Manually Routing an Out-of-Stock Item to the US Warehouse
 
-**Order ID:** `LYF-MN-2026-0040` (first run) / `LYF-MN-2026-0067` (manual UI re-run, 2026-09-03)
+**Order ID:** `LYF-MN-2026-0067`
 
 **What we're checking:** CS can manually override routing and force an
 order to the US warehouse even if the item isn't actually in stock there.
@@ -654,7 +654,10 @@ Does that override work, and what happens on 1Click's side?
 - Check 1Click's own dashboard for what actually happens to that order on
   their side (may go on hold — note whatever you see).
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of `LYF-MN-2026-0067` showing Force US override and 1Click submission despite 0 stock ]**
+<img width="1187" height="575" alt="image" src="https://github.com/user-attachments/assets/a6781061-6ff9-4f49-8a84-aa1c5444fb6b" />
+
+<img width="981" height="731" alt="Screenshot 2026-09-03 153643" src="https://github.com/user-attachments/assets/21044e3f-423a-41c9-ab86-4b13f6c47629" />
+
 
 **Result:** ☑ Pass ☐ Fail
 **Notes:** First executed 2026-09-02 (`LYF-MN-2026-0040`), using zero-stock
