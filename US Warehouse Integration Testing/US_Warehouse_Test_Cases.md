@@ -762,6 +762,7 @@ as something to ship or check stock for.
 
 > <img width="656" height="796" alt="image" src="https://github.com/user-attachments/assets/ea04449a-2449-4672-953f-2c57e9a8c63e" />
 
+> <img width="1600" height="886" alt="image" src="https://github.com/user-attachments/assets/4bb744cc-3082-4638-ba3f-234daafac8b2" />
 
 
 **Result:** ☑ Pass (Test 1) ☑ **Fail** (Test 2)
