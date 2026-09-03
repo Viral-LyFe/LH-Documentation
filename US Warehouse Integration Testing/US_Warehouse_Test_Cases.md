@@ -685,6 +685,8 @@ special handling for that shape today and would need a follow-up look. That
 part of the question is still pending 1Click's reply to the drafted email
 (same one covering Test Case 11).
 
+<img width="1657" height="812" alt="image" src="https://github.com/user-attachments/assets/3ef6ed0b-a72c-4dfb-a394-65e4031b6679" />
+
 **Result:** ☑ Pass — for the failure-response case, which is the only
 documented failure shape
 **Notes:** Simulated by mocking `requests.post` (not by replacing our own
