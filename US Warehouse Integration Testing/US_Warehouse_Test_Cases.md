@@ -446,7 +446,7 @@ time?
 - The other, healthy order's tracking check still completes normally in the
   same run.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot comparing both orders after the test — one shows untouched/skipped tracking, the other shows a normal update ]**
+> 📷 **[ IMAGE PLACEHOLDER — Screenshot comparing both orders after the test — one shows untouched/skipped tracking, the other shows a normal update ]*
 
 **Result:** ☑ Pass ☐ Fail (with a caveat)
 **Notes:** Executed 2026-09-02. No data corruption occurred — confirms the
@@ -530,7 +530,7 @@ relying on them to reject it every time.
 
 ## Test Case 13 — 1Click Doesn't Respond At All (Times Out)
 
-**Order ID:** `LYF-MN-2026-0050` (plain order — tested) / _(mixed-order version still pending)_
+**Order ID:** `LYF-MN-2026-0062` (plain order — tested) / _(mixed-order version still pending)_
 
 **What we're checking:** if 1Click's system just hangs and never responds
 when we try to submit an order, does our order get stuck in limbo forever,
@@ -550,7 +550,11 @@ or does it fail cleanly so someone can retry?
 - For the mixed-order version: neither shipment should be left in a
   half-created, orphaned state.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the order showing "1Click Error" after the simulated timeout, plus a second screenshot for the mixed-order case ]**
+**First Posted order successfully**
+<img width="1661" height="902" alt="image" src="https://github.com/user-attachments/assets/b323b7c6-70d4-448f-a443-c9adbe4ba1d8" />
+**Second time tried to posted changes as error log**
+<img width="1682" height="817" alt="image" src="https://github.com/user-attachments/assets/821a9b8b-c94c-4344-a25b-eea310634406" />
+
 
 **Result:** ☑ Pass (plain order) ☐ Fail — mixed-order case still needs a run
 **Notes:** Executed 2026-09-02 for the plain-order case only. Order landed
