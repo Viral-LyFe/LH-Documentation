@@ -183,6 +183,11 @@ automatically.
 
 <img width="1722" height="600" alt="image" src="https://github.com/user-attachments/assets/71f3e2da-245a-4bcc-8ce0-305f829db978" />
 
+**Sales Invoice**
+
+<img width="1667" height="896" alt="image" src="https://github.com/user-attachments/assets/a50adcb8-3110-43fd-90c3-a8befa020cb0" />
+
+
 
 **Result:** ☑ Pass ☐ Fail
 **Notes:** Re-run 2026-09-03 as `LYF-MN-2026-0055`, using `3.5FT-TB-200-SB`
