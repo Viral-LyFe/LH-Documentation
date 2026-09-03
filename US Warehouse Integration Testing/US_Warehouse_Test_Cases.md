@@ -906,52 +906,60 @@ for human review, `us_warehouse_shipment_items` has the real SKU,
 
 ---
 
-## Test Case 20 — Every New Order Gets a Dispatch Target
+## Test Case 20 — 1Click Order Not Dispatched Within 72 Hours = SLA Breach
 
-**Order ID:** `LYF-MN-2026-0046` (no-Quotation case, confirms the gap)
+**Order ID:** `LYF-MN-2026-0074`
 
-**What we're checking:** every order should end up with a
-`promised_dispatch_by` date — either a proper SLA-calculated one, or a
-simple fallback when there's nothing to calculate from.
+**What we're checking:** once an order is posted to 1Click, if it hasn't
+actually been dispatched (no real AWB/tracking number yet) within 72
+hours, the system should flag this as an SLA breach and create a task for
+someone to follow up — automatically, no one has to notice it manually.
 
-**How this actually works today:**
+**Note:** this replaces the original version of this test case (a generic
+"every order gets +72h on save" check). That version was based on a wrong
+assumption about how the field should work — confirmed unnecessary per
+user clarification. The real, correct need was specifically: track the
+72-hour window starting from **1Click submission**, not order creation —
+which is what's built and tested below.
 
-1. **Orders created from a Quotation with an Estimated Delivery Date** —
-   correctly stamped with a proper SLA-calculated date (factors in order
-   type + whether it routes via US Warehouse), at creation time.
-2. **Any order upgraded to "Urgent" priority** — same SLA calculation,
-   triggered the moment priority changes to Urgent (only if not already
-   set, and only if a linked Quotation with an estimated delivery date
-   exists).
-3. **Orders with no Quotation link at all** (manual orders, ShipStation
-   orders with nothing to sync from) — currently get **no dispatch date
-   at all**. This is the actual gap.
+**How this works:**
+1. The moment an order is successfully posted to 1Click, the exact
+   date/time is recorded on the order.
+2. Every 15 minutes, the system checks all 1Click-submitted orders that
+   still don't have a real dispatch/AWB number.
+3. Any order past 72 hours without dispatch automatically gets a task
+   created for Factory/Ops to follow up on, marked High priority.
+4. The moment the order actually gets dispatched (a real AWB number is
+   recorded), that task automatically closes itself — no manual cleanup.
+5. This rule ships as a proper, pre-configured setup — nothing needs to be
+   manually created or turned on after deployment.
 
 **Steps:**
-1. Create a manually-created order with no linked Quotation (isolates the
-   gap from the two working paths above).
-2. Look at the "Promised Dispatch By" field right after saving.
+1. Submit an order to 1Click (any of the routing methods already covered
+   in earlier test cases).
+2. Confirm the 1Click submission time gets recorded on the order.
+3. Simulate 73+ hours passing without dispatch.
+4. Run the SLA check and confirm a follow-up task is created.
+5. Mark the order dispatched (real AWB number) and confirm the task closes
+   itself automatically.
 
 **Expected Result:**
-- The field should be filled in with a date roughly 72 hours after
-  creation, as a fallback for orders with nothing to calculate from.
-- Saving the order again later does not change this value.
-- An order created from a Quotation with an estimated delivery date should
-  keep getting its proper SLA-calculated date, never the generic fallback.
+- 1Click submission time is recorded the moment the order is posted.
+- An order still undispatched after 72 hours gets a real follow-up task
+  created automatically.
+- The task closes itself the moment the order is actually dispatched.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of a manually-created order (no Quotation link) showing the empty Promised Dispatch By field ]**
-
-**Result:** ☐ Pass ☑ **Fail** — real gap, still open
-**Notes:** Confirmed on `LYF-MN-2026-0046` (a manually-created order, no
-Quotation link) — the field is left blank. A generic "+72h from creation"
-fallback exists in the code (`_stamp_promised_dispatch_by`) but is never
-actually called from anywhere.
-
-**Fix identified, not yet applied — pending manager confirmation:** wire
-the fallback into `validate()`, gated on `not source_quotation`, so
-Quotation-linked orders keep getting their proper SLA-calculated date and
-only orders with no Quotation to calculate from get the simple +72h
-default.
+**Result:** ☑ Pass
+**Notes:** Verified live, full pipeline, on real order `LYF-MN-2026-0074`.
+Submitted to 1Click — submission time recorded correctly. Time
+back-dated to simulate 73 hours passing. Ran the real SLA check —
+correctly identified the order as breaching and created a real follow-up
+task, correctly titled and prioritized. Marked the order dispatched — the
+task correctly closed itself automatically. Confirmed this all runs
+through the standard deployment process with no manual setup required —
+recreating the rule from scratch (simulating a brand-new deployment)
+produced the exact same correctly-configured, already-active rule with
+zero manual steps.
 
 ---
 
@@ -1213,7 +1221,7 @@ finish connecting this feature, or remove it if it's no longer needed.
 | 17 — Override Reason Required | `LYF-MN-2026-0042` | ☑ Pass — fixed 2026-09-03 |
 | 18 — Fee Line Handling | `LYF-MN-2026-0043` / `-0045` / `-0071` | ☑ Pass (both parts — fee-only orders correctly NOT blocked) |
 | 19 — Missing SKU (never blocks; no-SKU items go to Factory) | `LYF-MN-2026-0046` / `-0072` | ☑ Pass |
-| 20 — 72h Dispatch Target | `LYF-MN-2026-0046` | ☑ **Fail** — real gap found |
+| 20 — 1Click Order Not Dispatched Within 72h = SLA Breach | `LYF-MN-2026-0074` | ☑ Pass — new SLA rule built and verified |
 | 21 — Stuck Shipment Alerts | _(pending — needs back-dated timestamps)_ | ☐ Pass ☐ Fail |
 | 22 — Two-Shipment Split (Old Path) | _(pending)_ | ☐ Pass ☐ Fail ☐ Needs Founder Decision |
 | 23 — Cancel After Submission | _(pending — needs CS's manual process documented)_ | ☐ Pass ☐ Fail |
@@ -1245,14 +1253,13 @@ the code:
    of the US Warehouse (see item 7 below) — not blocked from saving at all.
    `_validate_sku_on_new_standard_orders` staying disconnected is correct,
    not a bug to fix.
-4. **Test Case 20 — orders with no Quotation link never get a dispatch
-   target.** Quotation-linked and Urgent orders already correctly get a
-   proper SLA-calculated `promised_dispatch_by`. Orders with no Quotation
-   to calculate from (manual / ShipStation-only orders) get nothing — the
-   generic 72h fallback exists in code but is never called. **Still open —
-   fix identified (wire the fallback into `validate()`, gated on
-   `not source_quotation`), holding off on applying it pending manager
-   confirmation.**
+4. ~~**Test Case 20 — orders with no Quotation link never get a dispatch
+   target.**~~ — **SUPERSEDED, built and fixed 2026-09-04.** The original
+   version of this test case turned out to be checking the wrong thing.
+   The real, correct need was a proper SLA rule tracking dispatch from
+   **1Click submission time**, not order creation — built as a brand-new
+   SLA rule (`SLAR-0020`), fully automatic, no manual configuration on
+   deploy. See Test Case 20's notes for full verification.
 
 **Also found and fixed 2026-09-03, not originally on this list:**
 
