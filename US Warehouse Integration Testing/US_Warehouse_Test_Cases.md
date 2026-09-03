@@ -141,7 +141,7 @@ booked with 1Click — no extra clicking needed beyond marking it "received."
 
 ## Test Case 5 — Mixed Order (Some Items From the US, Some From India)
 
-**Order ID:** `LYF-MN-2026-0032`
+**Order ID:** `LYF-MN-2026-0032` (original run) / `LYF-MN-2026-0055` (re-run, 2026-09-03)
 
 **What we're checking:** when an order has a mix — some items already at the
 US warehouse, some that still need to come from India — the system should
@@ -179,10 +179,18 @@ automatically.
 
 <img width="1892" height="191" alt="image" src="https://github.com/user-attachments/assets/43d200ba-ccca-482f-a81a-5b112caaeb6a" />
 
-
-
-**Result:** ☐ Pass ☐ Fail
-**Notes:**
+**Result:** ☑ Pass ☐ Fail
+**Notes:** Re-run 2026-09-03 as `LYF-MN-2026-0055`, using `3.5FT-TB-200-SB`
+(1 unit) + `MHRB-200-AC` (1 unit). **Real US stock was at 0 for every SKU at
+the time of this run** (sandbox drained again), so the US-stock check for
+`3.5FT-TB-200-SB` was simulated for this one test only — the routing/split
+logic itself was real, not mocked. Result matched expectations exactly:
+`routing_outcome = MIXED_US_COMPONENTS_INDIA_TO_US`, status stayed **"New"**
+(nothing auto-booked), `3.5FT-TB-200-SB` badged "US Warehouse" and
+`MHRB-200-AC` badged "Factory," with one row each in the two separate
+shipment-item tables. **Recommend re-confirming this once more with real
+(non-simulated) US stock** once sandbox inventory is topped up again, to
+fully close this out without any simulation involved.
 
 ---
 
