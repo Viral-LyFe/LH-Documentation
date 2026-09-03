@@ -1,4 +1,4 @@
-# US Warehouse (1Click) Integration — Test Cases
+<img width="1652" height="921" alt="image" src="https://github.com/user-attachments/assets/f9d92755-0e85-494c-9854-58d676f11214" /># US Warehouse (1Click) Integration — Test Cases
 
 This document walks through how to test the US Warehouse feature, step by
 step, in plain language. No technical background needed — just follow the
@@ -106,7 +106,7 @@ button for this.
 
 ## Test Case 4 — Order Automatically Books Once It Arrives at the US Warehouse
 
-**Order ID:** `LYF-MN-2026-0031` (same order as Test Case 3, continued)
+**Order ID:** `LYF-MN-2026-0053` (same order as Test Case 3, continued)
 
 **What we're checking:** once the goods physically arrive at the US
 warehouse and someone checks them in, the order should automatically get
@@ -128,9 +128,9 @@ booked with 1Click — no extra clicking needed beyond marking it "received."
 - If something goes wrong on 1Click's side, the order status becomes
   **"1Click Error"** instead, with details saved for someone to check.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the shipment marked Received ]**
+<img width="1866" height="862" alt="image" src="https://github.com/user-attachments/assets/36e10562-5daa-4ba2-8235-c6abd5dac98b" />
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the order automatically showing "Submitted to 1Click" afterward ]**
+<img width="1652" height="921" alt="image" src="https://github.com/user-attachments/assets/103203e6-1238-493c-9f1c-6d2f2b86f05d" />
 
 **Result:** ☐ Pass ☐ Fail
 **Notes:**
