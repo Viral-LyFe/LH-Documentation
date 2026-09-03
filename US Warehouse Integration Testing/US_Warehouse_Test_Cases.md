@@ -636,7 +636,7 @@ with 1Click?
 
 ## Test Case 15 — Force US: Manually Routing an Out-of-Stock Item to the US Warehouse
 
-**Order ID:** `LYF-MN-2026-0040`
+**Order ID:** `LYF-MN-2026-0040` (first run) / `LYF-MN-2026-0067` (manual UI re-run, 2026-09-03)
 
 **What we're checking:** CS can manually override routing and force an
 order to the US warehouse even if the item isn't actually in stock there.
@@ -654,15 +654,20 @@ Does that override work, and what happens on 1Click's side?
 - Check 1Click's own dashboard for what actually happens to that order on
   their side (may go on hold — note whatever you see).
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the order showing Force US override and 1Click submission despite 0 stock ]**
+> 📷 **[ IMAGE PLACEHOLDER — Screenshot of `LYF-MN-2026-0067` showing Force US override and 1Click submission despite 0 stock ]**
 
 **Result:** ☑ Pass ☐ Fail
-**Notes:** Executed 2026-09-02, using zero-stock SKU `MHRB-200-AC`. Order
-correctly routed `US_FULL` and submitted with a real 1Click order ID
-(`1659099`), despite the item having 0 stock. One thing worth checking
-manually: the order's `warehouse` field still showed "Factory - LH" rather
-than "US Warehouse - LH" after this — please confirm on screen whether that
-looks right to you, or flag it if it seems off.
+**Notes:** First executed 2026-09-02 (`LYF-MN-2026-0040`), using zero-stock
+SKU `MHRB-200-AC`. Order correctly routed `US_FULL` and submitted with a
+real 1Click order ID (`1659099`), despite the item having 0 stock. One
+thing worth checking manually: the order's `warehouse` field still showed
+"Factory - LH" rather than "US Warehouse - LH" after this — please confirm
+on screen whether that looks right to you, or flag it if it seems off.
+
+**Manual UI re-run (2026-09-03):** `LYF-MN-2026-0067` created for the user
+to manually set Route Plan = "Force US" and save directly in the browser
+(SKU `MHRB-200-AC`, re-confirmed 0 real stock at creation time) — result
+pending user confirmation from the UI.
 
 ---
 
