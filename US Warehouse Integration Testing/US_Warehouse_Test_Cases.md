@@ -205,7 +205,12 @@ show the US warehouse's address — not the customer's address.
 - If you switch a different order back to "ship direct to customer," the
   address correctly goes back to the real customer address.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the invoice/paperwork showing the US warehouse address ]**
+<img width="1191" height="512" alt="image" src="https://github.com/user-attachments/assets/b19745ba-e11e-437c-848a-a835192a64da" />
+
+----------------------------
+
+<img width="1876" height="382" alt="image" src="https://github.com/user-attachments/assets/7b17f638-531f-4bd6-9bee-cc5364c30c79" />
+
 
 **Result:** ☐ Pass ☐ Fail
 **Notes:**
