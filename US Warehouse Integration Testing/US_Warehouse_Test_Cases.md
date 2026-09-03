@@ -1169,7 +1169,7 @@ cancels an order that's already been submitted to 1Click.
 <img width="1497" height="495" alt="image" src="https://github.com/user-attachments/assets/606ead5f-4f22-424c-ad7f-0a3da58fe9b4" />
 
 
-**Result:** ☐ Pass ☐ Fail — **alert sent live to the real Slack channel; awaiting screenshot for final sign-off**
+**Result:** ☑ Pass
 **Notes:** Alert wired into `shipstation_orders.py`'s cancellation-sync path
 (`_alert_cancelled_after_oneclick`), reusing the existing
 `urgent_slack_channel` webhook field on Access Settings (previously
@@ -1322,25 +1322,47 @@ proven fallback used throughout this session.
 
 ---
 
-## Test Case 28 — SKU Auto-Fill From Item Name (Currently Not Active)
+## Test Case 28 — SKU Auto-Fill From Item Name
 
-**Order ID:** N/A
+**Order ID:** N/A — verified against real historical order-item data, not a
+single test order.
 
-**What we're checking:** there's a feature that was built to automatically
-pull a SKU out of an item's name if it's written like `(SKU: ABC-123)` — but
-it turns out this feature isn't actually connected to anything yet in the
-live system.
+**What we're checking:** whether the system can automatically pull a real
+SKU out of an item's name when the SKU field itself is blank.
 
-**Steps:** None — there is nothing to click or test right now. This is
-listed here so it's not forgotten, not because there's a test to run.
+**What changed:** the feature is now wired up and hardened. Originally it
+only recognized an explicit `(SKU: ABC-123)` label — checking real
+production data showed this label format is actually rare (20 of 1,543
+blank-SKU order-item rows). The far more common real pattern is a bare
+SKU-shaped code in parens at the end of the name, e.g.
+`Flush Elbow Fitting 90 Degree (FE90-200-AB)` — 26 of the same 1,543 rows.
+Both patterns are now checked (label form first, then bare-code form), and
+**every extracted candidate is still verified against the Item Master**
+before being used — this is what makes the looser bare-code pattern safe:
+across all 1,543 real rows tested, it produced zero false positives. The
+bare-code pattern also correctly ignores dimension-only parens like
+`(2")` or `(1.5")` since it requires a hyphen-separated code shape.
 
-**Expected Result:** N/A — flagged for the development team to either
-finish connecting this feature, or remove it if it's no longer needed.
+**Steps taken:**
+1. Pulled every ShipStation Order Item row with blank `sku` **and** blank
+   `erp_item` from the live database (1,543 rows).
+2. Ran the new extraction against all of them; confirmed every match
+   verified against the Item Master with 0 false positives.
+3. Wired the extraction into `_resolve_sku()` (the actual function used at
+   stock-check / 1Click submission time), right before the last-resort
+   truncated-name fallback.
+4. Re-ran `_resolve_sku()` directly against real blank-SKU item names to
+   confirm end-to-end behavior.
 
-> 📷 **[ IMAGE PLACEHOLDER — N/A, nothing to screenshot until this is connected ]**
+42 of the 1,543 previously-blank rows now resolve to a real SKU
+automatically. This is a forward-looking fix — it applies the next time
+`_resolve_sku()` runs (e.g. on stock check or 1Click submission for new or
+re-synced orders); it does not retroactively rewrite historical rows.
 
-**Result:** ☐ N/A — Dev Follow-up Needed
-**Notes:**
+**Result:** ☑ Pass
+**Notes:** Existing orders' stored `sku` values are untouched — this only
+changes what `_resolve_sku()` returns when the stored SKU is genuinely
+blank. No `bench migrate` needed (pure Python change, no schema change).
 
 ---
 
@@ -1370,12 +1392,12 @@ finish connecting this feature, or remove it if it's no longer needed.
 | 20 — 1Click Order Not Dispatched Within 72h = SLA Breach | `LYF-MN-2026-0074` | ☑ Pass — new SLA rule built and verified |
 | 21 — Stuck Shipment Alerts | `LYF-MN-2026-0077` / `ASN-2026-00008` | ☑ Pass (both alerts) |
 | 22 — Two-Shipment Split (removed per founder decision) | `LYF-MN-2026-0079` | ☑ Pass |
-| 23 — Cancel After Submission | _(alert built + unit-verified, needs 1 real end-to-end run)_ | ☐ Pass ☐ Fail |
+| 23 — Cancel After Submission | `LYF-MN-2026-0080` | ☑ Pass |
 | 24 — Same-Item Double Order Race | `LYF-MN-2026-0051` / `-0052` | ☐ Inconclusive — needs a real 1-unit SKU |
 | 25 — Manual Tracking Not Auto-Corrected | `LYF-MN-2026-0079` | ☑ Pass |
 | 26 — Unfamiliar Carrier Auto-Creation | N/A (carrier-only test) | ☑ Pass |
 | 27 — Received ≠ 1Click Confirmation | `LYF-MN-2026-0080` | ☑ Pass |
-| 28 — SKU Auto-Fill (Not Active) | N/A | ☐ N/A — Dev Follow-up Needed |
+| 28 — SKU Auto-Fill From Item Name | N/A (verified against 1,543 real rows) | ☑ Pass |
 
 ## Real Gaps Found During This Execution Round (2026-09-02, updated 2026-09-04)
 
