@@ -179,6 +179,11 @@ automatically.
 
 <img width="1892" height="191" alt="image" src="https://github.com/user-attachments/assets/43d200ba-ccca-482f-a81a-5b112caaeb6a" />
 
+**Packing List**
+
+<img width="1722" height="600" alt="image" src="https://github.com/user-attachments/assets/71f3e2da-245a-4bcc-8ce0-305f829db978" />
+
+
 **Result:** ☑ Pass ☐ Fail
 **Notes:** Re-run 2026-09-03 as `LYF-MN-2026-0055`, using `3.5FT-TB-200-SB`
 (1 unit) + `MHRB-200-AC` (1 unit). **Real US stock was at 0 for every SKU at
