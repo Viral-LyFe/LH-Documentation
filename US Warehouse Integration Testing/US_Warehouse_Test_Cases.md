@@ -196,9 +196,8 @@ automatically.
 
 <img width="1707" height="591" alt="image" src="https://github.com/user-attachments/assets/361dd87a-f559-433f-8740-959475fd4d88" />
 
-**Pending List Address**
 
-<img width="1892" height="191" alt="image" src="https://github.com/user-attachments/assets/43d200ba-ccca-482f-a81a-5b112caaeb6a" />
+
 
 **Result:** ☑ Pass ☐ Fail
 **Notes:** Re-run 2026-09-03 as `LYF-MN-2026-0055`, using `3.5FT-TB-200-SB`
@@ -240,6 +239,21 @@ show the US warehouse's address — not the customer's address.
 
 <img width="1876" height="382" alt="image" src="https://github.com/user-attachments/assets/7b17f638-531f-4bd6-9bee-cc5364c30c79" />
 
+**Pending List Address**
+
+<img width="1892" height="191" alt="image" src="https://github.com/user-attachments/assets/43d200ba-ccca-482f-a81a-5b112caaeb6a" />
+
+**Packing List**
+
+<img width="1722" height="600" alt="image" src="https://github.com/user-attachments/assets/71f3e2da-245a-4bcc-8ce0-305f829db978" />
+
+**Sales Invoice**
+
+<img width="1667" height="896" alt="image" src="https://github.com/user-attachments/assets/a50adcb8-3110-43fd-90c3-a8befa020cb0" />
+
+**Pick Pack List**
+
+<img width="1076" height="292" alt="image" src="https://github.com/user-attachments/assets/f1df4c2c-ca3f-42f5-8481-790c9b126e6b" />
 
 **Result:** ☐ Pass ☐ Fail
 **Notes:**
@@ -1103,6 +1117,9 @@ Test Case 5's flow: hold, show both lists, wait for a human to confirm.
   the whole order to Factory as a single shipment, not a split.
 - Normal orders (single-item, fully in US stock) continue to work exactly
   as before.
+
+<img width="1652" height="562" alt="image" src="https://github.com/user-attachments/assets/2342cde1-9d54-42d2-9931-323c44360726" />
+
 
 **Result:** ☑ Pass — removed per founder decision, regression-checked clean
 **Notes:** Confirmed the old two-shipment code is fully removed — checked
