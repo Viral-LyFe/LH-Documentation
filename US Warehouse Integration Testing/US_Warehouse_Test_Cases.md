@@ -782,9 +782,10 @@ an empty reason, for the record.
 
 **Order ID:** `LYF-MN-2026-0043` (real item + fee) / `LYF-MN-2026-0045` (fee only) / `LYF-MN-2026-0071` (re-run, 2026-09-03, real SKU + fee, forced full US delivery)
 
-**What we're checking:** orders sometimes have a "Custom Fee" or "Customs
-Fee" line added — these aren't real physical items and shouldn't be treated
-as something to ship or check stock for.
+**What we're checking:** orders sometimes have a "Custom Fee," "Customs
+Fee," advance-payment, or other payment-collection-only line added — these
+exist purely to collect money on the order and were never meant to be
+treated as something to ship, check stock for, or send to 1Click.
 
 **Steps:**
 1. Create an order with one real item (in US stock) plus one Custom Fee
@@ -792,11 +793,16 @@ as something to ship or check stock for.
 2. Separately, create a second order with ONLY a Custom Fee line (no real
    items at all). Try to let it process.
 
-**Expected Result:**
+**Expected Result (corrected 2026-09-04 per explicit user clarification):**
 - Test 1: the fee line is clearly marked/excluded and doesn't affect
   routing; the real item routes and submits normally.
-- Test 2: the system should block this from being sent to 1Click as an
-  empty order — it should show a clear message instead.
+- Test 2: **this should NOT be blocked and should NOT show any error.**
+  Fee/payment-collection lines are added purely for payment purposes, not
+  fulfillment — an order made up of only such lines correctly has nothing
+  to route to 1Click, and should simply be handled like any other
+  non-1Click order (i.e. it goes to Factory, quietly, same as any other
+  order with nothing in US stock). Blocking it or showing an error would
+  be wrong — this is standard behavior, not an edge case to guard against.
 
 > <img width="1677" height="766" alt="image" src="https://github.com/user-attachments/assets/c8da664b-9953-4160-a557-8038c7a488a3" />
 
@@ -805,20 +811,22 @@ as something to ship or check stock for.
 > <img width="1600" height="886" alt="image" src="https://github.com/user-attachments/assets/4bb744cc-3082-4638-ba3f-234daafac8b2" />
 
 
-**Result:** ☑ Pass (Test 1) ☑ **Fail** (Test 2)
+**Result:** ☑ Pass (Test 1) ☑ Pass (Test 2)
 **Notes:** Executed 2026-09-02. **Test 1 passed exactly as expected** — the
 fee line was correctly badged "Excluded," the real item routed and
-submitted normally with a real 1Click order ID (`1659100`). **Test 2 did
-not behave as expected** — a fee-only order (no real items at all) was NOT
-blocked with an error message. Instead it silently became a normal-looking
-Factory order (status "Factory Assignment," no 1Click submission — so
-nothing was actually sent to 1Click, which is good — but there was no clear
-message telling anyone this order has nothing real to fulfill). The
-existing "no items to submit" error only exists on the US-warehouse
-submission path; an order with only a fee line never reaches that path
-because it's routed to India by default instead. **Recommend adding a
-similar check that fires regardless of which route the order takes.**
-(Still open — not fixed as of 2026-09-03.)
+submitted normally with a real 1Click order ID (`1659100`).
+
+**Test 2 — corrected 2026-09-04.** Originally flagged as a "Fail" because
+a fee-only order wasn't blocked with an error message. **This was a wrong
+expectation on the test's part, not a bug** — confirmed by explicit user
+clarification: fee/payment-collection lines are correctly excluded from
+1Click entirely (they exist only for payment collection), so an order with
+only such lines correctly has nothing to route, and should be handled
+exactly like any other non-1Click order — no error, no block, just Factory
+assignment as normal. The actual observed behavior (order silently becomes
+a normal Factory order, status "Factory Assignment," no 1Click submission)
+**is the correct, intended behavior.** No code change needed — this item is
+now marked Pass, not a gap.
 
 **Re-run 2026-09-03 (`LYF-MN-2026-0071`)** — a fresh order with real SKU
 `KJTFL-16-ABZ` + a Custom Fee line, forced to full US delivery via "Force
@@ -838,47 +846,45 @@ expected for a Force override, not a bug.
 
 **Order ID:** `LYF-MN-2026-0046`
 
-**What we're checking:** a Standard (non-Custom) order shouldn't be saveable
-if an item is missing its SKU — this prevents bad data going further down
-the pipeline.
+**What we're checking (corrected 2026-09-04, per explicit user
+clarification):** ~~a Standard order shouldn't be saveable if an item is
+missing its SKU~~ — **this original premise was wrong.** A missing
+`erp_item`/SKU does NOT mean bad data — it could genuinely be a Custom
+item (no fixed SKU by nature) sitting alongside Standard items on the same
+order. **Saving should never be blocked** for a missing SKU, on any order
+type. The real, correct behavior is: an item with no SKU simply can't be
+matched against 1Click, so it's assigned to Factory instead of the US
+Warehouse — exactly the same treatment as any other item confirmed not in
+US stock.
 
 **Steps:**
 1. Create a new Standard order, New status, with an item row that has no
-   SKU filled in. Try to save.
-2. On that same order, change the order type to **Custom**. Try to save
-   again.
-3. Change it back to Standard and move it past New status (e.g. Approve
-   it). Then try editing it again with a blank SKU on a row and save.
+   SKU filled in. Save it.
+2. Confirm it saves successfully — not blocked.
+3. Confirm the no-SKU item is routed to Factory, not the US Warehouse.
 
-**Expected Result:**
-- Step 1: save is blocked with a "Missing SKU" style error.
-- Step 2: save succeeds once it's a Custom order.
-- Step 3: save succeeds — the block only applies to brand-new Standard
-  orders, not ones further along.
+**Expected Result (corrected):**
+- Save always succeeds, regardless of order type or how many items are
+  missing a SKU.
+- A no-SKU item is always routed to Factory — never eligible for US
+  Warehouse fulfillment (nothing to check against 1Click).
+- If the order also has other items genuinely in US stock, this correctly
+  produces the same Mixed-order human-review flow as any other
+  partially-available order.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot showing the order saved successfully despite the missing SKU, once you've reproduced it on screen ]**
+> 📷 **[ IMAGE PLACEHOLDER — Screenshot showing the order saved successfully with a missing SKU, and the no-SKU item's row correctly assigned to Factory ]**
 
-**Result:** ☐ Pass ☑ **Fail** (Step 1) — still open as of 2026-09-03
-**Notes:** Executed 2026-09-02, direct system-level test. **Step 1 did not
-block the save** — a Standard order in New status with a completely blank
-SKU on a real item row saved without any error. This is a real gap: the
-"Missing SKU" check exists correctly written in the code, but the function
-that runs it is never actually wired up to fire when an order is saved — it
-sits unused. **Recommend this gets connected and fixed**, since right now
-Standard orders can go through the pipeline with no SKU at all, which is
-exactly what this rule was meant to prevent. Please also confirm on the
-actual screen (not just a direct system test) whether the form blocks it —
-if it does, that means the safety net only exists in the browser and not on
-the server, which is also worth flagging separately. **This block itself
-remains unfixed** — the fix below addresses what happens once such an
-order already exists, not whether it should have been allowed to save in
-the first place.
+**Result:** ☑ Pass
+**Notes:** Executed 2026-09-02, direct system-level test — confirmed the
+order **saves successfully** with a blank SKU on a real item row, on a
+Standard order, in New status. **This was originally logged as a "Fail"
+against the wrong expectation** (that this should be blocked) — corrected
+2026-09-04 per explicit user clarification: never blocking is the correct,
+intended behavior. The `_validate_sku_on_new_standard_orders` function
+that would have blocked this exists in the code but is (correctly) never
+wired up — it should stay that way, not be "fixed" to start blocking.
 
-### Related fix (2026-09-03): routing for an order that already has a no-SKU item
-
-Since Step 1's block doesn't exist, orders with no-SKU items do reach
-production today — so a separate, real question came up: what should
-happen when the routing/1Click logic encounters one of these orders?
+### Routing fix (2026-09-03): a no-SKU item's routing, once the order exists
 
 **Found a second, related bug:** a no-SKU item was silently dropped from
 routing entirely — invisible to both the US and Factory shipment tables,
@@ -904,30 +910,63 @@ for human review, `us_warehouse_shipment_items` has the real SKU,
 
 **Order ID:** `LYF-MN-2026-0046` (same order used in Test Case 19)
 
-**What we're checking:** every new order should automatically get a target
-dispatch date/time of 72 hours after it was created.
+**What we're checking (corrected 2026-09-04):** ~~every new order should
+automatically get a target dispatch date/time of 72 hours after it was
+created~~ — this turned out to be an incomplete picture of how the field
+actually works. There are **two separate, already-working** stamping
+paths, both conditional, plus one genuinely missing fallback:
+
+1. **Orders created from a Quotation with an Estimated Delivery Date** —
+   already correctly stamped, using a proper SLA reverse-calculation
+   (factors in order type + whether it routes via US Warehouse), at
+   creation time. **Working.**
+2. **Any order upgraded to "Urgent" priority** — same reverse-calculation,
+   triggered the moment priority changes to Urgent (if not already set,
+   and if a linked Quotation with an estimated delivery date exists).
+   **Working.**
+3. **Orders with no Quotation link at all** (manual orders, ShipStation
+   orders with nothing to sync from) — get **no dispatch date at all**,
+   not even a simple default. **This is the real, still-open gap** — a
+   generic "+72h from creation" fallback exists in the code
+   (`_stamp_promised_dispatch_by`) but is never actually called from
+   anywhere.
 
 **Steps:**
-1. Create any new order (Standard or Custom).
+1. Create a **manually-created** order with **no linked Quotation** (the
+   two working paths above don't apply — this isolates the actual gap).
 2. Look at the "Promised Dispatch By" field right after saving.
 
 **Expected Result:**
-- The field is automatically filled in with a date/time exactly 72 hours
-  after the order was created.
+- The field should be automatically filled in with a date/time roughly 72
+  hours after creation, as a fallback for orders that don't get a
+  Quotation-based SLA calculation.
 - Saving the order again later does not change this value.
+- An order created from a Quotation with an estimated delivery date should
+  continue getting its proper SLA-calculated date, not the generic 72h
+  fallback — the fallback should only apply when no Quotation-based date
+  was set.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the new order showing the empty Promised Dispatch By field, once reproduced on screen ]**
+> 📷 **[ IMAGE PLACEHOLDER — Screenshot of a manually-created order (no Quotation link) showing the empty Promised Dispatch By field ]**
 
-**Result:** ☐ Pass ☑ **Fail**
-**Notes:** Executed 2026-09-02, direct system-level test. **The field was
-left completely blank** on a freshly-created order — it was not
-auto-filled with a 72-hour target at all. Same root cause as Test Case
-19's failure: the code that's supposed to stamp this value is written
-correctly, but it's never actually triggered when an order is created or
-saved — it's disconnected from the rest of the system. **Recommend this
-gets connected and fixed**, since this field is meant to be a key SLA
-target used elsewhere. Please also confirm on the actual order screen
-whether it's blank there too.
+**Result:** ☐ Pass ☑ **Fail** — real gap, still open
+**Notes:** Executed 2026-09-02, direct system-level test. **Confirmed the
+field is left blank** on a manually-created order (no Quotation link) —
+`_stamp_promised_dispatch_by()` (the generic 72h fallback) exists correctly
+in the code but is only ever called from `_validate_order_items_locked()`,
+which itself is never called from anywhere — a fully dead code path.
+
+**Corrected 2026-09-04:** initially assumed this meant *no* order ever gets
+this field stamped, same as Test Case 19's mistaken assumption — that was
+wrong. Re-traced all callers and found the field genuinely does work for
+Quotation-linked and Urgent orders, via a separate, correct mechanism
+(`_sync_dispatch_date_from_quotation` / `_on_upgrade_to_urgent`). The real,
+narrower gap is only orders with no Quotation to calculate from at all.
+
+**Fix identified, not yet applied — pending manager confirmation** (as of
+2026-09-04): wire the dead 72h fallback into `validate()`, but **only**
+when `source_quotation` is not set — so Quotation-linked orders keep
+getting their proper SLA-calculated date, and only genuinely-orphaned
+orders (no Quotation to calculate from) get the simple +72h default.
 
 ---
 
@@ -1187,8 +1226,8 @@ finish connecting this feature, or remove it if it's no longer needed.
 | 15 — Force US Override | `LYF-MN-2026-0040` / `-0067` | ☑ Pass (also fixed: field was invisible + didn't trigger routing) |
 | 16 — Force India Override | `LYF-MN-2026-0041` / `-0070` | ☑ Pass |
 | 17 — Override Reason Required | `LYF-MN-2026-0042` | ☑ Pass — fixed 2026-09-03 |
-| 18 — Fee Line Handling | `LYF-MN-2026-0043` / `-0045` / `-0071` | ☑ Pass (real item) / ☑ **Fail** (fee-only order, still open) |
-| 19 — Missing SKU Block | `LYF-MN-2026-0046` | ☑ **Fail** (Step 1 still open) — but no-SKU routing fixed separately, see `-0072` |
+| 18 — Fee Line Handling | `LYF-MN-2026-0043` / `-0045` / `-0071` | ☑ Pass (both parts — fee-only orders correctly NOT blocked) |
+| 19 — Missing SKU (never blocks; no-SKU items go to Factory) | `LYF-MN-2026-0046` / `-0072` | ☑ Pass |
 | 20 — 72h Dispatch Target | `LYF-MN-2026-0046` | ☑ **Fail** — real gap found |
 | 21 — Stuck Shipment Alerts | _(pending — needs back-dated timestamps)_ | ☐ Pass ☐ Fail |
 | 22 — Two-Shipment Split (Old Path) | _(pending)_ | ☐ Pass ☐ Fail ☐ Needs Founder Decision |
@@ -1199,7 +1238,7 @@ finish connecting this feature, or remove it if it's no longer needed.
 | 27 — Received ≠ 1Click Confirmation | _(pending)_ | ☐ Pass ☐ Fail |
 | 28 — SKU Auto-Fill (Not Active) | N/A | ☐ N/A — Dev Follow-up Needed |
 
-## Real Gaps Found During This Execution Round (2026-09-02, updated 2026-09-03)
+## Real Gaps Found During This Execution Round (2026-09-02, updated 2026-09-04)
 
 Genuine bugs confirmed by actually running these tests, not just reading
 the code:
@@ -1207,17 +1246,29 @@ the code:
 1. ~~**Test Case 17 — Override reason is not actually enforced**~~ —
    **FIXED 2026-09-03.** Now enforced server-side by the dedicated
    `apply_route_plan_override` method, and required in the browser dialog.
-2. **Test Case 18 (Test 2) — A fee-only order isn't blocked** with a clear
-   error; it silently becomes a normal-looking order instead. **Still
-   open.**
-3. **Test Case 19 — The "Missing SKU" block never fires** — the check
-   exists in the code but isn't connected to anything. **Still open** —
-   Standard orders can still be saved with a missing SKU. A **related but
-   separate** issue (what happens to a no-SKU item's routing once such an
-   order exists) was found and fixed the same day — see Test Case 19's
-   notes and `LYF-MN-2026-0072`.
-4. **Test Case 20 — The 72-hour dispatch target is never stamped** — same
-   root cause as #3, the code exists but isn't connected. **Still open.**
+2. ~~**Test Case 18 (Test 2) — A fee-only order isn't blocked**~~ — **NOT A
+   BUG, corrected 2026-09-04.** Confirmed by explicit user clarification:
+   fee/payment-collection lines are correctly excluded from 1Click, so a
+   fee-only order correctly has nothing to route — no error, no block, just
+   normal Factory assignment. The original test's expectation was wrong,
+   not the code.
+3. ~~**Test Case 19 — The "Missing SKU" block never fires**~~ — **NOT A
+   BUG, corrected 2026-09-04.** Confirmed by explicit user clarification:
+   saving should never be blocked for a missing SKU — it could be a
+   legitimate Custom item with no fixed SKU. The correct, and already
+   confirmed, behavior is that a no-SKU item is routed to Factory instead
+   of the US Warehouse (see item 7 below) — not blocked from saving at all.
+   `_validate_sku_on_new_standard_orders` staying disconnected is correct,
+   not a bug to fix.
+4. **Test Case 20 — orders with no Quotation link never get a dispatch
+   target.** Corrected 2026-09-04: this is narrower than first thought —
+   Quotation-linked orders and Urgent orders already correctly get a
+   proper SLA-calculated `promised_dispatch_by` via a separate, working
+   mechanism. Only orders with no Quotation to calculate from (manual /
+   ShipStation-only orders) get nothing — the generic 72h fallback exists
+   in code but is never called. **Still open — fix identified (wire the
+   fallback into `validate()`, gated on `not source_quotation`), holding
+   off on applying it pending manager confirmation.**
 
 **Also found and fixed 2026-09-03, not originally on this list:**
 
@@ -1239,8 +1290,7 @@ the code:
    Mixed-order human-review flow when the order also has real in-stock
    items.
 
-Items 3 and 4 (Test Cases 19 and 20) still share the same underlying cause
-and are likely fixable together, when addressed.
+**Only Test Case 20 remains a real, open gap** — see explanation below.
 
 **Tested by:** Claude (automated/developer-level execution, plus live
 whitelisted-method calls matching exactly what the browser UI calls) —
