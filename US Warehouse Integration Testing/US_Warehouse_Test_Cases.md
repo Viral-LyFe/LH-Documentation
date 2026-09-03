@@ -906,67 +906,52 @@ for human review, `us_warehouse_shipment_items` has the real SKU,
 
 ---
 
-## Test Case 20 — Every New Order Gets a 72-Hour Dispatch Target
+## Test Case 20 — Every New Order Gets a Dispatch Target
 
-**Order ID:** `LYF-MN-2026-0046` (same order used in Test Case 19)
+**Order ID:** `LYF-MN-2026-0046` (no-Quotation case, confirms the gap)
 
-**What we're checking (corrected 2026-09-04):** ~~every new order should
-automatically get a target dispatch date/time of 72 hours after it was
-created~~ — this turned out to be an incomplete picture of how the field
-actually works. There are **two separate, already-working** stamping
-paths, both conditional, plus one genuinely missing fallback:
+**What we're checking:** every order should end up with a
+`promised_dispatch_by` date — either a proper SLA-calculated one, or a
+simple fallback when there's nothing to calculate from.
+
+**How this actually works today:**
 
 1. **Orders created from a Quotation with an Estimated Delivery Date** —
-   already correctly stamped, using a proper SLA reverse-calculation
-   (factors in order type + whether it routes via US Warehouse), at
-   creation time. **Working.**
-2. **Any order upgraded to "Urgent" priority** — same reverse-calculation,
-   triggered the moment priority changes to Urgent (if not already set,
-   and if a linked Quotation with an estimated delivery date exists).
-   **Working.**
+   correctly stamped with a proper SLA-calculated date (factors in order
+   type + whether it routes via US Warehouse), at creation time.
+2. **Any order upgraded to "Urgent" priority** — same SLA calculation,
+   triggered the moment priority changes to Urgent (only if not already
+   set, and only if a linked Quotation with an estimated delivery date
+   exists).
 3. **Orders with no Quotation link at all** (manual orders, ShipStation
-   orders with nothing to sync from) — get **no dispatch date at all**,
-   not even a simple default. **This is the real, still-open gap** — a
-   generic "+72h from creation" fallback exists in the code
-   (`_stamp_promised_dispatch_by`) but is never actually called from
-   anywhere.
+   orders with nothing to sync from) — currently get **no dispatch date
+   at all**. This is the actual gap.
 
 **Steps:**
-1. Create a **manually-created** order with **no linked Quotation** (the
-   two working paths above don't apply — this isolates the actual gap).
+1. Create a manually-created order with no linked Quotation (isolates the
+   gap from the two working paths above).
 2. Look at the "Promised Dispatch By" field right after saving.
 
 **Expected Result:**
-- The field should be automatically filled in with a date/time roughly 72
-  hours after creation, as a fallback for orders that don't get a
-  Quotation-based SLA calculation.
+- The field should be filled in with a date roughly 72 hours after
+  creation, as a fallback for orders with nothing to calculate from.
 - Saving the order again later does not change this value.
 - An order created from a Quotation with an estimated delivery date should
-  continue getting its proper SLA-calculated date, not the generic 72h
-  fallback — the fallback should only apply when no Quotation-based date
-  was set.
+  keep getting its proper SLA-calculated date, never the generic fallback.
 
 > 📷 **[ IMAGE PLACEHOLDER — Screenshot of a manually-created order (no Quotation link) showing the empty Promised Dispatch By field ]**
 
 **Result:** ☐ Pass ☑ **Fail** — real gap, still open
-**Notes:** Executed 2026-09-02, direct system-level test. **Confirmed the
-field is left blank** on a manually-created order (no Quotation link) —
-`_stamp_promised_dispatch_by()` (the generic 72h fallback) exists correctly
-in the code but is only ever called from `_validate_order_items_locked()`,
-which itself is never called from anywhere — a fully dead code path.
+**Notes:** Confirmed on `LYF-MN-2026-0046` (a manually-created order, no
+Quotation link) — the field is left blank. A generic "+72h from creation"
+fallback exists in the code (`_stamp_promised_dispatch_by`) but is never
+actually called from anywhere.
 
-**Corrected 2026-09-04:** initially assumed this meant *no* order ever gets
-this field stamped, same as Test Case 19's mistaken assumption — that was
-wrong. Re-traced all callers and found the field genuinely does work for
-Quotation-linked and Urgent orders, via a separate, correct mechanism
-(`_sync_dispatch_date_from_quotation` / `_on_upgrade_to_urgent`). The real,
-narrower gap is only orders with no Quotation to calculate from at all.
-
-**Fix identified, not yet applied — pending manager confirmation** (as of
-2026-09-04): wire the dead 72h fallback into `validate()`, but **only**
-when `source_quotation` is not set — so Quotation-linked orders keep
-getting their proper SLA-calculated date, and only genuinely-orphaned
-orders (no Quotation to calculate from) get the simple +72h default.
+**Fix identified, not yet applied — pending manager confirmation:** wire
+the fallback into `validate()`, gated on `not source_quotation`, so
+Quotation-linked orders keep getting their proper SLA-calculated date and
+only orders with no Quotation to calculate from get the simple +72h
+default.
 
 ---
 
@@ -1261,14 +1246,13 @@ the code:
    `_validate_sku_on_new_standard_orders` staying disconnected is correct,
    not a bug to fix.
 4. **Test Case 20 — orders with no Quotation link never get a dispatch
-   target.** Corrected 2026-09-04: this is narrower than first thought —
-   Quotation-linked orders and Urgent orders already correctly get a
-   proper SLA-calculated `promised_dispatch_by` via a separate, working
-   mechanism. Only orders with no Quotation to calculate from (manual /
-   ShipStation-only orders) get nothing — the generic 72h fallback exists
-   in code but is never called. **Still open — fix identified (wire the
-   fallback into `validate()`, gated on `not source_quotation`), holding
-   off on applying it pending manager confirmation.**
+   target.** Quotation-linked and Urgent orders already correctly get a
+   proper SLA-calculated `promised_dispatch_by`. Orders with no Quotation
+   to calculate from (manual / ShipStation-only orders) get nothing — the
+   generic 72h fallback exists in code but is never called. **Still open —
+   fix identified (wire the fallback into `validate()`, gated on
+   `not source_quotation`), holding off on applying it pending manager
+   confirmation.**
 
 **Also found and fixed 2026-09-03, not originally on this list:**
 
