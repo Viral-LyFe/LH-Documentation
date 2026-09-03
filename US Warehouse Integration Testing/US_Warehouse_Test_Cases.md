@@ -1083,6 +1083,9 @@ Test Case 5's flow: hold, show both lists, wait for a human to confirm.
 - Normal orders (single-item, fully in US stock) continue to work exactly
   as before.
 
+<img width="1652" height="562" alt="image" src="https://github.com/user-attachments/assets/2342cde1-9d54-42d2-9931-323c44360726" />
+
+
 **Result:** ☑ Pass — removed per founder decision, regression-checked clean
 **Notes:** Confirmed the old two-shipment code is fully removed — checked
 directly, calling the routing logic with a deliberately mixed result now
