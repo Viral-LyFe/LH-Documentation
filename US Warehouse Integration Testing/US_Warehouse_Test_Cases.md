@@ -39,7 +39,7 @@ India.
 
 
 **Result:** ☑ Pass ☐ Fail
-**Notes:** Verified against the screenshots (2026-09-04): order shows status
+**Notes:** Verified against the screenshots (2026-09-03): order shows status
 "Submitted to 1Click," item correctly landed in the US Warehouse Shipment
 table, and a real 1Click order ID (`1656895`) with a successful raw API
 response is recorded on the order. Matches expected result exactly.
@@ -71,7 +71,7 @@ customer — it should not wait around for the US warehouse at all.
 
 
 **Result:** ☑ Pass ☐ Fail
-**Notes:** Verified against the screenshots (2026-09-04): order shows
+**Notes:** Verified against the screenshots (2026-09-03): order shows
 status "Factory Assignment," item correctly landed only in the Factory
 Warehouse Shipment table (nothing in the US Warehouse table), and the
 Pending List export correctly shows the real India destination address —
@@ -110,7 +110,7 @@ button for this.
 
 
 **Result:** ☑ Pass ☐ Fail
-**Notes:** Verified against the screenshots (2026-09-04): the confirmation
+**Notes:** Verified against the screenshots (2026-09-03): the confirmation
 popup appeared exactly as expected before switching, and after confirming,
 the order shows "US Warehouse" badge with a real, linked Transfer Order
 under Fulfillment — status stayed "Factory Assignment," nothing alarming
@@ -149,7 +149,7 @@ booked with 1Click — no extra clicking needed beyond marking it "received."
 <img width="1662" height="827" alt="image" src="https://github.com/user-attachments/assets/ff24886a-ac7a-450d-af0e-e444640590ac" />
 
 **Result:** ☑ Pass ☐ Fail
-**Notes:** Verified against the screenshots (2026-09-04): the Transfer
+**Notes:** Verified against the screenshots (2026-09-03): the Transfer
 Order shows status "Received" with delivery detection marked
 "Auto-Detected Delivered" and a real tracking number, the Lyfe Order shows
 status "Submitted to 1Click" with a real 1Click order ID (`1659365`) and a
@@ -256,7 +256,7 @@ show the US warehouse's address — not the customer's address.
 <img width="1076" height="292" alt="image" src="https://github.com/user-attachments/assets/f1df4c2c-ca3f-42f5-8481-790c9b126e6b" />
 
 **Result:** ☑ Pass ☐ Fail
-**Notes:** Verified against the screenshots (2026-09-04) across every
+**Notes:** Verified against the screenshots (2026-09-03) across every
 document type: the Pending List, Packing List, Sales Invoice (both
 Billing and Shipping Address), and Pick-Pack List all correctly show
 "Lyfe Hardware" / the US Warehouse address (270 Old New Brunswick Rd Unit
@@ -647,30 +647,50 @@ accurately than the original two-child-order scenario would have.
 
 ## Test Case 14 — Stock Changes Between the Check and the Actual Booking
 
-**Order ID:** _(to be filled in when this test is run)_
+**Order ID:** `LYF-MN-2026-0083` (simulation order)
 
 **What we're checking:** our system checks stock once before deciding to
 route an order to the US warehouse. But what if the stock changes (someone
 else buys it) in the few moments between that check and actually booking
 with 1Click?
 
-**Steps:**
-1. This is a timing-based scenario that's hard to trigger naturally — a
-   developer will need to simulate 1Click reporting a different (lower)
-   quantity at booking time than what the earlier stock check showed.
-2. Check what the order's final status/details show.
+**Steps taken:**
+1. Simulated the race directly at the correct layer — the stock check
+   (`get_inventory`) reported the item as available, then the actual
+   booking call (1Click's real HTTP response, not just our wrapper) was
+   made to return `success: false` with `"Insufficient stock: requested 2,
+   available 0"` — exactly the shape 1Click uses for a real stock rejection.
+2. Ran the real, unmodified `run_oneclick_fulfillment()` end to end against
+   a real order and checked its final status/fields.
 
-**Expected Result:**
-- **This is currently an open question we need 1Click to answer:** what do
-  they actually do in this situation — reject the order, ship what they can
-  (partial), or hold it as a backorder?
-- Whatever they do, our system should show that clearly on the order — not
-  silently mark it as a normal successful full shipment when it wasn't.
+**What we confirmed our system actually does:**
+- `create_order()` correctly raises on `success: false` (`_raise_if_failed`
+  in `oneclick_api.py`) — it does **not** treat this as a success.
+- `run_oneclick_fulfillment()`'s outer error handler catches it and sets the
+  order to **`1Click Error`** (not "Submitted to 1Click", not silently
+  marked as shipped).
+- The real 1Click rejection message ("Insufficient stock: requested 2,
+  available 0...") is preserved, visible in `oneclick_error` on the order.
+- So: our side never silently treats a stock-race rejection as a normal
+  successful shipment — it correctly surfaces as a visible, actionable
+  error, same as any other 1Click Create Order failure (Test Case 8).
 
-> 📷 **[ IMAGE PLACEHOLDER — pending: needs 1Click's answer before this can be fully tested and screenshotted ]**
+**Still open — genuinely needs 1Click's own answer:** what 1Click's *real*
+sandbox actually does in a true race (reject entirely vs. ship partial vs.
+backorder) is still unconfirmed — this test only proves our system handles
+a **rejection** response correctly, since that's the only failure shape
+1Click's API documents. If 1Click's real behavior turns out to be a
+*partial-success* response instead of an outright failure, our code has no
+special handling for that shape today and would need a follow-up look. That
+part of the question is still pending 1Click's reply to the drafted email
+(same one covering Test Case 11).
 
-**Result:** ☐ Pass ☐ Fail
-**Notes:**
+**Result:** ☑ Pass — for the failure-response case, which is the only
+documented failure shape
+**Notes:** Simulated by mocking `requests.post` (not by replacing our own
+`create_order()`/`create_oneclick_order()` functions) so the real
+`_raise_if_failed` validation logic ran unmodified — this is what makes the
+test trustworthy as a check of our actual code, not just of the mock.
 
 ---
 
@@ -833,7 +853,7 @@ treated as something to ship, check stock for, or send to 1Click.
 2. Separately, create a second order with ONLY a Custom Fee line (no real
    items at all). Try to let it process.
 
-**Expected Result (corrected 2026-09-04 per explicit user clarification):**
+**Expected Result (corrected 2026-09-03 per explicit user clarification):**
 - Test 1: the fee line is clearly marked/excluded and doesn't affect
   routing; the real item routes and submits normally.
 - Test 2: **this should NOT be blocked and should NOT show any error.**
@@ -856,7 +876,7 @@ treated as something to ship, check stock for, or send to 1Click.
 fee line was correctly badged "Excluded," the real item routed and
 submitted normally with a real 1Click order ID (`1659100`).
 
-**Test 2 — corrected 2026-09-04.** Originally flagged as a "Fail" because
+**Test 2 — corrected 2026-09-03.** Originally flagged as a "Fail" because
 a fee-only order wasn't blocked with an error message. **This was a wrong
 expectation on the test's part, not a bug** — confirmed by explicit user
 clarification: fee/payment-collection lines are correctly excluded from
@@ -886,7 +906,7 @@ expected for a Force override, not a bug.
 
 **Order ID:** `LYF-MN-2026-0046`
 
-**What we're checking (corrected 2026-09-04, per explicit user
+**What we're checking (corrected 2026-09-03, per explicit user
 clarification):** ~~a Standard order shouldn't be saveable if an item is
 missing its SKU~~ — **this original premise was wrong.** A missing
 `erp_item`/SKU does NOT mean bad data — it could genuinely be a Custom
@@ -919,7 +939,7 @@ US stock.
 order **saves successfully** with a blank SKU on a real item row, on a
 Standard order, in New status. **This was originally logged as a "Fail"
 against the wrong expectation** (that this should be blocked) — corrected
-2026-09-04 per explicit user clarification: never blocking is the correct,
+2026-09-03 per explicit user clarification: never blocking is the correct,
 intended behavior. The `_validate_sku_on_new_standard_orders` function
 that would have blocked this exists in the code but is (correctly) never
 wired up — it should stay that way, not be "fixed" to start blocking.
@@ -1061,7 +1081,7 @@ real 1Click order ID `1659398`) — confirming this alert's resolution path
 connects cleanly into the rest of the fulfillment flow, not just the SLA
 system in isolation.
 
-**Slack alert added 2026-09-04**, per explicit user request: both rules
+**Slack alert added 2026-09-03**, per explicit user request: both rules
 now also post a real Slack message the moment a violation is first
 detected, using the same webhook already configured for tracking alerts
 (`Seventeen Track Settings.tracking_alert_slack_webhook_url`) — no new
@@ -1090,7 +1110,7 @@ duplicates like this.
 **What we're checking:** there used to be an older, separate mechanism
 that could split one mixed order into two completely separate shipments
 to the customer, instead of the "wait and send as one shipment" behavior
-tested in Test Case 5. **Decision made 2026-09-04:** a customer should
+tested in Test Case 5. **Decision made 2026-09-03:** a customer should
 never receive two separate boxes for one order — the older mechanism has
 been removed entirely, keeping only the single-shipment, human-reviewed
 Mixed flow from Test Case 5.
@@ -1243,7 +1263,7 @@ it, or does the wrong number just stay there?
 > 📷 **[ IMAGE PLACEHOLDER — Screenshot of the order before and after the tracking check, showing the wrong number unchanged ]**
 
 **Result:** ☑ Pass
-**Notes:** Verified live 2026-09-04 on `LYF-MN-2026-0079` — manually set
+**Notes:** Verified live 2026-09-03 on `LYF-MN-2026-0079` — manually set
 tracking number to a deliberately wrong value, ran the real tracking sync
 (`sync_tracking_for_submitted_orders`), confirmed the field stayed exactly
 as entered afterward. Confirms this is intentional, working behavior —
@@ -1307,7 +1327,7 @@ own system. We want to document this timing gap clearly.
 > 📷 **[ IMAGE PLACEHOLDER — Screenshot showing both timestamps side by side ]**
 
 **Result:** ☑ Pass
-**Notes:** Verified live 2026-09-04 on `LYF-MN-2026-0080` (Route D order,
+**Notes:** Verified live 2026-09-03 on `LYF-MN-2026-0080` (Route D order,
 Transfer Order `ASN-2026-00010`). Marked the Transfer Order "Received" —
 the order booked with 1Click well under a second later (real order ID
 `1659400`). Confirms "Received" is purely our own internal signal (based
@@ -1383,7 +1403,7 @@ blank. No `bench migrate` needed (pure Python change, no schema change).
 | 11 — Unknown SKU / 1Click Hold | _(blocked — needs 1Click's answer)_ | ☐ Pass ☐ Fail |
 | 12 — Duplicate Submission | `LYF-MN-2026-0049` | ☑ Pass (1Click blocked it, not our own code) |
 | 13 — 1Click Timeout | `LYF-MN-2026-0065` / `-0066` | ☑ Pass (both plain and mixed-order cases) |
-| 14 — Stock Race Condition | _(blocked — needs 1Click's answer)_ | ☐ Pass ☐ Fail |
+| 14 — Stock Race Condition | `LYF-MN-2026-0083` | ☑ Pass (rejection case; 1Click's real behavior still unconfirmed) |
 | 15 — Force US Override | `LYF-MN-2026-0040` / `-0067` | ☑ Pass (also fixed: field was invisible + didn't trigger routing) |
 | 16 — Force India Override | `LYF-MN-2026-0041` / `-0070` | ☑ Pass |
 | 17 — Override Reason Required | `LYF-MN-2026-0042` | ☑ Pass — fixed 2026-09-03 |
@@ -1399,7 +1419,7 @@ blank. No `bench migrate` needed (pure Python change, no schema change).
 | 27 — Received ≠ 1Click Confirmation | `LYF-MN-2026-0080` | ☑ Pass |
 | 28 — SKU Auto-Fill From Item Name | N/A (verified against 1,543 real rows) | ☑ Pass |
 
-## Real Gaps Found During This Execution Round (2026-09-02, updated 2026-09-04)
+## Real Gaps Found During This Execution Round (2026-09-02, updated 2026-09-03)
 
 Genuine bugs confirmed by actually running these tests, not just reading
 the code:
@@ -1408,13 +1428,13 @@ the code:
    **FIXED 2026-09-03.** Now enforced server-side by the dedicated
    `apply_route_plan_override` method, and required in the browser dialog.
 2. ~~**Test Case 18 (Test 2) — A fee-only order isn't blocked**~~ — **NOT A
-   BUG, corrected 2026-09-04.** Confirmed by explicit user clarification:
+   BUG, corrected 2026-09-03.** Confirmed by explicit user clarification:
    fee/payment-collection lines are correctly excluded from 1Click, so a
    fee-only order correctly has nothing to route — no error, no block, just
    normal Factory assignment. The original test's expectation was wrong,
    not the code.
 3. ~~**Test Case 19 — The "Missing SKU" block never fires**~~ — **NOT A
-   BUG, corrected 2026-09-04.** Confirmed by explicit user clarification:
+   BUG, corrected 2026-09-03.** Confirmed by explicit user clarification:
    saving should never be blocked for a missing SKU — it could be a
    legitimate Custom item with no fixed SKU. The correct, and already
    confirmed, behavior is that a no-SKU item is routed to Factory instead
@@ -1422,7 +1442,7 @@ the code:
    `_validate_sku_on_new_standard_orders` staying disconnected is correct,
    not a bug to fix.
 4. ~~**Test Case 20 — orders with no Quotation link never get a dispatch
-   target.**~~ — **SUPERSEDED, built and fixed 2026-09-04.** The original
+   target.**~~ — **SUPERSEDED, built and fixed 2026-09-03.** The original
    version of this test case turned out to be checking the wrong thing.
    The real, correct need was a proper SLA rule tracking dispatch from
    **1Click submission time**, not order creation — built as a brand-new
