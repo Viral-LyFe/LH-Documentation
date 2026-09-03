@@ -1,4 +1,4 @@
-<img width="1652" height="921" alt="image" src="https://github.com/user-attachments/assets/f9d92755-0e85-494c-9854-58d676f11214" /># US Warehouse (1Click) Integration — Test Cases
+# US Warehouse (1Click) Integration — Test Cases
 
 This document walks through how to test the US Warehouse feature, step by
 step, in plain language. No technical background needed — just follow the
