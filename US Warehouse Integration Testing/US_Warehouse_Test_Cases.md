@@ -965,29 +965,58 @@ zero manual steps.
 
 ## Test Case 21 — Alerts Fire When a Shipment Gets Stuck
 
-**Order ID:** _(to be filled in when this test is run)_
+**Order ID:** `LYF-MN-2026-0077` (Leg 1 alert) / `ASN-2026-00008` (US Receipt alert)
 
 **What we're checking:** if an order routed through the US warehouse gets
 "stuck" at any stage for too long, the right team should get an alert.
 
+**How this is already handled:** both alerts already exist and are already
+active, using the same SLA framework this session's Test Case 20 rule was
+built on:
+
+| Alert | SLA Rule | Threshold | Watches |
+|---|---|---|---|
+| India ops — no leg-1 label after 48h | `SLAR-0018` | 48 hours | Orders held in "Awaiting India Components" with no India→US tracking number yet |
+| US ops — no receipt after 24h | `SLAR-0019` | 24 **business hours** (not calendar) | A Transfer Order sitting "Shipped" but not yet "Received" |
+
+Both auto-close themselves the moment the missing data shows up (tracking
+entered, or Transfer Order marked Received) — no manual cleanup needed.
+
 **Steps:**
 1. Find (or create) an order that's routing through the US warehouse but
    has no India-to-US tracking number entered yet.
-2. Ask a developer to help simulate enough time passing (48 hours) without
-   a tracking number being added.
+2. Simulate enough time passing (48 hours) without a tracking number being
+   added, then run the SLA check.
 3. Separately, find a shipment marked "Shipped" toward the US warehouse but
-   not yet marked "Received," and simulate 24 business hours passing.
+   not yet marked "Received," simulate 24 business hours passing, then run
+   the SLA check.
 
 **Expected Result:**
-- Step 2: an alert/notification is created for the India team, since the
-  shipment hasn't been labeled/shipped after 48 hours.
-- Step 3: an alert/notification is created for the US warehouse team, since
-  the shipment hasn't been checked in after 24 business hours.
+- Step 2: a real follow-up task is created for the India team.
+- Step 3: a real follow-up task is created for the US warehouse team,
+  measured in business hours, not calendar hours.
+- Both tasks close themselves automatically once resolved.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of each alert/notification being created ]**
+**Result:** ☑ Pass (both alerts)
+**Notes:** Verified live, full pipeline, real orders.
 
-**Result:** ☐ Pass ☐ Fail
-**Notes:**
+**Leg 1 alert (`LYF-MN-2026-0077`):** created via "Route via US Warehouse
+Instead," landed correctly in the genuine hold state
+(`fulfillment_route_tag = "Awaiting India Components"`, real Transfer
+Order `ASN-2026-00008` created, no tracking number). Back-dated 49 hours,
+ran the real SLA check — correctly created a real follow-up task. Added a
+tracking number — the task closed itself automatically.
+
+**US Receipt alert (`ASN-2026-00008`):** marked Shipped, ship date
+back-dated 5 calendar days (comfortably over 24 business hours once
+non-business time is excluded — correctly measured as ~40.6 business
+hours, not just raw elapsed time). Ran the real SLA check — correctly
+created a real follow-up task, High priority. Marked Received — the task
+closed itself automatically, and this also correctly triggered the order's
+real resume-to-1Click flow (order ended at status "Submitted to 1Click",
+real 1Click order ID `1659398`) — confirming this alert's resolution path
+connects cleanly into the rest of the fulfillment flow, not just the SLA
+system in isolation.
 
 ---
 
@@ -1222,7 +1251,7 @@ finish connecting this feature, or remove it if it's no longer needed.
 | 18 — Fee Line Handling | `LYF-MN-2026-0043` / `-0045` / `-0071` | ☑ Pass (both parts — fee-only orders correctly NOT blocked) |
 | 19 — Missing SKU (never blocks; no-SKU items go to Factory) | `LYF-MN-2026-0046` / `-0072` | ☑ Pass |
 | 20 — 1Click Order Not Dispatched Within 72h = SLA Breach | `LYF-MN-2026-0074` | ☑ Pass — new SLA rule built and verified |
-| 21 — Stuck Shipment Alerts | _(pending — needs back-dated timestamps)_ | ☐ Pass ☐ Fail |
+| 21 — Stuck Shipment Alerts | `LYF-MN-2026-0077` / `ASN-2026-00008` | ☑ Pass (both alerts) |
 | 22 — Two-Shipment Split (Old Path) | _(pending)_ | ☐ Pass ☐ Fail ☐ Needs Founder Decision |
 | 23 — Cancel After Submission | _(pending — needs CS's manual process documented)_ | ☐ Pass ☐ Fail |
 | 24 — Same-Item Double Order Race | `LYF-MN-2026-0051` / `-0052` | ☐ Inconclusive — needs a real 1-unit SKU |
