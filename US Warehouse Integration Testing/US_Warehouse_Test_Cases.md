@@ -1396,7 +1396,7 @@ blank. No `bench migrate` needed (pure Python change, no schema change).
 | 2 — India Direct | `LYF-MN-2026-0030` | ☑ Pass |
 | 3 — Route via US Warehouse | `LYF-SH-2026-1799` | ☑ Pass |
 | 4 — Auto-book on Arrival | `LYF-MN-2026-0053` | ☑ Pass |
-| 5 — Mixed Order | `LYF-MN-2026-0032` | ☐ Pass ☐ Fail |
+| 5 — Mixed Order | `LYF-MN-2026-0032` / `LYF-MN-2026-0055` | ☑ Pass |
 | 6 — Shipping Paperwork Address | `LYF-MN-2026-0053` | ☑ Pass |
 | 7 — Tracking Updates | _(pending)_ | ☐ Pass ☐ Fail |
 | 8 — Silent Failure on Create Order ⭐ | `LYF-MN-2026-0047` | ☑ Pass |
