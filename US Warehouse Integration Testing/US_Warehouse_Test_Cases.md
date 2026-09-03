@@ -758,7 +758,11 @@ as something to ship or check stock for.
 - Test 2: the system should block this from being sent to 1Click as an
   empty order — it should show a clear message instead.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the fee line marked "Excluded," plus a screenshot of the fee-only order's Factory Assignment status ]**
+> <img width="1677" height="766" alt="image" src="https://github.com/user-attachments/assets/c8da664b-9953-4160-a557-8038c7a488a3" />
+
+> <img width="656" height="796" alt="image" src="https://github.com/user-attachments/assets/ea04449a-2449-4672-953f-2c57e9a8c63e" />
+
+
 
 **Result:** ☑ Pass (Test 1) ☑ **Fail** (Test 2)
 **Notes:** Executed 2026-09-02. **Test 1 passed exactly as expected** — the
