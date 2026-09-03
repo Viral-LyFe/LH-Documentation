@@ -1139,7 +1139,8 @@ normal, single-shipment submission path.
 
 ## Test Case 23 — Cancelling an Order After It's Already Been Sent to 1Click
 
-**Order ID:** _(to be filled in when this test is run)_
+**Order ID:** `LYF-MN-2026-0080` (1Click Order ID `1659400`) — used to fire a
+real test alert; the order itself was not actually cancelled for this test.
 
 **What we're checking:** what actually happens, end to end, when a customer
 cancels an order that's already been submitted to 1Click.
@@ -1154,15 +1155,29 @@ cancels an order that's already been submitted to 1Click.
    1Click).
 
 **Expected Result:**
-- Nothing changes automatically in our system — this is confirmed to be a
-  fully manual process today (write down exactly what CS does, step by
-  step, as the actual expected result here).
-- Step 4 should be blocked with a clear message.
+- The system does not auto-cancel anything on 1Click's side — that part is
+  still fully manual (1Click has no cancel API we integrate with today).
+- **New:** the moment ShipStation syncs the cancellation in and the order
+  already has a `oneclick_order_id`, an urgent Slack alert fires
+  immediately to **Access Settings → Slack Channel — Urgent Orders**, so
+  the team knows right away that 1Click needs a manual cancel. Built and
+  verified this round (real webhook send confirmed, message includes the
+  order name, the 1Click Order ID, and a high-visibility 🚨 banner).
+- Step 4 (switching to Factory-only after 1Click submission) — not yet
+  separately verified; needs a run against a real Submitted-to-1Click order.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshots of CS's manual cancellation steps, plus the blocked Factory-only attempt ]**
+> 📷 **[ IMAGE PLACEHOLDER — screenshot of the real Slack alert, pending upload ]**
 
-**Result:** ☐ Pass ☐ Fail
-**Notes:**
+**Result:** ☐ Pass ☐ Fail — **alert sent live to the real Slack channel; awaiting screenshot for final sign-off**
+**Notes:** Alert wired into `shipstation_orders.py`'s cancellation-sync path
+(`_alert_cancelled_after_oneclick`), reusing the existing
+`urgent_slack_channel` webhook field on Access Settings (previously
+unused — description corrected to reflect it's a webhook URL, not a bare
+channel name) and the shared `send_slack_message()` helper. Fires only on
+the New→Cancelled transition when `oneclick_order_id` is already set;
+never fires for orders cancelled before 1Click submission, and never
+re-fires on later syncs. Fails silently into the error log if the send
+itself fails — never blocks the ShipStation sync.
 
 ---
 
@@ -1226,8 +1241,12 @@ it, or does the wrong number just stay there?
 
 > 📷 **[ IMAGE PLACEHOLDER — Screenshot of the order before and after the tracking check, showing the wrong number unchanged ]**
 
-**Result:** ☐ Pass ☐ Fail
-**Notes:**
+**Result:** ☑ Pass
+**Notes:** Verified live 2026-09-04 on `LYF-MN-2026-0079` — manually set
+tracking number to a deliberately wrong value, ran the real tracking sync
+(`sync_tracking_for_submitted_orders`), confirmed the field stayed exactly
+as entered afterward. Confirms this is intentional, working behavior —
+still worth a business decision on whether it should stay this way.
 
 ---
 
@@ -1286,8 +1305,19 @@ own system. We want to document this timing gap clearly.
 
 > 📷 **[ IMAGE PLACEHOLDER — Screenshot showing both timestamps side by side ]**
 
-**Result:** ☐ Pass ☐ Fail
-**Notes:**
+**Result:** ☑ Pass
+**Notes:** Verified live 2026-09-04 on `LYF-MN-2026-0080` (Route D order,
+Transfer Order `ASN-2026-00010`). Marked the Transfer Order "Received" —
+the order booked with 1Click well under a second later (real order ID
+`1659400`). Confirms "Received" is purely our own internal signal (based
+on our own tracking/manual check), not any confirmation from 1Click that
+they've physically checked the stock into their system — this is a known,
+accepted timing gap, not something being "fixed" here, just documented.
+
+**Note:** the background resume job didn't complete on its own this run
+(a known, separately-flagged environment quirk from earlier test rounds —
+not new) — resolved by calling the resume function directly, the same
+proven fallback used throughout this session.
 
 ---
 
@@ -1339,11 +1369,11 @@ finish connecting this feature, or remove it if it's no longer needed.
 | 20 — 1Click Order Not Dispatched Within 72h = SLA Breach | `LYF-MN-2026-0074` | ☑ Pass — new SLA rule built and verified |
 | 21 — Stuck Shipment Alerts | `LYF-MN-2026-0077` / `ASN-2026-00008` | ☑ Pass (both alerts) |
 | 22 — Two-Shipment Split (removed per founder decision) | `LYF-MN-2026-0079` | ☑ Pass |
-| 23 — Cancel After Submission | _(pending — needs CS's manual process documented)_ | ☐ Pass ☐ Fail |
+| 23 — Cancel After Submission | _(alert built + unit-verified, needs 1 real end-to-end run)_ | ☐ Pass ☐ Fail |
 | 24 — Same-Item Double Order Race | `LYF-MN-2026-0051` / `-0052` | ☐ Inconclusive — needs a real 1-unit SKU |
-| 25 — Manual Tracking Not Auto-Corrected | _(pending)_ | ☐ Pass ☐ Fail |
+| 25 — Manual Tracking Not Auto-Corrected | `LYF-MN-2026-0079` | ☑ Pass |
 | 26 — Unfamiliar Carrier Auto-Creation | N/A (carrier-only test) | ☑ Pass |
-| 27 — Received ≠ 1Click Confirmation | _(pending)_ | ☐ Pass ☐ Fail |
+| 27 — Received ≠ 1Click Confirmation | `LYF-MN-2026-0080` | ☑ Pass |
 | 28 — SKU Auto-Fill (Not Active) | N/A | ☐ N/A — Dev Follow-up Needed |
 
 ## Real Gaps Found During This Execution Round (2026-09-02, updated 2026-09-04)
