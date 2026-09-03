@@ -721,7 +721,7 @@ skipped even by someone going around the normal screen.
   tries to do it through a direct system call, not just the screen — ask
   them to confirm and note the result here.)
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the blocked save with the "reason required" error, if/once this is fixed ]**
+<img width="1740" height="561" alt="image" src="https://github.com/user-attachments/assets/81050006-3979-45af-8b4a-53ab4e84281b" />
 
 **Result:** ☐ Pass ☑ **Fail**
 **Notes:** Executed 2026-09-02 via a direct system call (developer-level
