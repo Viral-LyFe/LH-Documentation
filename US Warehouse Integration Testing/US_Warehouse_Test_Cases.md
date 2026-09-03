@@ -380,7 +380,8 @@ to India by mistake?
   failed — either the order should be held for a human to review, or an
   error should show up somewhere.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the order landing in "1Click Error" status after the simulated stock-check failure ]**
+<img width="1676" height="672" alt="image" src="https://github.com/user-attachments/assets/1ecd25b0-461d-445f-b5d0-d176a51060c6" />
+
 
 **Result:** ☑ Pass ☐ Fail
 **Notes:** 
