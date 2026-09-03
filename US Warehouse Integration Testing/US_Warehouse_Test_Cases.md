@@ -636,7 +636,7 @@ with 1Click?
 
 ## Test Case 15 — Force US: Manually Routing an Out-of-Stock Item to the US Warehouse
 
-**Order ID:** `LYF-MN-2026-0040`
+**Order ID:** `LYF-MN-2026-0067`
 
 **What we're checking:** CS can manually override routing and force an
 order to the US warehouse even if the item isn't actually in stock there.
