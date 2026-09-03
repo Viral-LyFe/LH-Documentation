@@ -38,7 +38,11 @@ India.
 ><img width="1646" height="867" alt="image" src="https://github.com/user-attachments/assets/3a313162-f3c3-4ded-a2d8-d55d6d5cac08" />
 
 
-**Result:** ☐ Pass ☐ Fail
+**Result:** ☑ Pass ☐ Fail
+**Notes:** Verified against the screenshots (2026-09-04): order shows status
+"Submitted to 1Click," item correctly landed in the US Warehouse Shipment
+table, and a real 1Click order ID (`1656895`) with a successful raw API
+response is recorded on the order. Matches expected result exactly.
 **Notes:**
 
 ---
@@ -66,7 +70,13 @@ customer — it should not wait around for the US warehouse at all.
 <img width="1916" height="607" alt="image" src="https://github.com/user-attachments/assets/9f510ff8-07e5-49a4-8e51-e133c639aab8" />
 
 
-**Result:** ☐ Pass ☐ Fail
+**Result:** ☑ Pass ☐ Fail
+**Notes:** Verified against the screenshots (2026-09-04): order shows
+status "Factory Assignment," item correctly landed only in the Factory
+Warehouse Shipment table (nothing in the US Warehouse table), and the
+Pending List export correctly shows the real India destination address —
+no US Warehouse override applied, exactly as expected for a normal Factory
+order.
 **Notes:**
 
 ---
@@ -99,8 +109,12 @@ button for this.
 <img width="1676" height="887" alt="image" src="https://github.com/user-attachments/assets/38fb3ba2-5c3c-4711-90a7-dd505b907a6d" />
 
 
-**Result:** ☐ Pass ☐ Fail
-**Notes:**
+**Result:** ☑ Pass ☐ Fail
+**Notes:** Verified against the screenshots (2026-09-04): the confirmation
+popup appeared exactly as expected before switching, and after confirming,
+the order shows "US Warehouse" badge with a real, linked Transfer Order
+under Fulfillment — status stayed "Factory Assignment," nothing alarming
+shown on screen, matching the expected result exactly.
 
 ---
 
@@ -134,8 +148,15 @@ booked with 1Click — no extra clicking needed beyond marking it "received."
 
 <img width="1662" height="827" alt="image" src="https://github.com/user-attachments/assets/ff24886a-ac7a-450d-af0e-e444640590ac" />
 
-**Result:** ☐ Pass ☐ Fail
-**Notes:**
+**Result:** ☑ Pass ☐ Fail
+**Notes:** Verified against the screenshots (2026-09-04): the Transfer
+Order shows status "Received" with delivery detection marked
+"Auto-Detected Delivered" and a real tracking number, the Lyfe Order shows
+status "Submitted to 1Click" with a real 1Click order ID (`1659365`) and a
+successful raw API response, and the real carrier tracking history
+confirms genuine physical delivery (FedEx International Priority,
+Aligarh, India → Defuniak Springs, FL, marked "Delivered"). Matches the
+expected result exactly, including that no 1Click Error occurred.
 
 ---
 
@@ -1274,10 +1295,10 @@ finish connecting this feature, or remove it if it's no longer needed.
 
 | Test Case | Order ID | Result |
 |---|---|---|
-| 1 — US Full Order | `LYF-MN-2026-0029` | ☐ Pass ☐ Fail |
-| 2 — India Direct | `LYF-MN-2026-0030` | ☐ Pass ☐ Fail |
-| 3 — Route via US Warehouse | `LYF-MN-2026-0031` | ☐ Pass ☐ Fail |
-| 4 — Auto-book on Arrival | `LYF-MN-2026-0031` | ☐ Pass ☐ Fail |
+| 1 — US Full Order | `LYF-MN-2026-0029` | ☑ Pass |
+| 2 — India Direct | `LYF-MN-2026-0030` | ☑ Pass |
+| 3 — Route via US Warehouse | `LYF-SH-2026-1799` | ☑ Pass |
+| 4 — Auto-book on Arrival | `LYF-MN-2026-0053` | ☑ Pass |
 | 5 — Mixed Order | `LYF-MN-2026-0032` | ☐ Pass ☐ Fail |
 | 6 — Shipping Paperwork Address | _(pending)_ | ☐ Pass ☐ Fail |
 | 7 — Tracking Updates | _(pending)_ | ☐ Pass ☐ Fail |
