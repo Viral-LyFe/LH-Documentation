@@ -187,6 +187,9 @@ automatically.
 
 <img width="1667" height="896" alt="image" src="https://github.com/user-attachments/assets/a50adcb8-3110-43fd-90c3-a8befa020cb0" />
 
+**Pick Pack List**
+
+<img width="1076" height="292" alt="image" src="https://github.com/user-attachments/assets/f1df4c2c-ca3f-42f5-8481-790c9b126e6b" />
 
 
 **Result:** ☑ Pass ☐ Fail
