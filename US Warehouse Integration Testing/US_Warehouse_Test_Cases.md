@@ -132,6 +132,8 @@ booked with 1Click — no extra clicking needed beyond marking it "received."
 
 <img width="1652" height="921" alt="image" src="https://github.com/user-attachments/assets/103203e6-1238-493c-9f1c-6d2f2b86f05d" />
 
+<img width="1662" height="827" alt="image" src="https://github.com/user-attachments/assets/ff24886a-ac7a-450d-af0e-e444640590ac" />
+
 **Result:** ☐ Pass ☐ Fail
 **Notes:**
 
