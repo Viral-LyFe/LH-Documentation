@@ -388,19 +388,45 @@ to India by mistake?
   failed — either the order should be held for a human to review, or an
   error should show up somewhere.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the order landing in "1Click Error" status after the simulated stock-check failure ]**
+<img width="1676" height="672" alt="image" src="https://github.com/user-attachments/assets/1ecd25b0-461d-445f-b5d0-d176a51060c6" />
+
 
 **Result:** ☑ Pass ☐ Fail
-**Notes:** Executed 2026-09-02, using SKU `KJTFL-16-ABZ` (real US stock).
-**Result was better than originally expected** — the order correctly landed
-in status **"1Click Error"**, NOT silently routed to India. Important
-nuance found only by running this test: there are actually **two different
-code paths** that check US stock — a plain-item path (used here) which
-correctly surfaces the failure as an error, and a separate BOM-expansion
-path (used for mixed/multi-component orders) that DOES swallow the same
-kind of failure and silently treats it as "zero stock." **Recommend
-re-running this same test using a BOM-linked item** to confirm that second
-path's behavior specifically — that's the one still flagged as a real risk.
+**Notes:** 
+
+### Handling Inventory Check Failures Before Routing
+
+#### Step 1 — The check fails, and we know it failed (not just "zero")
+
+A real error (network/API problem) is now tagged internally as a genuine failure — separate from a clean "0 available" response. A missing/unconfigured setup is still treated as "nothing to check yet" (not an error) — only an actual broken call counts.
+
+#### Step 2 — The order stops before any wrong decision gets made
+
+Instead of letting the order proceed on unverified data, the system throws an error right there — before it can route to India, before it can route to US Warehouse, before anything.
+
+#### Step 3 — The order lands in a status everyone already recognizes: "1Click Error"
+
+Same status used for a failed order submission. The real cause is saved on the order (`oneclick_error` field) so anyone opening it can see exactly why it failed.
+
+#### Step 4 — A "Recheck Inventory" button appears — but only for this specific cause
+
+The button only shows up when the `1Click Error` was actually caused by a failed stock check. If the order failed for a different reason (like a failed order submission), this button stays hidden — that has its own separate retry path.
+
+#### Step 5 — Clicking it re-runs everything from scratch
+
+The order resets to `New` and the whole routing process runs again, exactly like a brand-new order. If 1Click responds correctly this time, it routes normally (US Warehouse, India, or Mixed) and proceeds automatically — no manual data re-entry needed.
+
+#### Step 6 — There's also a manual bypass, if someone doesn't want to wait at all
+
+Instead of waiting for the recheck to work, a human can directly assign the order's Warehouse field to:
+
+- **`US Warehouse - LH`** — skips the stock check entirely and submits straight to 1Click.
+- **`Factory - LH`** — sends the order via India instead.
+
+#### One-line summary
+
+- **Before:** a broken inventory check silently misrouted the order and left no trace.
+- **Now:** it stops, flags itself clearly as `1Click Error`, lets someone retry the exact same check with one click, or lets someone skip the check entirely and choose the warehouse by hand.
 
 ---
 
@@ -428,7 +454,7 @@ time?
 - The other, healthy order's tracking check still completes normally in the
   same run.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot comparing both orders after the test — one shows untouched/skipped tracking, the other shows a normal update ]**
+> 📷 **[ IMAGE PLACEHOLDER — Screenshot comparing both orders after the test — one shows untouched/skipped tracking, the other shows a normal update ]*
 
 **Result:** ☑ Pass ☐ Fail (with a caveat)
 **Notes:** Executed 2026-09-02. No data corruption occurred — confirms the
@@ -466,7 +492,9 @@ through fine?
   stuck/on hold. If so, that's the gap — write it down clearly with
   screenshots from both sides.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of our order status next to 1Click's dashboard status for the same order, side by side ]**
+<img width="1657" height="772" alt="image" src="https://github.com/user-attachments/assets/a0f566ee-9c24-45cc-8fb5-24048ec4f6fb" />
+<img width="1567" height="707" alt="image" src="https://github.com/user-attachments/assets/ac4d1ae3-c43f-4ea8-bc32-a3b7830ec1d1" />
+
 
 **Result:** ☐ Pass ☐ Fail
 **Notes:**
@@ -493,7 +521,14 @@ one?
 - Ideally, either our system refuses to submit it a second time, or 1Click
   recognizes it's the same order and doesn't create a duplicate.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot showing the 406 error from 1Click on the second submission attempt ]**
+**Submitted Order successfully**
+
+<img width="1661" height="902" alt="image" src="https://github.com/user-attachments/assets/76e55c10-5f66-4450-b602-0e3f7aeae3d6" />
+
+**Second Time posting a same error convert to fail**
+
+<img width="1682" height="817" alt="image" src="https://github.com/user-attachments/assets/d1f3997b-5f39-47c7-a7cf-7d98dcb1fef2" />
+
 
 **Result:** ☑ Pass ☐ Fail (safe outcome, but not because of our own code)
 **Notes:** Executed 2026-09-02. First submission succeeded normally (real
@@ -510,7 +545,7 @@ relying on them to reject it every time.
 
 ## Test Case 13 — 1Click Doesn't Respond At All (Times Out)
 
-**Order ID:** `LYF-MN-2026-0050` (plain order — tested) / _(mixed-order version still pending)_
+**Order ID:** `LYF-MN-2026-0062` (plain order — tested) / _(mixed-order version still pending)_
 
 **What we're checking:** if 1Click's system just hangs and never responds
 when we try to submit an order, does our order get stuck in limbo forever,
@@ -530,7 +565,8 @@ or does it fail cleanly so someone can retry?
 - For the mixed-order version: neither shipment should be left in a
   half-created, orphaned state.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the order showing "1Click Error" after the simulated timeout, plus a second screenshot for the mixed-order case ]**
+Image
+
 
 **Result:** ☑ Pass (plain order) ☐ Fail — mixed-order case still needs a run
 **Notes:** Executed 2026-09-02 for the plain-order case only. Order landed
