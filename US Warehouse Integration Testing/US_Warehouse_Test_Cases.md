@@ -1494,31 +1494,30 @@ none of the existing test cases above have been changed.
 ### PD 1:
 
 **Details:**
-`doc/us_warehouse.md` still describes Route B using the old name — "Tubing
-in US Stock, other components from India" — and the old outcome value
-`MIXED_TUBING_US_COMPONENTS_INDIA_TO_US`. In the actual code, this was
-generalized: the mixed-shipment route now triggers for **any** item with a
-partially-available BOM, not only tubing. The current outcome value is
-`MIXED_US_COMPONENTS_INDIA_TO_US`. Tubing is now just one example that can
-trigger this route, not the only one.
+The current code's Route B logic (`MIXED_US_COMPONENTS_INDIA_TO_US`) is
+correct as it stands today — it considers **any** item with a
+partially-available BOM, not only "Tubing" item group items. This is the
+right, intended behavior and needs no code change.
 
-**Anything Need to Fix:** Yes
+What's actually pending is **testing**, not the logic itself: none of the
+existing test cases have confirmed this with a non-tubing item. Test Case
+5 (Mixed Order) used real SKUs, but nobody confirmed whether those SKUs
+were tubing or some other item type — so we don't yet have direct proof
+that a non-tubing mixed order routes correctly, even though the code is
+already written to handle it that way.
 
-**If Yes:**
-None of the test cases test this with a **non-tubing** item. Test Case 5
-(Mixed Order) used real SKUs, but nobody confirmed whether those SKUs were
-tubing or some other item type. So today, we don't actually have proof
-that the generalized (non-tubing) version of this route works — only that
-the original tubing case still works.
+**Anything Need to Fix:** No — the current version is correct as-is.
+Testing is pending, not a fix.
+
+**If Yes:** Not applicable.
 
 **Explanation with Example:**
 Example: if an order has a bracket (not tubing) that's in US stock, and a
-separate hardware item that isn't, the system should still treat this as a
-mixed order needing the same India → US → Customer flow. Today's tests
-never used an order shaped exactly like that, so this specific case is
-unverified.
+separate hardware item that isn't, the system should treat this as a mixed
+order needing the same India → US → Customer flow — same as it does for
+tubing today. This specific case just hasn't been run yet.
 
-**Steps to Replicate:**
+**Steps to Replicate (pending test, not a bug reproduction):**
 1. Create an order with two items where neither is a "Tubing" item group —
    one in US stock, one not.
 2. Save the order and let it route.
@@ -1528,7 +1527,7 @@ unverified.
 Routing Outcome should be `MIXED_US_COMPONENTS_INDIA_TO_US`, with the
 in-stock item correctly listed under the US Warehouse table and the
 out-of-stock item under the Factory table — exactly like Test Case 5, but
-proven with non-tubing items.
+confirmed with non-tubing items.
 
 ---
 
