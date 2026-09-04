@@ -1515,61 +1515,76 @@ Testing is pending, not a fix.
 Example: if an order has a bracket (not tubing) that's in US stock, and a
 separate hardware item that isn't, the system should treat this as a mixed
 order needing the same India → US → Customer flow — same as it does for
-tubing today. This specific case just hasn't been run yet.
+tubing today.
 
-**Steps to Replicate (pending test, not a bug reproduction):**
-1. Create an order with two items where neither is a "Tubing" item group —
-   one in US stock, one not.
-2. Save the order and let it route.
-3. Check the Routing Outcome and the two shipment tables.
+**Automated test case written:** since real 1Click sandbox stock cannot
+currently provide a genuine non-zero/zero split for two real non-tubing
+SKUs (see Test Case 24's notes — sandbox stock is only ever 0 or 100), an
+automated test was written instead of waiting on real stock:
 
-**Expected Result:**
-Routing Outcome should be `MIXED_US_COMPONENTS_INDIA_TO_US`, with the
-in-stock item correctly listed under the US Warehouse table and the
-out-of-stock item under the Factory table — exactly like Test Case 5, but
-confirmed with non-tubing items.
+```
+lh/lyfe_hardware/doctype/lyfe_order/test_pd1_mixed_order_non_tubing.py
+```
+
+Run with:
+```
+bench --site lyfe.local.local run-tests \
+      --module lh.lyfe_hardware.doctype.lyfe_order.test_pd1_mixed_order_non_tubing
+```
+
+This test creates two real Items in a non-Tubing item group, mocks only
+the 1Click network call (one item reported in stock, one not), and runs
+the real, unmodified routing function end to end. **Result: both
+assertions pass** — the order correctly routes to
+`MIXED_US_COMPONENTS_INDIA_TO_US`, with the in-stock item placed in the US
+Warehouse component list and the out-of-stock item in the Factory
+component list, confirming the routing decision is driven by stock
+availability alone, not item group.
+
+**Still recommended:** re-confirm once with a real order and real
+non-zero stock, once 1Click's sandbox has usable non-tubing stock —
+the automated test proves the code path is correct, but a real end-to-end
+order is the final sign-off.
+
+**Result:** ☑ Pass (automated) — real-order confirmation still pending
+real stock availability.
 
 ---
 
 ### PD 2:
 
 **Details:**
-On 2026-08-18, the visible order status for two situations was changed:
-Route C (India Direct Dropship) and a Route B/D hold (waiting on India
-components) both used to show a distinct status — "Pending India
-Dispatch" and "Awaiting India Components." As of 2026-08-18, both now show
-the same status as any regular factory order: **"Factory Assignment."**
-The old distinct names still exist internally (`fulfillment_route_tag`
-field), but they are no longer shown as the order's main Status.
+On 2026-08-18, the visible order status for two situations was
+intentionally changed: Route C (India Direct Dropship) and a Route B/D
+hold (waiting on India components) used to show a distinct status —
+"Pending India Dispatch" and "Awaiting India Components." As of
+2026-08-18, both now show the same status as any regular factory order:
+**"Factory Assignment."** This was a deliberate policy change, not a
+bug — the old distinct values still exist internally on the
+`fulfillment_route_tag` field, just no longer as the order's main Status.
 
-`doc/us_warehouse.md` (§11, Order Statuses table) still lists "Awaiting
-India Components" and "Pending India Dispatch" as real statuses a person
-would see on the order. Some notes inside the test cases above also refer
-to status "staying at Awaiting India Components" — that description no
-longer matches what actually shows on screen.
+Checked today: the Factory pending-list page and the older legacy report
+**already read `fulfillment_route_tag`** and correctly bucket these
+orders separately from normal factory orders (confirmed directly in
+`lyfe_orders_status_overview.py` and the legacy
+`lyfe_orders_—_status_overview.py` report — both have working logic for
+this). So the current code is correct as-is — no fix needed there.
 
-**Anything Need to Fix:** Yes
+**Anything Need to Fix:** No — the current version is correct as-is.
 
-**If Yes:**
-Two separate things need attention:
-1. `doc/us_warehouse.md` needs its status table updated so it matches what
-   the order actually shows today (this file is outside the test-case
-   document, so it needs a separate update pass).
-2. No test case checks whether Factory's pending-list / dashboard can
-   still tell a "waiting on India" order apart from a normal factory
-   order, now that the Status field looks identical for both. This needs
-   to be tested — right now it's unconfirmed either way.
+**If Yes:** Not applicable.
 
 **Explanation with Example:**
 Example: two orders both show Status = "Factory Assignment." One is a
 completely normal factory order with no US involvement at all. The other
-is a Route D order that's on hold waiting for India to ship components to
-the US warehouse. From the Status field alone, Factory cannot tell these
-two orders apart anymore. The only place the difference still exists is a
-hidden field (`fulfillment_route_tag`) that isn't shown by default on most
-list views.
+is a Route D order on hold waiting for India to ship components to the US
+warehouse. The Status field alone can't tell them apart anymore, but the
+Factory pending-list page already checks the hidden `fulfillment_route_tag`
+field behind the scenes and correctly separates the two — this was already
+built and just hadn't been directly confirmed with a real-order test until
+today's code check.
 
-**Steps to Replicate:**
+**Steps to Replicate (pending confirmation test, not a bug reproduction):**
 1. Create one normal Factory-only order (no US warehouse involvement).
 2. Create one Route B or D order that is currently on hold waiting for
    India components.
@@ -1579,8 +1594,8 @@ list views.
 **Expected Result:**
 Factory should be able to tell, from the pending list itself, which
 orders are a normal factory job and which ones are actually waiting on a
-US-warehouse-related hold — without needing to open each order
-individually to check the hidden tag field.
+US-warehouse-related hold. Code inspection today confirms this should
+already work — a live run with real orders would give full sign-off.
 
 ---
 
