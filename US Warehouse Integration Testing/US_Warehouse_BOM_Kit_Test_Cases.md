@@ -2,7 +2,25 @@
 
 **Organization:** Lyfe Hardware
 **Prepared:** 2026-09-04
-**Status:** DRAFT — for review before building `.py` test cases
+**Status:** `.py` test cases built and run — see results below
+
+**Test file:** `lh/lyfe_hardware/doctype/lyfe_order/test_bom_kit_routing.py`
+Run with:
+```
+bench --site lyfelocal.com run-tests \
+      --module lh.lyfe_hardware.doctype.lyfe_order.test_bom_kit_routing
+```
+
+**1Click stock check (confirmed live, 2026-09-04):** of a broad sample of
+real order-item SKUs, only 23 are recognized by 1Click's sandbox at all —
+and every one currently shows 0 available stock. None of those 23 SKUs are
+used as a BOM child item in any real Lyfe BOM today. A genuine, non-mocked
+end-to-end test is not possible until a proper import sheet seeds real
+BOM-component stock into 1Click (separate future work, per your
+instruction). Until then, every test below mocks `get_inventory()` /
+`get_settings()` the same proven way earlier sessions did — but uses the
+**real, 1Click-recognized SKU codes** (not invented ones) so the mocked
+data stays grounded in real item identities.
 
 ---
 
@@ -114,6 +132,11 @@ with 2–3 `child_items`, all components in US stock.
 - Order proceeds straight to 1Click submission, same as any other US_FULL
   order.
 
+**Result:** ☑ Pass — `test_kit_fully_in_stock_routes_us_full`
+(`TestBomKitSingleKitAllInStock`). Confirmed exactly as expected, including
+quantity multiplication (BOM's 2x/1x child quantities × order row's own
+quantity).
+
 ---
 
 ### TC-BOM-2 — Single Kit Item, Some Components in US Stock, Some Not
@@ -142,6 +165,11 @@ example) 3 child components: 2 in US stock, 1 not.
 - Order holds for human review — nothing auto-booked to 1Click yet, same
   as Test Case 5's existing expected behavior.
 
+**Result:** ☑ Pass — `test_kit_mixed_stock_routes_mixed`
+(`TestBomKitSingleKitMixedStock`). Confirmed the kit triggers Mixed on its
+own with a single order row — no second row needed — and both components'
+`bom_reference` correctly traces back to the same kit.
+
 ---
 
 ### TC-BOM-3 — Two Kit Items, Different BOMs, Each Fully in US Stock
@@ -167,6 +195,11 @@ no shared SKUs between the two BOMs.
   `bom_reference`/`source_order_item` attribution across multiple BOMs on
   one order, which nothing has exercised yet.
 
+**Result:** ☑ Pass — `test_two_kits_fully_stocked_routes_us_full`
+(`TestBomKitTwoKitsBothFullyStocked`). Confirmed no cross-contamination —
+each of the 4 components correctly traces back to its own originating
+`item_bom`.
+
 ---
 
 ### TC-BOM-4 — Two Kit Items, Different BOMs, Only One Fully Stocked
@@ -190,6 +223,11 @@ in US stock. Kit B: 0% in US stock.
 - `US Warehouse Shipment Item` contains 100% of Kit A's components.
 - `Factory Warehouse Shipment Item` contains 100% of Kit B's components.
 - No component from Kit A leaks into the Factory table or vice versa.
+
+**Result:** ☑ Pass — `test_one_kit_stocked_one_not_routes_mixed_no_crossover`
+(`TestBomKitTwoKitsOneFullyStockedOneNot`). Confirmed Kit A's components
+stayed entirely in the US table and Kit B's stayed entirely in the Factory
+table, no leakage either direction.
 
 ---
 
@@ -220,6 +258,12 @@ between US/Factory. Row 2 — plain item, `item_bom` blank, in US stock.
   plain SKU row behaves like a Standard single item, coexisting on one
   order.
 
+**Result:** ☑ Pass — `test_kit_plus_plain_item_combine_correctly`
+(`TestBomKitPlusPlainItem`). Confirmed the plain row's own SKU appears as
+its own component (not BOM-exploded, `bom_reference` correctly empty),
+combined correctly with the kit's exploded components into one routing
+decision.
+
 ---
 
 ### TC-BOM-6 — Kit Item Where a BOM Component Itself Has No SKU
@@ -246,6 +290,44 @@ component added before its Item Master record existed).
 - `routing_outcome = MIXED_US_COMPONENTS_INDIA_TO_US` if any other
   component in the order is in US stock (same "naturally produces the
   Mixed flow" behavior the original fix note describes).
+
+**Actual Result — real gap confirmed, 2026-09-04:** this does NOT happen
+today. The 2026-09-03 fix that stops a no-SKU **order row** from being
+silently dropped (`_explode_order_row_to_components`'s `no_sku_item=True`
+handling) was never extended to a no-SKU **BOM child row**. Inside the
+`item_bom` explosion branch specifically:
+
+```python
+for child in bom.child_items:
+    sku = child.sku or child.item_code or ""
+    if not sku:
+        continue          # <-- silently skipped, no no_sku_item flag
+```
+
+Confirmed live via the test: a kit with one good component (real US stock)
+and one no-SKU component incorrectly routes `US_FULL` — the no-SKU
+component simply vanishes, never reaching either Warehouse Shipment table.
+This is the exact same class of bug the 2026-09-03 fix addressed, existing
+one level deeper for BOM-exploded components. Factory would never know
+this component was ever on the order.
+
+**Anything Need to Fix:** Yes. The fix is small and mirrors the existing
+plain-row pattern exactly — in the `item_bom` branch's loop, instead of
+`continue` on a blank `sku`, append the same `no_sku_item=True` component
+shape the plain-row branch already returns (with `bom_reference` set to
+the BOM, unlike the plain-row case where it's `None`).
+
+**Result:** ☑ Pass (test correctly detects and documents the gap) — the
+test asserts today's actual (buggy) behavior and includes an inline note
+telling whoever fixes the code to invert the assertions once it's fixed,
+so the test starts failing loudly again if the fix regresses.
+
+**Note on the test data used:** `Custom BOM Items.sku` is a mandatory
+(`reqd=1`) schema field — a real no-SKU BOM row can never occur through
+normal UI/API usage, only as malformed/legacy data (e.g. direct SQL
+import). The test builds this row via `ignore_mandatory=True` to simulate
+that already-malformed-data case, since the routing code has its own
+defensive check for exactly this shape.
 
 ---
 
@@ -314,14 +396,14 @@ the order row (simulating someone forgetting the manual step).
 
 | Test Case | Order/BOM Used | Result |
 |---|---|---|
-| TC-BOM-1 — Single Kit, All US Stock | _(pending)_ | ☐ Pass ☐ Fail |
-| TC-BOM-2 — Single Kit, Mixed Stock | _(pending)_ | ☐ Pass ☐ Fail |
-| TC-BOM-3 — Two Kits, Both Fully US Stock | _(pending)_ | ☐ Pass ☐ Fail |
-| TC-BOM-4 — Two Kits, One Fully US / One Fully Factory | _(pending)_ | ☐ Pass ☐ Fail |
-| TC-BOM-5 — Kit + Plain Item Together | _(pending)_ | ☐ Pass ☐ Fail |
-| TC-BOM-6 — BOM Component With No SKU | _(pending)_ | ☐ Pass ☐ Fail |
-| TC-BOM-7 — Full Resume Lifecycle for a Kit Order | _(pending)_ | ☐ Pass ☐ Fail |
-| TC-BOM-8 — `item_bom` Not Linked After Drawing-Based BOM Creation | _(pending)_ | ☐ Pending confirmation this is a real gap |
+| TC-BOM-1 — Single Kit, All US Stock | Mocked, real SKUs `8FT-BFK-PSS-200`/`KJTFL-16-ABZ` | ☑ Pass |
+| TC-BOM-2 — Single Kit, Mixed Stock | Mocked, real SKUs `8FT-BFK-PSS-200`/`KJTFL-16-ABZ` | ☑ Pass |
+| TC-BOM-3 — Two Kits, Both Fully US Stock | Mocked, 4 real SKUs | ☑ Pass |
+| TC-BOM-4 — Two Kits, One Fully US / One Fully Factory | Mocked, 4 real SKUs | ☑ Pass |
+| TC-BOM-5 — Kit + Plain Item Together | Mocked, 3 real SKUs | ☑ Pass |
+| TC-BOM-6 — BOM Component With No SKU | Mocked, 1 real SKU + 1 malformed row | ☑ **Real gap confirmed** — see notes below, not yet fixed |
+| TC-BOM-7 — Full Resume Lifecycle for a Kit Order | _(not yet built — needs live order + Transfer Order flow)_ | ☐ Pending |
+| TC-BOM-8 — `item_bom` Not Linked After Drawing-Based BOM Creation | _(not yet built — needs your answer to the open question below)_ | ☐ Pending your confirmation |
 
 ---
 
