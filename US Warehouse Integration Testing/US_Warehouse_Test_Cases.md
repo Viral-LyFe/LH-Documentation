@@ -1179,14 +1179,43 @@ cancels an order that's already been submitted to 1Click.
 **Expected Result:**
 - The system does not auto-cancel anything on 1Click's side — that part is
   still fully manual (1Click has no cancel API we integrate with today).
-- **New:** the moment ShipStation syncs the cancellation in and the order
-  already has a `oneclick_order_id`, an urgent Slack alert fires
-  immediately to **Access Settings → Slack Channel — Urgent Orders**, so
-  the team knows right away that 1Click needs a manual cancel. Built and
-  verified this round (real webhook send confirmed, message includes the
-  order name, the 1Click Order ID, and a high-visibility 🚨 banner).
+- The moment ShipStation syncs the cancellation in and the order already
+  has a `oneclick_order_id`, an urgent Slack alert fires immediately to
+  **Access Settings → Slack Channel — Urgent Orders**, so the team knows
+  right away that 1Click needs a manual cancel.
+- The same event also creates a real, tracked PM Task — not just a Slack
+  message someone could miss or scroll past. The task lands in the same
+  Project used by the other 1Click-related SLA rule (`SLAR-0020`), marked
+  Urgent priority, with the order name and 1Click Order ID in the subject.
 - Step 4 (switching to Factory-only after 1Click submission) — not yet
   separately verified; needs a run against a real Submitted-to-1Click order.
+
+**Full real end-to-end run (2026-09-03):** built a genuinely real order
+through the actual production pipeline, not a shortcut:
+1. Created a real `ShipStation Orders` doc (`SS-ORD-2026-04063`) — its own
+   real `after_insert` hook created the linked Lyfe Order
+   (`LYF-SH-2026-1818`) automatically.
+2. Ran the real, unmodified 1Click fulfillment flow (only the stock check
+   was mocked to report the item available, since real sandbox stock was
+   at 0 for this SKU at the time) — got a real 1Click Order ID `1659698`,
+   order genuinely reached `Submitted to 1Click`.
+3. Flipped `SS-ORD-2026-04063`'s `order_status` to `Cancelled` and called
+   `.save()` — the real `before_save()` cancellation-sync logic ran on its
+   own, exactly as it would for a genuine ShipStation-reported cancel.
+
+**Result of the real run:** the Lyfe Order correctly moved to `Cancelled`,
+a real Task (`TASK-2026-00952`, Urgent priority, correct subject
+referencing both the order and the 1Click Order ID) was created
+automatically, and the real Slack alert fired automatically — no manual
+function calls involved anywhere in this run.
+
+**One thing caught and corrected during this test, not a real bug:** an
+early attempt used a lowercase `"cancelled"` value by mistake, which the
+code's exact-match check (`== "Cancelled"`) correctly did not treat as a
+cancellation — nothing fired, silently and correctly. Checked the real
+data: every other `ShipStation Orders` record ever cancelled in this
+system already uses the proper `"Cancelled"` capitalization, so this was
+purely a mistake in how the test was set up, not a live gap.
 
 <img width="1497" height="495" alt="image" src="https://github.com/user-attachments/assets/606ead5f-4f22-424c-ad7f-0a3da58fe9b4" />
 
@@ -1201,6 +1230,17 @@ the New→Cancelled transition when `oneclick_order_id` is already set;
 never fires for orders cancelled before 1Click submission, and never
 re-fires on later syncs. Fails silently into the error log if the send
 itself fails — never blocks the ShipStation sync.
+
+**Task creation** (`_create_cancel_after_oneclick_task`) runs right
+alongside the Slack alert, wrapped in its own independent try/except so a
+failure in either never blocks the other. Reuses `create_project_task()`
+(the same helper the SLA engine uses) — its own dedup guard means a
+duplicate ShipStation sync can never create two tasks for the same order.
+One pre-existing, unrelated note found during live testing: the SLA
+Rule's `fallback_owner` email didn't auto-assign on the task (a warning
+was logged by `create_project_task`'s own user-validation step) — this is
+not new behavior introduced here, and the task itself was still created
+correctly; worth a separate look if auto-assignment is wanted.
 
 ---
 
