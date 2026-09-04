@@ -1219,6 +1219,9 @@ purely a mistake in how the test was set up, not a live gap.
 
 <img width="1497" height="495" alt="image" src="https://github.com/user-attachments/assets/606ead5f-4f22-424c-ad7f-0a3da58fe9b4" />
 
+**Task Creation during the cancellation**
+
+<img width="1656" height="485" alt="image" src="https://github.com/user-attachments/assets/89fb1943-4288-4d32-ad0d-9633711408fb" />
 
 **Result:** ☑ Pass
 **Notes:** Alert wired into `shipstation_orders.py`'s cancellation-sync path
