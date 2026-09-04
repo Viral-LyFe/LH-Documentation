@@ -1478,3 +1478,210 @@ whitelisted-method calls matching exactly what the browser UI calls) —
 screenshots and final sign-off still need a human pass over the UI, per
 each test case's image placeholder.
 **Date:** 2026-09-02, updated 2026-09-03
+
+---
+---
+
+# 04-09-2026 — Today's Testing Work
+
+This section covers new findings from cross-checking the test cases above
+against `doc/us_warehouse.md` (the original functional/BRD document) and
+the current live code. These are gaps and open questions found today —
+none of the existing test cases above have been changed.
+
+---
+
+### PD 1:
+
+**Details:**
+`doc/us_warehouse.md` still describes Route B using the old name — "Tubing
+in US Stock, other components from India" — and the old outcome value
+`MIXED_TUBING_US_COMPONENTS_INDIA_TO_US`. In the actual code, this was
+generalized: the mixed-shipment route now triggers for **any** item with a
+partially-available BOM, not only tubing. The current outcome value is
+`MIXED_US_COMPONENTS_INDIA_TO_US`. Tubing is now just one example that can
+trigger this route, not the only one.
+
+**Anything Need to Fix:** Yes
+
+**If Yes:**
+None of the test cases test this with a **non-tubing** item. Test Case 5
+(Mixed Order) used real SKUs, but nobody confirmed whether those SKUs were
+tubing or some other item type. So today, we don't actually have proof
+that the generalized (non-tubing) version of this route works — only that
+the original tubing case still works.
+
+**Explanation with Example:**
+Example: if an order has a bracket (not tubing) that's in US stock, and a
+separate hardware item that isn't, the system should still treat this as a
+mixed order needing the same India → US → Customer flow. Today's tests
+never used an order shaped exactly like that, so this specific case is
+unverified.
+
+**Steps to Replicate:**
+1. Create an order with two items where neither is a "Tubing" item group —
+   one in US stock, one not.
+2. Save the order and let it route.
+3. Check the Routing Outcome and the two shipment tables.
+
+**Expected Result:**
+Routing Outcome should be `MIXED_US_COMPONENTS_INDIA_TO_US`, with the
+in-stock item correctly listed under the US Warehouse table and the
+out-of-stock item under the Factory table — exactly like Test Case 5, but
+proven with non-tubing items.
+
+---
+
+### PD 2:
+
+**Details:**
+On 2026-08-18, the visible order status for two situations was changed:
+Route C (India Direct Dropship) and a Route B/D hold (waiting on India
+components) both used to show a distinct status — "Pending India
+Dispatch" and "Awaiting India Components." As of 2026-08-18, both now show
+the same status as any regular factory order: **"Factory Assignment."**
+The old distinct names still exist internally (`fulfillment_route_tag`
+field), but they are no longer shown as the order's main Status.
+
+`doc/us_warehouse.md` (§11, Order Statuses table) still lists "Awaiting
+India Components" and "Pending India Dispatch" as real statuses a person
+would see on the order. Some notes inside the test cases above also refer
+to status "staying at Awaiting India Components" — that description no
+longer matches what actually shows on screen.
+
+**Anything Need to Fix:** Yes
+
+**If Yes:**
+Two separate things need attention:
+1. `doc/us_warehouse.md` needs its status table updated so it matches what
+   the order actually shows today (this file is outside the test-case
+   document, so it needs a separate update pass).
+2. No test case checks whether Factory's pending-list / dashboard can
+   still tell a "waiting on India" order apart from a normal factory
+   order, now that the Status field looks identical for both. This needs
+   to be tested — right now it's unconfirmed either way.
+
+**Explanation with Example:**
+Example: two orders both show Status = "Factory Assignment." One is a
+completely normal factory order with no US involvement at all. The other
+is a Route D order that's on hold waiting for India to ship components to
+the US warehouse. From the Status field alone, Factory cannot tell these
+two orders apart anymore. The only place the difference still exists is a
+hidden field (`fulfillment_route_tag`) that isn't shown by default on most
+list views.
+
+**Steps to Replicate:**
+1. Create one normal Factory-only order (no US warehouse involvement).
+2. Create one Route B or D order that is currently on hold waiting for
+   India components.
+3. Open the Factory pending-orders list/dashboard and compare how the two
+   orders appear.
+
+**Expected Result:**
+Factory should be able to tell, from the pending list itself, which
+orders are a normal factory job and which ones are actually waiting on a
+US-warehouse-related hold — without needing to open each order
+individually to check the hidden tag field.
+
+---
+
+### PD 3:
+
+**Details:**
+`doc/us_warehouse.md` (§10, Route A section) lists several open questions
+that were never confirmed with 1Click, and never turned into their own
+test cases:
+- Whether the `allWarehouses` flag on the stock-check call actually does
+  what its name suggests, or is ignored by 1Click.
+- Whether 1Click's Inventory endpoint actually reads the data we send in
+  the request body on a GET request, since GET requests don't normally
+  carry a body.
+
+**Anything Need to Fix:** Yes
+
+**If Yes:**
+Both of these directly affect whether our stock checks are even reading
+the correct data from 1Click. If either turns out not to work the way we
+assume, our routing decisions (US Full vs Mixed vs India) could be based
+on wrong stock information without anyone noticing, since there is no
+error — it would just silently return unexpected data.
+
+**Explanation with Example:**
+Example: if 1Click ignores everything we send on a GET request and just
+returns a default response regardless of what warehouse we ask about, our
+system might think an item is in stock at the US warehouse when it
+actually isn't (or the reverse) — with no error message telling us this
+happened.
+
+**Steps to Replicate:**
+1. This cannot be tested by us alone — it requires 1Click to confirm how
+   their endpoint actually behaves.
+2. Send 1Click a direct question (can be combined with the existing
+   drafted email for Test Case 11/14) asking: (a) does the Inventory
+   endpoint read the JSON body on a GET request, and (b) what does
+   `allWarehouses: true` actually change in the response.
+
+**Expected Result:**
+1Click confirms exactly what data their endpoint reads and returns, so we
+can verify our stock-check requests are interpreted the way we assume.
+
+---
+
+### PD 4:
+
+**Details:**
+`doc/us_warehouse.md` (§10, Route A section) has a note saying Route A
+testing was **blocked** because `us_warehouse_id` was not configured in
+1Click Settings. Test Case 1 in this document has already passed using a
+real order, which means this setting must already be configured — but
+nothing in the test-case document explicitly says this blocker was
+resolved.
+
+**Anything Need to Fix:** No
+
+**If Yes:** Not applicable.
+
+**Explanation with Example:**
+This is not a real problem — it's just a leftover note in the older
+document that was never updated once the setting was configured. Test
+Case 1 passing is itself proof the blocker is gone. No code or
+configuration fix is needed here, only a note so nobody reading the older
+document gets confused into thinking Route A still can't be tested.
+
+**Steps to Replicate:** Not applicable — no fix needed, just a documentation note.
+
+**Expected Result:** Not applicable — no fix needed, just a documentation note.
+
+---
+
+### PD 5:
+
+**Details:**
+`doc/us_warehouse.md` (§7, "SKU Validation and Auto-Fill") describes only
+the `(SKU: ABC-123)` label pattern for extracting a SKU from an item's
+name. The improvement made today (see Test Case 28) added a second,
+more common pattern — a plain code in parentheses like
+`(FE90-200-AB)`, without the word "SKU:" in front of it. This second
+pattern is documented in the test-case document (Test Case 28) but not
+yet in `doc/us_warehouse.md` itself.
+
+**Anything Need to Fix:** Yes
+
+**If Yes:**
+`doc/us_warehouse.md` should be updated to describe both patterns, since
+it is the main functional reference document and currently only describes
+half of what the system now does.
+
+**Explanation with Example:**
+Example: an item named `Flush Elbow Fitting 90 Degree (FE90-200-AB)` will
+now correctly auto-fill its SKU as `FE90-200-AB`, even though there's no
+"SKU:" label in the name. `doc/us_warehouse.md` doesn't mention this case
+at all today, so someone reading only that document would not know this
+capability exists.
+
+**Steps to Replicate:** Not applicable — no further testing needed, this
+is purely a documentation update to `doc/us_warehouse.md`.
+
+**Expected Result:** `doc/us_warehouse.md` describes both SKU-extraction
+patterns, matching what Test Case 28 already confirms works in the live
+system.
