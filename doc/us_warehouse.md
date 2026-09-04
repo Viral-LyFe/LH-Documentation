@@ -375,7 +375,11 @@ For a plain mixed-stock split (Route A logic: some items in US stock, some not, 
 
 ### 7. SKU Validation and Auto-Fill
 
-**Auto-extraction from item name:** When an order item has no SKU but the item name contains a pattern like `(SKU: 19L-R222-RB)`, the system automatically extracts the SKU value, checks it against the Item Master, and fills in the `sku` and `erp_item` fields if a match is found.
+**Auto-extraction from item name:** When an order item has no SKU, the system checks the item name for two patterns, in order:
+1. An explicit label like `(SKU: 19L-R222-RB)`.
+2. **(Added 2026-09-03)** A plain SKU-shaped code in parentheses with no "SKU:" label, e.g. `Flush Elbow Fitting 90 Degree (FE90-200-AB)` — this turned out to be the more common real-world pattern (confirmed against live order data: 26 of 1,543 blank-SKU rows matched this pattern vs. 20 for the labeled form).
+
+Either way, the extracted value is checked against the Item Master, and the `sku` and `erp_item` fields are only filled in if a real match is found — an unmatched candidate is discarded, never guessed.
 
 **Auto-fill erp_item:** When an item has a SKU but no ERP Item linked, the system tries to find and fill the ERP Item automatically.
 

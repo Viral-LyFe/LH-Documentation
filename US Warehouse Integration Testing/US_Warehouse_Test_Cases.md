@@ -1602,42 +1602,86 @@ already work — a live run with real orders would give full sign-off.
 ### PD 3:
 
 **Details:**
-`doc/us_warehouse.md` (§10, Route A section) lists several open questions
-that were never confirmed with 1Click, and never turned into their own
-test cases:
-- Whether the `allWarehouses` flag on the stock-check call actually does
-  what its name suggests, or is ignored by 1Click.
-- Whether 1Click's Inventory endpoint actually reads the data we send in
-  the request body on a GET request, since GET requests don't normally
-  carry a body.
+`doc/us_warehouse.md` (§10, Route A section) lists two open questions about
+the Inventory (stock-check) endpoint that looked unconfirmed. Checked
+today against `lh/docs/oneclick_open_questions.md`, which already has real,
+live-tested answers from earlier work this session (not from Test Case 28
+— that one was about SKU-from-item-name extraction, a different, unrelated
+feature):
 
-**Anything Need to Fix:** Yes
+1. **Does 1Click's server actually read the JSON body on a GET request?**
+   — **Yes, confirmed.** 1Click's server does read the GET body (verified
+   by comparing a `406` vs `500` response depending on what was sent).
+2. **What does the `allWarehouses` flag actually change?**
+   — **Still genuinely open, but now testable** — see below.
 
-**If Yes:**
-Both of these directly affect whether our stock checks are even reading
-the correct data from 1Click. If either turns out not to work the way we
-assume, our routing decisions (US Full vs Mixed vs India) could be based
-on wrong stock information without anyone noticing, since there is no
-error — it would just silently return unexpected data.
+**Update (2026-09-03): the 500 error is resolved.** The earlier
+`500 Internal Server Error` on the Inventory endpoint was caused by an
+incorrect `us_warehouse_id` in Oneclick Settings, not a genuine 1Click
+outage. The correct value is **`10`**. Re-tested live just now with the
+corrected value — a real, successful response came back with no error:
+
+```
+get_inventory(['8FT-BFK-PSS-200'], warehouse_id=10)
+→ {'inventory': [{'available': 0, 'sku': '8FT-BFK-PSS-200', 'onhand': 0,
+   'warehouseID': 10, 'itemID': 229735,
+   'description': '8 FT BAR FOOT RAIL KIT - 2" TUBING'}], 'total': 1}
+```
+
+`Oneclick Settings.us_warehouse_id` is already correctly set to `10` in
+this environment — no further configuration change needed.
+
+**Anything Need to Fix:** No — already fixed (was a settings value, not a
+code bug). Confirmed working live.
+
+**If Yes:** Not applicable.
 
 **Explanation with Example:**
-Example: if 1Click ignores everything we send on a GET request and just
-returns a default response regardless of what warehouse we ask about, our
-system might think an item is in stock at the US warehouse when it
-actually isn't (or the reverse) — with no error message telling us this
-happened.
+Example: sending the same stock-check request as before, but with
+`warehouseID: 10` instead of the earlier incorrect value, now returns real
+stock data instead of a server error. The endpoint itself was never
+broken — it was being asked about a warehouse ID that didn't exist on
+1Click's side.
 
-**Steps to Replicate:**
-1. This cannot be tested by us alone — it requires 1Click to confirm how
-   their endpoint actually behaves.
-2. Send 1Click a direct question (can be combined with the existing
-   drafted email for Test Case 11/14) asking: (a) does the Inventory
-   endpoint read the JSON body on a GET request, and (b) what does
-   `allWarehouses: true` actually change in the response.
+**Steps to Replicate:** Not applicable — already confirmed fixed and
+working with a live call.
 
-**Expected Result:**
-1Click confirms exactly what data their endpoint reads and returns, so we
-can verify our stock-check requests are interpreted the way we assume.
+**Expected Result — now met:** the Inventory endpoint returns real stock
+data using `warehouseID: 10`, confirmed live. The remaining open question
+— what exactly `allWarehouses: true` changes — can now be tested directly
+against a working endpoint, since it's no longer blocked by a 500 error.
+
+---
+
+**`allWarehouses` flag — tested and answered (2026-09-03):**
+
+Four real live calls were made against the working endpoint:
+
+| `warehouseID` sent | `allWarehouses` | Result |
+|---|---|---|
+| `10` (correct) | `False` | `200` — real stock data returned |
+| `999999` (bogus) | `False` | `406` — "Invalid warehouseID for this API key" |
+| `999999` (bogus) | `True` | `406` — "Invalid warehouseID for this API key" (same error) |
+| `10` (correct) | `True` | `200` — real stock data returned |
+
+**Answer:** `allWarehouses: true` does **not** bypass or ignore
+`warehouseID` — a bogus warehouse ID is rejected with the same `406` error
+regardless of what `allWarehouses` is set to. `warehouseID` must always be
+a real, valid warehouse ID tied to the API key; `allWarehouses` does not
+override that requirement.
+
+One minor difference noticed: with `allWarehouses: true`, the response's
+inventory row does **not** include the `warehouseID` field (present when
+`false`) — suggesting `allWarehouses: true` may be intended to report
+stock across every valid warehouse the key has access to, not just the one
+named in `warehouseID`. This environment only has one confirmed valid
+warehouse ID (`10`) to test with, so this specific multi-warehouse
+behavior could not be fully confirmed either way — but the core question
+(can a bogus ID be smuggled through via `allWarehouses`) is answered: no.
+
+**Anything Need to Fix:** No — our code already sends `allWarehouses` as a
+plain boolean and does not rely on it to bypass warehouse validation. No
+code change needed.
 
 ---
 
@@ -1646,23 +1690,28 @@ can verify our stock-check requests are interpreted the way we assume.
 **Details:**
 `doc/us_warehouse.md` (§10, Route A section) has a note saying Route A
 testing was **blocked** because `us_warehouse_id` was not configured in
-1Click Settings. Test Case 1 in this document has already passed using a
-real order, which means this setting must already be configured — but
-nothing in the test-case document explicitly says this blocker was
-resolved.
+1Click Settings. This is confirmed resolved — Test Case 1 already passed
+using a real order, and PD 3's live verification today directly confirmed
+`Oneclick Settings.us_warehouse_id` is set to `10` and successfully
+returns real stock data with no error. Nothing in the test-case document
+explicitly said this blocker was resolved, so it read as an open item even
+though it's already fixed.
 
-**Anything Need to Fix:** No
+**Anything Need to Fix:** No — confirmed resolved, verified live twice
+(Test Case 1, and again directly in PD 3 today).
 
 **If Yes:** Not applicable.
 
 **Explanation with Example:**
 This is not a real problem — it's just a leftover note in the older
-document that was never updated once the setting was configured. Test
-Case 1 passing is itself proof the blocker is gone. No code or
-configuration fix is needed here, only a note so nobody reading the older
-document gets confused into thinking Route A still can't be tested.
+document that was never updated once the setting was configured. Both
+Test Case 1 passing and PD 3's direct live check today are proof the
+blocker is gone. No code or configuration fix is needed here, only a note
+so nobody reading the older document gets confused into thinking Route A
+still can't be tested.
 
-**Steps to Replicate:** Not applicable — no fix needed, just a documentation note.
+**Steps to Replicate:** Not applicable — no fix needed, already confirmed
+resolved and working live.
 
 **Expected Result:** Not applicable — no fix needed, just a documentation note.
 
@@ -1679,23 +1728,24 @@ more common pattern — a plain code in parentheses like
 pattern is documented in the test-case document (Test Case 28) but not
 yet in `doc/us_warehouse.md` itself.
 
-**Anything Need to Fix:** Yes
+**Anything Need to Fix:** Yes — fixed.
 
 **If Yes:**
-`doc/us_warehouse.md` should be updated to describe both patterns, since
-it is the main functional reference document and currently only describes
-half of what the system now does.
+`doc/us_warehouse.md` §7 has now been updated to describe both patterns —
+it was the main functional reference document and only described half of
+what the system does.
 
 **Explanation with Example:**
-Example: an item named `Flush Elbow Fitting 90 Degree (FE90-200-AB)` will
-now correctly auto-fill its SKU as `FE90-200-AB`, even though there's no
-"SKU:" label in the name. `doc/us_warehouse.md` doesn't mention this case
-at all today, so someone reading only that document would not know this
-capability exists.
+Example: an item named `Flush Elbow Fitting 90 Degree (FE90-200-AB)` now
+correctly auto-fills its SKU as `FE90-200-AB`, even though there's no
+"SKU:" label in the name. `doc/us_warehouse.md` §7 now explicitly documents
+both patterns (the original `(SKU: ...)` label form, and the new bare-code
+form), with the same real-data numbers (26 vs 20 of 1,543 blank-SKU rows)
+already confirmed in Test Case 28.
 
-**Steps to Replicate:** Not applicable — no further testing needed, this
-is purely a documentation update to `doc/us_warehouse.md`.
+**Steps to Replicate:** Not applicable — documentation update only, already
+applied.
 
-**Expected Result:** `doc/us_warehouse.md` describes both SKU-extraction
-patterns, matching what Test Case 28 already confirms works in the live
-system.
+**Expected Result — now met:** `doc/us_warehouse.md` describes both
+SKU-extraction patterns, matching what Test Case 28 already confirms works
+in the live system.
