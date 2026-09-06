@@ -162,17 +162,23 @@ expected result exactly, including that no 1Click Error occurred.
 
 ## Test Case 5 — Mixed Order (Some Items From the US, Some From India)
 
-**Order ID:** `LYF-MN-2026-0032` (original run) / `LYF-MN-2026-0055` (re-run, 2026-09-03)
+**Order ID:** `LYF-MN-2026-0032` (original run) / `LYF-MN-2026-0055` (re-run,
+2026-09-03) / `LYF-SH-2026-1831` (re-run, 2026-09-04, against the corrected
+single-shipment behavior below)
 
 **What we're checking:** when an order has a mix — some items already at the
 US warehouse, some that still need to come from India — the system should
-correctly split them and wait for a human to review before doing anything
-automatically.
+correctly split them, wait for a human to review, and — **updated
+2026-09-04** — combine both legs into **one single shipment** to the
+customer once India's portion physically arrives at the US warehouse,
+matching how Route D already behaves.
 
 **Steps:**
 1. Create an order with at least two items: one that's in US stock, one that
    isn't.
 2. Save the order and let it process.
+3. Click "Confirm Split."
+4. Mark the resulting Transfer Order "Received."
 
 **Expected Result:**
 - The order sits in a "waiting for review" status — nothing is booked
@@ -181,6 +187,13 @@ automatically.
   the US warehouse, one showing what still needs to come from the factory.
 - A person then needs to review and confirm the split before anything moves
   forward.
+- **Updated 2026-09-04:** confirming the split now holds the order and
+  creates a Transfer Order for the Factory-covered items — it does **not**
+  immediately hand the order to plain Factory Assignment with a separate
+  "post US portion" step anymore. Once that Transfer Order is marked
+  Received, the system automatically posts the **entire order — both
+  legs — to 1Click as one combined shipment.** The customer receives a
+  single package, not two.
 
 <img width="1722" height="917" alt="image" src="https://github.com/user-attachments/assets/73e530fb-1d1f-4739-b9c8-78ab7620418f" />
 
@@ -199,7 +212,7 @@ automatically.
 
 
 
-**Result:** ☑ Pass ☐ Fail
+**Result:** ☑ Pass
 **Notes:** Re-run 2026-09-03 as `LYF-MN-2026-0055`, using `3.5FT-TB-200-SB`
 (1 unit) + `MHRB-200-AC` (1 unit). **Real US stock was at 0 for every SKU at
 the time of this run** (sandbox drained again), so the US-stock check for
@@ -208,9 +221,37 @@ logic itself was real, not mocked. Result matched expectations exactly:
 `routing_outcome = MIXED_US_COMPONENTS_INDIA_TO_US`, status stayed **"New"**
 (nothing auto-booked), `3.5FT-TB-200-SB` badged "US Warehouse" and
 `MHRB-200-AC` badged "Factory," with one row each in the two separate
-shipment-item tables. **Recommend re-confirming this once more with real
-(non-simulated) US stock** once sandbox inventory is topped up again, to
-fully close this out without any simulation involved.
+shipment-item tables.
+
+**Real gap found and fixed, 2026-09-04:** confirmed live on `LYF-SH-2026-1830`
+that a confirmed Mixed order actually shipped as **two separate packages**
+(US-covered items posted to 1Click on their own; Factory-covered items
+shipped separately from India) — not the single combined shipment this
+test case (and the functional doc) always described. This was live,
+working-as-designed-but-never-wanted behavior, not a bug in the strict
+sense — confirmed with you directly and fixed the same day.
+
+**Fix verified fully real, end-to-end, on `LYF-SH-2026-1831`** (real
+`ShipStation Orders` → real Lyfe Order → real 1Click stock, `8FT-BFK-PSS-200`
+at 100, `MHRB-200-AC` at 0):
+1. Routed `MIXED_US_COMPONENTS_INDIA_TO_US`, held at `New`, both shipment
+   tables populated — unchanged, still correct.
+2. Clicked (called directly) `confirm_warehouse_split` — order now holds
+   with `fulfillment_route_tag = "Awaiting India Components"`, real
+   Transfer Order `ASN-2026-00011` created for `MHRB-200-AC`, nothing
+   posted to 1Click yet.
+3. Marked the Transfer Order Received — the real background worker
+   automatically resumed the order (no manual trigger) and posted **both
+   items together** to 1Click as **one** real order, ID `1659760`.
+   `warehouse` flipped to `US Warehouse - LH`, `status` to
+   `Submitted to 1Click`.
+
+**Backward compatibility confirmed:** real pre-existing orders on this
+site that were confirmed before this fix (`LYF-MN-2026-0037`,
+`LYF-SH-2026-1829`, `LYF-SH-2026-1830`) still correctly show the old
+"Post US Portion to 1Click" / "Set Factory Leg Destination" buttons and
+keep their original two-shipment behavior — nothing about already-confirmed
+orders was touched or retroactively changed.
 
 ---
 

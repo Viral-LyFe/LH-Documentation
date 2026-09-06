@@ -359,6 +359,196 @@ Factory components) to 1Click as one shipment.
   succeeds with a real order ID, mirroring Test Case 27's already-proven
   pattern but for a BOM-driven order instead of a plain multi-row one.
 
+**Actual Result — real, live-tested on `LYF-SH-2026-1835`** (real kit Item,
+real `Lyfe BOM` with 2 real 1Click SKUs — `KJTFL-16-ABZ` at 100 stock,
+`MHRB-200-AC` at 0 — real `ShipStation Orders` → real Lyfe Order pipeline):
+
+1. ✅ **Transfer Order part fully confirmed correct.** `confirm_warehouse_split`
+   created Transfer Order `ASN-2026-00014` with `items = [MHRB-200-AC, qty 1]`
+   — the real BOM component, not the opaque kit SKU. Exactly as expected.
+2. ❌ **Real gap found — resume submission fails.** Marking the Transfer
+   Order Received correctly triggered `_maybe_resume_oneclick_order`
+   automatically, but the actual 1Click Create Order call **failed with a
+   real `406` rejection** from 1Click's live API. Checked the real
+   `Integration Request` log: the payload sent `"sku": "TCBOM7-KIT-FCBB7A"`
+   — **the kit item's own SKU**, not its two real BOM components. 1Click
+   correctly rejects it since the kit SKU was never registered with them
+   — only `KJTFL-16-ABZ` and `MHRB-200-AC` are real, known SKUs.
+
+**Root cause (confirmed by reading the code):** `_submit_single_oneclick_order()`
+(used by both `create_oneclick_order()` and, via it, the resume path)
+builds its 1Click items payload from `doc.order_items` — the **raw order
+rows** — never from the BOM-exploded `us_warehouse_shipment_items` /
+`factory_warehouse_shipment_items` tables. This means **any BOM-driven
+order that reaches 1Click submission (fresh US_FULL, or resumed after a
+Mixed hold) sends the kit's own SKU, not its real components** — 1Click
+has no way to fulfill that, since it was never registered as an item on
+their side. TC-BOM-1 and TC-BOM-3 (kit orders that route straight to
+`US_FULL`) never actually tested this, since those tests only asserted
+`_us_components`/`_factory_components` in memory and never called
+`create_oneclick_order` for real — this is the first test in this whole
+document to actually submit a BOM-driven order to a real 1Click endpoint.
+
+**Anything Need to Fix:** Yes — **fixed 2026-09-04**, as part of the
+"Complete Mixed Order Concept" change (see
+`test_mixed_order_combined_posting.py` and the plan file for full detail).
+
+**Fix:** `_maybe_resume_oneclick_order()` no longer calls
+`create_oneclick_order(doc)` (which read `doc.order_items` directly) for a
+genuinely Mixed order. It now calls a new `_submit_combined_mixed_order(doc)`,
+which builds the payload via `_build_combined_mixed_items_payload()` — the
+US-covered items (`us_warehouse_shipment_items`) combined with the
+**real, physically-issued** Factory items (`cj_shipment_items`, built from
+submitted Material Issue for Order records — not the theoretical BOM list),
+deduplicated by `item_code` with quantities summed. Route D orders
+(`INDIA_TO_US_TO_CUSTOMER`) are unaffected — they have no US-covered
+portion and keep using `create_oneclick_order(doc)` exactly as before.
+
+**Re-verified fully live on a fresh order, `LYF-SH-2026-1836`** (same real
+kit `TCBOM7-KIT-FCBB7A`, real SKUs `KJTFL-16-ABZ` / `MHRB-200-AC`):
+1. Confirmed split (`Via US Warehouse`) → Transfer Order `ASN-2026-00015`
+   created, correct component (`MHRB-200-AC`) listed.
+2. Marked Received **before** any MIFO was submitted — correctly **blocked**
+   with a clear error (*"Cannot post to 1Click yet — no Material Issue for
+   Order has been submitted..."*), `fulfillment_route_tag` stayed
+   `Awaiting India Components` (not cleared, retryable) — this is the new
+   Rule 2 safety check, confirmed working exactly as specified.
+3. Injected real stock and submitted a real MIFO (`MIFO-2026-4093`) issuing
+   `MHRB-200-AC` against this order — `cj_shipment_items` now populated.
+4. Re-triggered the resume — **the real 1Click Create Order payload now
+   correctly contained `KJTFL-16-ABZ` + `MHRB-200-AC`** (checked directly
+   in the `Integration Request` log), not the kit's own SKU. This is the
+   direct fix for the original 406 rejection. (A separate, unrelated 406
+   occurred on this specific attempt due to blank address fields on this
+   bare-bones test order — not a Mixed Order Concept issue, same
+   pre-existing sandbox/address-field gap noted elsewhere in this session.)
+
+**Also verified: dedup rule.** Directly tested the exact example from the
+implementation plan — an item present in both `us_warehouse_shipment_items`
+(qty 1) and `cj_shipment_items` (qty 2) combines into **one line, qty 3**,
+never two separate lines. Confirmed via both a direct function call and the
+new automated test suite.
+
+**Result:** ☑ Pass — Transfer Order correctness, the resume payload fix,
+and the MIFO-required safety block are all confirmed working live.
+
+---
+
+### TC-BOM-9 — Force US on a Kit/BOM Order (Confirmation Dialog + Same BOM Fix)
+
+**The same root-cause bug found in TC-BOM-7** (a kit/BOM row's own SKU sent
+to 1Click instead of its real components) also affected **Force US** — the
+manual override where a user tells the system to post an order straight
+from the US warehouse right now, skipping the automatic stock check
+entirely. Force US never ran `explode_and_check_bom_availability()` (that's
+the whole point — it deliberately skips the stock check), so
+`us_warehouse_shipment_items` stayed empty and `_submit_single_oneclick_order`
+fell back to reading `doc.order_items` directly, sending the kit's own SKU.
+
+**Fix, in two parts:**
+1. `_submit_single_oneclick_order` now explodes any `item_bom`-linked row
+   via `_explode_order_row_to_components` whenever
+   `us_warehouse_shipment_items` is empty (Force US's case) — same
+   explosion function used everywhere else, no duplicated logic.
+2. **New confirmation dialog for Force US specifically** (not for Force
+   India, which never touches 1Click): selecting Force US now calls a new
+   read-only `preview_force_us_items` method first, showing the user a
+   table — Item Code / Qty to Deliver / Available in 1Click — built from
+   the real exploded components plus a live 1Click stock lookup, **before**
+   anything is posted. Only clicking "Confirm & Post to 1Click" actually
+   calls `apply_route_plan_override`.
+3. **Mutual exclusivity guard**: Force US is now blocked with a clear error
+   if the order already has `factory_leg_destination` set (i.e. it's
+   mid-way through a Mixed order's "Via US Warehouse" split) — these two
+   concepts contradict each other (Force US assumes everything ships from
+   the US warehouse right now; "Via US Warehouse" means Factory's portion
+   is a separate, still-in-transit leg).
+
+**Also added:** a one-time Slack alert (`_alert_oneclick_error`, reusing
+the existing `ShipStation Settings.success_slack_webhook_url` field) fires
+the moment **any** order — Force US or otherwise — lands in "1Click Error",
+so a human notices immediately instead of only finding out on inspection.
+No retry mechanism, no repeated alerts — a single message per failure, per
+explicit decision to keep the retry decision manual.
+
+**Verified via automated test suite**
+(`test_force_us_and_oneclick_error_alert.py`, 7 tests, all passing):
+- Preview resolves real components (not the kit's own SKU), with real
+  stock numbers attached.
+- `apply_route_plan_override` posts the exact same resolved components —
+  direct regression test for this bug.
+- Force US correctly blocked when `factory_leg_destination` is already set.
+- Slack alert fires exactly once per failure, no duplicate/retry, and never
+  raises even if the Slack call itself fails.
+- Confirmed no regressions in `test_bom_kit_routing.py` (6 tests),
+  `test_pd1_mixed_order_non_tubing.py` (2 tests), and
+  `test_mixed_order_combined_posting.py` (7 tests) — all still passing.
+
+> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-9.1 — Screenshot of the new Force US
+> confirmation dialog on a real kit/BOM order, showing the table (Item
+> Code / Qty to Deliver / Available in 1Click) with the kit's real
+> components listed — NOT the kit's own SKU — plus the Override Reason
+> field and "Confirm & Post to 1Click" button ]**
+
+> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-9.2 — Screenshot of the mutual-
+> exclusivity error message when Force US is selected on an order that
+> already has Factory Leg Destination set ]**
+
+> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-9.3 — Screenshot of a real Integration
+> Request log entry showing the 1Click Create Order payload with the real
+> component SKUs (e.g. `KJTFL-16-ABZ` / `MHRB-200-AC`), confirming the kit's
+> own SKU was never sent ]**
+
+**Result:** ☑ Pass.
+
+---
+
+### TC-BOM-10 — Factory Leg Destination Locked After Confirm Split
+
+**What we're checking:** once a Mixed order's warehouse split has been
+confirmed (`warehouse_split_confirmed = 1`), `factory_leg_destination`
+("Via US Warehouse" / "Direct to Customer") can no longer be changed —
+neither through the whitelisted `set_factory_leg_destination` API (already
+guarded before this fix) nor by editing the field directly on the form and
+saving (the gap this fix closes).
+
+**Why this matters:** Confirm Split already acted on whatever destination
+was set at that moment — created a Transfer Order for "Via US Warehouse",
+or posted the US-covered items immediately for "Direct to Customer".
+Changing the field afterward would leave the record disagreeing with what
+the system already did.
+
+**Steps:**
+1. Take a Mixed order through to Confirm Split with either destination.
+2. Attempt to edit `factory_leg_destination` directly on the form (field
+   should now show read-only) and save.
+3. Attempt a direct API/script-level change to the field, bypassing the
+   form entirely, followed by a plain `doc.save()`.
+
+**Expected Result:**
+- The field shows as read-only on the form once `warehouse_split_confirmed`
+  is set (UX-level, JS only).
+- A plain `doc.save()` with a changed `factory_leg_destination` is blocked
+  server-side with a clear error naming the current (locked) value — this
+  is the real enforcement, not just the JS lock.
+
+**Verified via automated test**
+(`test_mixed_order_combined_posting.py::TestConfirmSplitSequencing::test_factory_leg_destination_locked_after_confirm_via_plain_save`)
+and live directly against the database: a `doc.save()` attempting to
+change the field post-confirmation correctly raised
+`frappe.ValidationError` with the message *"Factory Leg Destination is
+locked once the warehouse split has been confirmed (currently ...)"*.
+
+> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-10.1 — Screenshot of the Factory Leg
+> Destination field showing as read-only/greyed-out on a confirmed Mixed
+> order's form ]**
+
+> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-10.2 — Screenshot of the validation
+> error shown when attempting to change Factory Leg Destination after
+> Confirm Split (via form save or API) ]**
+
+**Result:** ☑ Pass.
+
 ---
 
 ### TC-BOM-8 — `item_bom` Manually Cleared After a BOM Was Already Auto-Created from a Drawing
@@ -402,8 +592,10 @@ the order row (simulating someone forgetting the manual step).
 | TC-BOM-4 — Two Kits, One Fully US / One Fully Factory | Mocked, 4 real SKUs | ☑ Pass |
 | TC-BOM-5 — Kit + Plain Item Together | Mocked, 3 real SKUs | ☑ Pass |
 | TC-BOM-6 — BOM Component With No SKU | Mocked, 1 real SKU + 1 malformed row | ☑ **Real gap confirmed** — see notes below, not yet fixed |
-| TC-BOM-7 — Full Resume Lifecycle for a Kit Order | _(not yet built — needs live order + Transfer Order flow)_ | ☐ Pending |
+| TC-BOM-7 — Full Resume Lifecycle for a Kit Order | `LYF-SH-2026-1836` / `ASN-2026-00015` / `MIFO-2026-4093` | ☑ Pass — fixed 2026-09-04, see notes |
 | TC-BOM-8 — `item_bom` Not Linked After Drawing-Based BOM Creation | _(not yet built — needs your answer to the open question below)_ | ☐ Pending your confirmation |
+| TC-BOM-9 — Force US on a Kit/BOM Order (Dialog + Same BOM Fix) | Automated: `test_force_us_and_oneclick_error_alert.py` | ☑ Pass |
+| TC-BOM-10 — Factory Leg Destination Locked After Confirm Split | Automated: `test_mixed_order_combined_posting.py` + live DB verification | ☑ Pass |
 
 ---
 

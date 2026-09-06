@@ -216,14 +216,29 @@ If an order is approaching or past its dispatch deadline without a tracking numb
 
 ### Route B — Mixed
 
-1. Order arrives. System finds tubing in US stock but other components are not.
-2. Routing Outcome is set to **MIXED_TUBING_US_COMPONENTS_INDIA_TO_US**. Two-Leg Shipment is checked.
-3. Order is submitted to 1Click US Warehouse (on hold, awaiting India components).
-4. India team ships the missing components to the US Warehouse.
-5. A **Transfer Order** is created with Leg 1 tracking.
-6. 1Click receives the components, assembles the complete kit, and ships to the customer.
-7. 1Click sends Leg 2 tracking back to the system.
-8. Leg 2 tracking is synced to ShipStation → ShipStation notifies the customer.
+⚠️ **Corrected 2026-09-04:** this section describes the single-combined-
+shipment behavior correctly, but that behavior was **not actually built**
+until 2026-09-04 — the live code (`confirm_warehouse_split()`) previously
+handed a confirmed Mixed order straight to normal Factory Assignment with
+no hold, while a separate manual step (`post_us_leg_to_oneclick()`) posted
+the US-covered items as their **own, separate** 1Click order. The customer
+received two packages, not one. Confirmed and fixed live on order
+`LYF-SH-2026-1830` / `LYF-SH-2026-1831` — `confirm_warehouse_split()` now
+calls the same `_hold_for_india_components()` function Route D already
+used, so this doc's description below is now accurate for any order
+confirmed from 2026-09-04 onward. Orders confirmed before that date keep
+their old two-shipment behavior (a legacy "Post US Portion to 1Click"
+button still exists for them specifically).
+
+1. Order arrives. System finds some components in US stock but others are not (originally tubing-specific; generalized since to any BOM-partial item — see the BOM Cross-Check section below).
+2. Routing Outcome is set to **MIXED_TUBING_US_COMPONENTS_INDIA_TO_US** (legacy) / **MIXED_US_COMPONENTS_INDIA_TO_US** (current). Two-Leg Shipment is checked.
+3. A human reviews the detected US/Factory split and clicks **Confirm Split**.
+4. Confirming creates a **Transfer Order** for the Factory-covered components and holds the order (`fulfillment_route_tag = "Awaiting India Components"`) — nothing is submitted to 1Click yet.
+5. India team ships the missing components to the US Warehouse; Leg 1 tracking is entered on the Transfer Order.
+6. Once the Transfer Order is marked **Received**, the system automatically submits the **full order — every item, from both legs — to 1Click as one combined shipment.**
+7. 1Click receives the components, assembles the complete order, and ships to the customer as a single package.
+8. 1Click sends Leg 2 tracking back to the system.
+9. Leg 2 tracking is synced to ShipStation → ShipStation notifies the customer.
 
 ---
 
