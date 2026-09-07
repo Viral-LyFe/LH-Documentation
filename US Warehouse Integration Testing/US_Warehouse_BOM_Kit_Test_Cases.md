@@ -582,6 +582,71 @@ the order row (simulating someone forgetting the manual step).
 
 ---
 
+### TC-BOM-11 — Force US / Force India Dialog Cannot Be Dismissed Without Confirming
+
+**What we're checking:** a real reported bug — selecting `Force US` or
+`Force India` from Route Plan sets that field's value in the browser the
+instant the dropdown changes, before the confirmation dialog is even shown.
+If the dialog was then dismissed via outside-click, the X button, or Escape
+— none of which were wired to any handler — the order's `route_plan` could
+be left as `"Force US"`/`"Force India"` in memory while `routing_outcome`
+was never recomputed, since that only ever happens inside
+`apply_route_plan_override()`. A subsequent plain form save would persist
+this contradiction, e.g. `route_plan = "Force US"` with
+`routing_outcome = "INDIA_DIRECT_DROPSHIP"` still left over from before.
+
+**Fix, in two parts:**
+1. **Client-side (`lyfe_order.js`):** both dialogs now use Frappe's built-in
+   `static: true` option (same established pattern already used by the
+   mandatory Drawing Change Details dialog in `quotation.js`) — this hides
+   the X close button and disables both outside-click and Escape dismissal.
+   The only way out of either dialog is now its own Confirm/Cancel button,
+   both of which take a real, explicit action (Confirm & Post, or Cancel
+   which explicitly reverts `route_plan` back to `"Auto"`).
+2. **Server-side (`lyfe_order.py`, `validate()`):** new guard
+   `_enforce_route_plan_change_via_override_only()` — blocks any save that
+   changes `route_plan` to `"Force US"`/`"Force India"` unless it came from
+   `apply_route_plan_override()` itself (which flags its own intermediate
+   save via `doc.flags.route_plan_override_in_progress` so the guard can
+   tell the legitimate atomic override apart from a stray plain save, direct
+   API call, or bulk edit). Reverting `route_plan` back to `"Auto"` is never
+   blocked — only changing *to* an override value outside the proper flow.
+
+**Verified live**, reproducing the exact reported invalid state directly
+against the database: an order with `routing_outcome = "INDIA_DIRECT_DROPSHIP"`
+had `route_plan` set to `"Force US"` via a plain `doc.save()` (simulating a
+dismissed-dialog save) — correctly blocked with
+*"Route Plan cannot be changed to "Force US" via a plain save — use the
+Force US / Force India confirmation dialog..."*. Confirmed the legitimate
+`apply_route_plan_override()` flow is unaffected — real order posted to
+1Click successfully (`1660658`) with `routing_outcome` correctly updated to
+`US_FULL` in the same atomic call.
+
+**Verified via automated test suite**
+(`test_force_us_and_oneclick_error_alert.py`, new
+`TestRoutePlanDismissedDialogGuard` class, 4 tests):
+- A plain save changing `route_plan` to `"Force US"` is blocked.
+- A plain save changing `route_plan` to `"Force India"` is blocked.
+- A plain save reverting `route_plan` back to `"Auto"` is allowed (Cancel
+  button's own behavior must never be blocked).
+- `apply_route_plan_override()`'s own intermediate save (route_plan changed,
+  `routing_outcome` not yet recomputed) is correctly unaffected.
+- Confirmed no regressions in `test_bom_kit_routing.py` (6 tests),
+  `test_pd1_mixed_order_non_tubing.py` (2 tests), and
+  `test_mixed_order_combined_posting.py` (8 tests) — all still passing.
+
+> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-11.1 — Screenshot of the Force US
+> dialog with an attempted outside-click / Escape / X-button dismissal,
+> showing the dialog remains open (no X button visible) ]**
+
+> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-11.2 — Screenshot of the server-side
+> validation error when attempting to save an order with route_plan changed
+> to Force US/Force India outside the confirmation dialog flow ]**
+
+**Result:** ☑ Pass.
+
+---
+
 ## Summary table (to fill in once test cases are executed)
 
 | Test Case | Order/BOM Used | Result |
@@ -596,6 +661,7 @@ the order row (simulating someone forgetting the manual step).
 | TC-BOM-8 — `item_bom` Not Linked After Drawing-Based BOM Creation | _(not yet built — needs your answer to the open question below)_ | ☐ Pending your confirmation |
 | TC-BOM-9 — Force US on a Kit/BOM Order (Dialog + Same BOM Fix) | Automated: `test_force_us_and_oneclick_error_alert.py` | ☑ Pass |
 | TC-BOM-10 — Factory Leg Destination Locked After Confirm Split | Automated: `test_mixed_order_combined_posting.py` + live DB verification | ☑ Pass |
+| TC-BOM-11 — Force US / Force India Dialog Cannot Be Dismissed Without Confirming | Automated: `test_force_us_and_oneclick_error_alert.py` + live DB verification (`LYF-SH-2026-1847` / `1660658`) | ☑ Pass |
 
 ---
 
