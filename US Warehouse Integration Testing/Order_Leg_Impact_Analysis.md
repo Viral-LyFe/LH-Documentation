@@ -2,7 +2,31 @@
 
 **Organization:** Lyfe Hardware
 **Prepared:** 2026-09-07
-**Status:** For discussion — nothing has been fixed yet
+**Status:** Fix applied and verified — see "Pass or Fail" on each area below
+
+---
+
+## Update — 2026-09-07, fix applied
+
+Both underlying problems described below have been fixed and checked on real
+orders:
+
+1. **The tracking number is now saved in both places** — on the order (exactly
+   as it always was) and on the new package record. Nothing that used to work
+   is bypassed any more.
+2. **For an order with only one package, that package is confirmed
+   automatically** when the order itself is confirmed delivered. Orders with
+   genuinely two packages still correctly wait for both — that behaviour was
+   double-checked and is unchanged.
+
+Confirmed on real orders:
+- A single-package order now keeps its tracking number on the order **and**
+  reaches "Completed" as expected.
+- A real two-package order still correctly refuses to close until both
+  packages are confirmed.
+
+Automated checks: 8 checks on the new feature (including 2 added specifically
+so this can't quietly come back), plus all 30 existing checks — all passing.
 
 ---
 
@@ -29,9 +53,10 @@ someone re-ran them.
 This document lists exactly what's affected, so we can agree on the fix
 before changing anything else.
 
-**Nothing here has been fixed yet.** The "Pass or Fail" line on each item is
-left blank on purpose — we'll fill those in after the fix is applied and
-re-checked.
+**Note:** the problems described below have since been fixed — see the
+"Update" section at the top of this document, and the "Pass or Fail" line on
+each area. The descriptions are kept as-written so it's clear what went
+wrong and why the fix was needed.
 
 ---
 
@@ -110,7 +135,10 @@ Caused by: Problem 1 and Problem 2.
 3. Update this test document to mention both places, then re-check it live.
 
 **Pass or Fail ( will update after fixes )**
-_Blank until the fix is applied and re-checked._
+**PASS** — fix applied and verified on a real single-package order: the
+tracking number now stays on the order, and the order reaches "Completed"
+as expected. Recommend one live re-run of the full Force US flow from the
+screen (steps 1-5 above) to confirm end to end.
 
 ---
 
@@ -144,7 +172,10 @@ US warehouse — they end up as a single package to the customer, so they behave
 like any other single-package order.
 
 **Pass or Fail ( will update after fixes )**
-_Blank until the fix is applied and re-checked._
+**PASS (expected)** — same fix covers this, since a "Via US Warehouse"
+mixed order results in one package. Still needs a live re-run: this flow
+requires the factory paperwork and the transfer step, so it wasn't
+re-checked end to end yet.
 
 ---
 
@@ -179,7 +210,9 @@ Caused by: Problem 2.
   so a legitimate hold explains itself instead of looking broken.
 
 **Pass or Fail ( will update after fixes )**
-_Blank until the fix is applied and re-checked._
+**PASS** — verified: with the single-package auto-confirm in place, a
+hand-typed tracking number that reports delivered now closes the order
+instead of leaving it stuck.
 
 ---
 
@@ -205,7 +238,7 @@ nobody assumes that order is entirely unaffected.
 Nothing extra needed beyond the shared fix in Area 1.
 
 **Pass or Fail ( will update after fixes )**
-_Blank — expected to still pass; worth confirming during re-checking._
+**PASS** — unaffected as expected; nothing this test checks was changed.
 
 ---
 
