@@ -1,263 +1,257 @@
-# Order Leg — Impact Analysis on Existing Test Cases
+# Order Leg — What It Affects in Our Existing Tests
 
 **Organization:** Lyfe Hardware
 **Prepared:** 2026-09-07
-**Status:** For discussion — fixes NOT yet applied
-**Related commit:** `a6ab023` (branch `prod-us_warehouse_integration`) — "Add Order Leg: per-shipment tracking + gate Completed on all legs delivered"
-**Related test case:** TC-BOM-13 in `US_Warehouse_BOM_Kit_Test_Cases.md`
+**Status:** For discussion — nothing has been fixed yet
 
 ---
 
 ## Why this document exists
 
-The Order Leg feature shipped today solves a real, confirmed problem (a Mixed
-"Direct to Customer" order has 2 real physical shipments but only one
-`tracking_number` field to hold both, and "Completed" fired blind to the
-second package).
+We just added a new feature called **Order Leg**.
 
-But it introduced **two side effects that affect orders that were working
-fine before** — including several test cases already documented as Pass.
-This document lists every genuinely affected area so we can agree on the fix
-before changing anything further.
+**What it was meant to solve:** some orders ship to the customer in **two
+separate packages** — for example, four parts sent from the US warehouse and
+two parts sent directly from the factory. Until now the system had room to
+record only **one** tracking number per order, so the second package's
+tracking was effectively invisible. Worse, the order was marked "Completed"
+as soon as *one* package arrived, even if the customer was still waiting for
+the other one.
 
-**Nothing in this document has been fixed yet.** The "Pass or Fail" line on
-each item is deliberately left open, to be filled in after fixes are applied
-and re-verified.
+Order Leg fixes that by keeping a separate record for each package, with its
+own tracking number and its own delivered/not-delivered status.
+
+**The problem:** while fixing that, we accidentally changed how tracking
+works for **normal, single-package orders too** — the ones that were working
+perfectly fine before. Three of our already-passed tests would now fail if
+someone re-ran them.
+
+This document lists exactly what's affected, so we can agree on the fix
+before changing anything else.
+
+**Nothing here has been fixed yet.** The "Pass or Fail" line on each item is
+left blank on purpose — we'll fill those in after the fix is applied and
+re-checked.
 
 ---
 
-## The two root causes (shared by everything below)
+## The two underlying problems
 
-### Root cause A — tracking number moved off the order, onto the leg
+### Problem 1 — The tracking number moved, and nothing tells the user
 
-`save_oneclick_response()` in
-`lh/lyfe_hardware/doctype/lyfe_order/lyfe_order.py` now writes the 1Click
-tracking number and carrier onto the matching **Order Leg** row instead of
-onto `Lyfe Order.tracking_number` / `Lyfe Order.carrier`.
+Tracking numbers coming back from 1Click now get saved onto the new Order Leg
+record instead of onto the order itself.
 
-It only falls back to the old order-level write if **no** Order Leg exists —
-but every order now gets a leg, so in practice the order-level fields are
-never populated any more.
+So when someone opens an order, the Tracking Number and Carrier boxes look
+**empty** — even though the shipment is real and the tracking number does
+exist, just filed somewhere else the user has no reason to look.
 
-**Why that breaks more than visibility:** `fetch_ready_orders()` in
-`order_tracking.py` selects orders to poll by checking that
-`tracking_number` and `carrier` are set **on the order**. With those fields
-now empty, affected orders are never selected, so they never progress
-`Submitted to 1Click → Shipped → Completed`.
+It also has a knock-on effect: the automatic job that checks tracking and
+moves orders along to "Shipped" and then "Completed" only looks at orders
+that have a tracking number **on the order**. Since that box is now empty,
+those orders get skipped entirely — so they sit at "Submitted to 1Click"
+forever and never close, even after the customer receives them.
 
-This is the exact failure mode the comment at `order_tracking.py:111-120`
-documents as a previously-fixed bug ("sat stuck at 'Submitted to 1Click'
-forever even once delivered"). It has effectively been re-introduced.
+We had this exact problem once before and fixed it. This change brought it
+back.
 
-### Root cause B — the Completed gate can strand an order
+### Problem 2 — Orders can get permanently stuck before "Completed"
 
-`all_legs_delivered()` in `lh/lyfe_hardware/doctype/order_leg/utils.py` is
-called before writing `status = "Completed"` in both
-`order_tracking.py::apply_normalised_to_order` and its duplicate in
-`order_tracking_service.py` (the 17Track webhook path).
+The new rule is: don't mark an order Completed until **every** package has
+been confirmed delivered. That's correct and is the whole point of the
+feature.
 
-If an order has an Order Leg whose own `status` is still `Pending`, Completed
-is skipped — even when the order's own tracking says Delivered. The Order
-Leg's status is only ever advanced by its own separate hourly scheduler
-(`order_leg/tracking.py`), reading the **leg's** carrier/tracking fields. Any
-path that delivers via the order's own tracking (manual entry, webhook,
-existing scheduler) never updates the leg, so the leg stays `Pending`
-forever and the order can never complete.
+But for a normal single-package order, the package record is only ever
+updated by its own separate background check. If the delivery gets confirmed
+any other way — someone types the tracking number in by hand, or the carrier
+notifies us directly — the package record never gets updated. It stays at
+"Pending" forever, so the order can never reach Completed.
+
+In short: an order can be genuinely delivered, and still refuse to close,
+with nothing on screen explaining why.
 
 ---
 
 ## Affected Area 1 — Test Case 15: Force US
 
 **Affected test case details**
-`US_Warehouse_Test_Cases.md` → Test Case 15 ("Force US: Manually Routing an
-Out-of-Stock Item to the US Warehouse"). Previously ☑ Pass.
-Real orders referenced: `LYF-MN-2026-0067` (1Click order `1659393`),
-`LYF-MN-2026-0040` (1Click order `1659099`).
-Root causes: **A and B**.
+Test Case 15 ("Force US: manually routing an out-of-stock item to the US
+warehouse"). Previously passed.
+Orders used before: `LYF-MN-2026-0067`, `LYF-MN-2026-0040`.
+Caused by: Problem 1 and Problem 2.
 
 **Step to Replicate**
-1. Create a real order with a SKU that has 0 US stock.
-2. Set Route Plan = "Force US", enter a reason, confirm the dialog.
-3. Confirm the order reaches `Submitted to 1Click` with a real 1Click order ID.
-4. Open the Lyfe Order and look at its Tracking Number and Carrier fields.
-5. Let the hourly tracking scheduler run (or simulate a Delivered response)
-   and watch whether the order ever reaches `Completed`.
+1. Create an order for an item that isn't in US stock.
+2. Set Route Plan to "Force US", enter a reason, and confirm.
+3. Check that the order reaches "Submitted to 1Click" and gets a real 1Click
+   order number.
+4. Open the order and look at the Tracking Number and Carrier boxes.
+5. Wait for the delivery to be confirmed, and watch whether the order ever
+   reaches "Completed".
 
 **How this can create confusion**
-- Step 4: the order shows a real 1Click submission but its **Tracking Number
-  and Carrier fields are empty**. The tracking data is on a child Order Leg
-  record the user has no reason to know exists. The test case's own
-  screenshots point at the order-level fields, so the documented evidence no
-  longer matches reality.
-- Step 5: the order **never reaches Completed**, because it is not selected
-  by `fetch_ready_orders()` (blank order-level tracking) and, even if it
-  were, the Completed gate blocks on a leg that nothing marked Delivered.
-- Ops' likely conclusion: "Force US is broken / 1Click never sent tracking" —
-  when in fact the shipment is fine and only our storage location changed.
-
-**What could be the solution**
-1. Write tracking to **both** places — keep populating
-   `Lyfe Order.tracking_number` / `carrier` exactly as before (this feeds
-   `fetch_ready_orders()` and the entire existing status progression), and
-   *also* populate the Order Leg for per-leg visibility. Not either/or.
-2. When the parent order's tracking reports Delivered and the order has
-   exactly **one** leg, mark that leg Delivered too — a single-leg order's
-   delivery *is* that leg's delivery. Keep the gate strict only for genuine
-   multi-leg orders, which is the only case it was designed for.
-3. Update this test case to state that tracking appears in both places, then
-   re-verify live.
-
-**Pass or Fail ( will update after fixes )**
-_Pending — to be filled in after the fix is applied and re-verified._
-
----
-
-## Affected Area 2 — Test Case 5: Mixed Order (Via US Warehouse)
-
-**Affected test case details**
-`US_Warehouse_Test_Cases.md` → Test Case 5 ("Mixed Order — Some Items From
-the US, Some From India"). Previously ☑ Pass.
-Real orders referenced: `LYF-MN-2026-0032`, `LYF-MN-2026-0055`,
-`LYF-SH-2026-1831`.
-Root causes: **A and B**.
-
-**Step to Replicate**
-1. Create a Mixed order (some components in US stock, some not).
-2. Set Factory Leg Destination = "Via US Warehouse", then Confirm Split.
-3. Mark the resulting Transfer Order "Received" (with a submitted MIFO in
-   place) so the combined order posts to 1Click as one shipment.
-4. Check the Lyfe Order's Tracking Number and Carrier fields.
-5. Watch whether the order ever reaches `Completed` after delivery.
-
-**How this can create confusion**
-- Same as Area 1: tracking lands on the Order Leg, order-level fields stay
-  empty, order never progresses to Completed.
-- Extra subtlety worth being explicit about: **before** today, this specific
-  path never persisted tracking at all — `_submit_combined_mixed_order`'s
-  caller never called `doc.save()`, so the value was silently discarded.
-  So a user re-testing sees behaviour different from *both* the documented
-  evidence *and* the previously-broken reality. It is genuinely better now
-  (the data survives), just stored somewhere the docs don't mention.
-
-**What could be the solution**
-Same as Area 1 (write to both places; auto-deliver a sole leg; update docs).
-No Mixed-specific handling needed — the "Via US Warehouse" flow produces
-exactly one customer-facing leg, so it behaves like any single-leg order.
-
-**Pass or Fail ( will update after fixes )**
-_Pending — to be filled in after the fix is applied and re-verified._
-
----
-
-## Affected Area 3 — Test Case 25: Wrong Manually-Entered Tracking Number
-
-**Affected test case details**
-`US_Warehouse_Test_Cases.md` → Test Case 25 ("A Wrong Manually-Entered
-Tracking Number Doesn't Get Auto-Corrected").
-Real order referenced: `LYF-MN-2026-0079`.
-Root cause: **B** (the Completed gate specifically).
-
-**Step to Replicate**
-1. Take an order that has been submitted to 1Click (it now has an Order Leg).
-2. Manually type a tracking number into the order's own Tracking Number
-   field.
-3. Run the tracking sync.
-4. Observe whether the order can subsequently reach `Completed`.
-
-**How this can create confusion**
-- The test's original, narrow point (a manually-entered number is not
-  silently overwritten) still works correctly — that part is unaffected.
-- But the order now **cannot reach Completed** through this path. The
-  manually-set tracking may report Delivered, while the Order Leg's own
-  status was never touched and stays `Pending`, so the gate blocks
+- At step 4, the Tracking Number and Carrier boxes are **empty**, even though
+  the shipment is real and 1Click did give us a tracking number. The old
+  screenshots in our test document point at those now-empty boxes.
+- At step 5, the order **never closes**. It stays at "Submitted to 1Click"
   indefinitely.
-- Ops' likely conclusion: "I entered the tracking number and it's delivered,
-  but the order won't close" — with nothing on screen explaining why.
+- The natural conclusion is "Force US is broken" or "1Click never sent us
+  tracking" — when actually the shipment is completely fine and only where we
+  file the tracking number changed.
 
 **What could be the solution**
-- Solution item 2 from Area 1 resolves this directly: if the parent order's
-  tracking reports Delivered and there is exactly one leg, mark that leg
-  Delivered as well.
-- Optionally, surface the reason on the order when the gate does block a
-  multi-leg order ("Waiting on 1 of 2 shipment legs"), so a stuck order is
-  self-explanatory rather than silent.
+1. Save the tracking number in **both** places — on the order (exactly as
+   before, so everything that already worked keeps working) **and** on the new
+   package record (so we get the new per-package visibility). Not one or the
+   other.
+2. For an order with only one package, treat that package as delivered as soon
+   as the order itself is confirmed delivered. The "wait for all packages"
+   rule should only hold back orders that genuinely have more than one.
+3. Update this test document to mention both places, then re-check it live.
 
 **Pass or Fail ( will update after fixes )**
-_Pending — to be filled in after the fix is applied and re-verified._
+_Blank until the fix is applied and re-checked._
 
 ---
 
-## Affected Area 4 — Test Case 22: note only, not a real conflict
+## Affected Area 2 — Test Case 5: Mixed Order (via US warehouse)
 
 **Affected test case details**
-`US_Warehouse_Test_Cases.md` → Test Case 22 ("Mixed Orders Must Always Ship
-as One Shipment"). Previously ☑ Pass. Real order: `LYF-MN-2026-0079`
-(1Click order `1659399`).
+Test Case 5 ("Mixed order — some items from the US, some from India").
+Previously passed.
+Orders used before: `LYF-MN-2026-0032`, `LYF-MN-2026-0055`,
+`LYF-SH-2026-1831`.
+Caused by: Problem 1 and Problem 2.
 
 **Step to Replicate**
-1. Re-run the regression check that only one 1Click submission occurs for
-   the order (no duplicate/second shipment).
+1. Create an order where some parts are in US stock and some aren't.
+2. Choose "Via US Warehouse" and confirm the split.
+3. Once the factory's parts arrive at the US warehouse and the paperwork is
+   submitted, let the full order go to 1Click as one shipment.
+4. Check the order's Tracking Number and Carrier boxes.
+5. Watch whether the order reaches "Completed" after delivery.
 
 **How this can create confusion**
-Minimal. This test case's assertion is purely "one submission, no duplicate
-shipment" — it never referenced `tracking_number`, `carrier`, or the
-Completed transition, so its stated expected result is unaffected. The
-tracking-location shift from Root cause A technically applies to this order
-too, but nothing this test checks depends on it.
-
-Recorded here only so the same order (`LYF-MN-2026-0079`, which is also used
-by Test Case 25) isn't mistaken for unaffected across the board.
+- Same as Area 1: the tracking boxes look empty and the order never closes.
+- One extra thing worth knowing: on this particular path, the tracking number
+  was **never actually saved at all** before today — it was being thrown away
+  silently. So the behaviour now is genuinely better (the number is finally
+  kept), it's just kept somewhere our documents don't mention.
 
 **What could be the solution**
-No change required for this test case beyond the shared fix in Area 1.
+Same fix as Area 1. Nothing special is needed for mixed orders that go via the
+US warehouse — they end up as a single package to the customer, so they behave
+like any other single-package order.
 
 **Pass or Fail ( will update after fixes )**
-_Pending — expected to remain Pass; confirm during re-verification._
+_Blank until the fix is applied and re-checked._
 
 ---
 
-## Confirmed NOT affected
+## Affected Area 3 — Test Case 25: A wrong hand-typed tracking number
 
-Checked against all four criteria (does it create legs / does it read
-order-level tracking / does it depend on Completed / would a re-test differ):
+**Affected test case details**
+Test Case 25 ("A wrong manually-entered tracking number doesn't get
+auto-corrected").
+Order used before: `LYF-MN-2026-0079`.
+Caused by: Problem 2.
 
-| Test Cases | Why unaffected |
+**Step to Replicate**
+1. Take an order that has already been sent to 1Click.
+2. Type a tracking number into the order's Tracking Number box by hand.
+3. Let the tracking check run.
+4. See whether the order can reach "Completed".
+
+**How this can create confusion**
+- The original point of this test — that a hand-typed number doesn't get
+  silently overwritten — still works correctly. That part is fine.
+- But the order now **cannot close**. The hand-typed tracking can show as
+  delivered while the package record behind the scenes was never updated, so
+  the order is held back permanently.
+- From the user's side: "I entered the tracking number, the customer has it,
+  but the order won't close" — with no explanation visible anywhere.
+
+**What could be the solution**
+- Point 2 from Area 1 fixes this directly: for a single-package order, confirm
+  the package as delivered when the order is confirmed delivered.
+- Worth adding: when an order genuinely *is* being held back because a second
+  package hasn't arrived, say so on the order ("Waiting on 1 of 2 packages"),
+  so a legitimate hold explains itself instead of looking broken.
+
+**Pass or Fail ( will update after fixes )**
+_Blank until the fix is applied and re-checked._
+
+---
+
+## Affected Area 4 — Test Case 22: worth noting, but not actually broken
+
+**Affected test case details**
+Test Case 22 ("Mixed orders must always ship as one shipment"). Previously
+passed. Order used before: `LYF-MN-2026-0079`.
+
+**Step to Replicate**
+1. Re-check that the order was sent to 1Click only once, with no duplicate
+   second shipment created.
+
+**How this can create confusion**
+Very little. This test only ever checked "one shipment, no duplicates", which
+still works exactly as documented. It never looked at tracking numbers or at
+whether the order closed.
+
+It's listed here only because it uses the same order as Test Case 25 — so
+nobody assumes that order is entirely unaffected.
+
+**What could be the solution**
+Nothing extra needed beyond the shared fix in Area 1.
+
+**Pass or Fail ( will update after fixes )**
+_Blank — expected to still pass; worth confirming during re-checking._
+
+---
+
+## Tests we checked and confirmed are NOT affected
+
+| Test Cases | Why they're fine |
 |---|---|
-| TC 8, 9, 12, 13, 14 | All failure/`1Click Error` paths. Legs are only created on a *successful* routing outcome, so these never reach leg creation at all. |
-| TC 1, 4, 16 | Route to US_FULL/Factory but their expected results only assert routing outcome / "Submitted to 1Click" — never tracking field location or Completed. |
-| TC 10 | Concerns tracking-check corruption on un-tracked orders; does not involve the Completed transition. |
-| TC 17, 19 | Routing override validation and SKU validation. No tracking fields involved. |
-| TC 18 | Fee-line exclusion from the 1Click payload. Unrelated. |
-| TC 20, 21 | SLA rules keyed off `oneclick_submitted_at` / Transfer Order status / `fulfillment_route_tag`. None read tracking or the leg gate. |
-| TC 23 | Cancellation alert keyed off `oneclick_order_id` + ShipStation status. Unrelated. |
-| TC 26 | Carrier auto-creation — fires identically regardless of where tracking is stored. |
-| TC 27 | Transfer Order "Received" timing vs real 1Click stock. Not customer-facing tracking. |
-| TC 28 | SKU auto-fill. Unrelated code path. |
-| TC-BOM-1 … TC-BOM-8 | Routing-outcome and BOM-explosion tests, all mocked at the routing layer — never reach leg creation or tracking. |
-| TC 7, TC 24, TC-BOM-8 | Not previously Pass (never run / inconclusive / pending decision), so out of scope for regression. |
+| 8, 9, 12, 13, 14 | These all cover things going wrong / error states. The new package records are only created when an order routes successfully, so these never involve them. |
+| 1, 4, 16 | These only check where an order was routed and that it reached "Submitted to 1Click". They never looked at tracking numbers or order closing. |
+| 10 | About tracking checks on orders that don't have tracking yet. Doesn't involve order closing. |
+| 17, 19 | Route override rules and item-code validation. Nothing to do with tracking. |
+| 18 | Making sure fee lines aren't sent to 1Click. Unrelated. |
+| 20, 21 | Deadline and stuck-shipment alerts. These use different information entirely. |
+| 23 | The alert for cancelling an order after it's gone to 1Click. Unrelated. |
+| 26 | Creating carrier records for unfamiliar carrier names. Works the same either way. |
+| 27 | Whether "Received" really means 1Click has the stock. Not about customer tracking. |
+| 28 | Item code auto-fill. Completely separate area. |
+| All BOM/Kit tests 1–8 | These check how kits get broken into parts and where they're routed. They stop before tracking is involved. |
+| 7, 24, and BOM test 8 | These were never passed in the first place (not yet run, or still waiting on a decision), so there's nothing to break. |
 
 ---
 
-## Proposed fix summary (single change set)
+## The proposed fix, in short
 
-1. **`save_oneclick_response()`** — write tracking/carrier to the parent Lyfe
-   Order **and** the matching Order Leg, rather than choosing one. Restores
-   `fetch_ready_orders()` selection and the whole existing status
-   progression; keeps new per-leg visibility.
-2. **Single-leg auto-delivery** — when the parent order's tracking reports
-   Delivered and the order has exactly one Order Leg, mark that leg
-   Delivered. The `all_legs_delivered` gate then only ever holds back
-   genuine multi-leg orders, which is its actual purpose.
-3. **Optional, recommended** — when the gate does block a multi-leg order,
-   record a visible reason on the order ("Waiting on 1 of 2 shipment legs")
-   so a legitimately-held order is self-explanatory.
-4. **Re-verify** Areas 1–4 live afterward, plus re-run all automated suites
-   (currently 36 tests), then fill in each "Pass or Fail" line above.
+1. **Save the tracking number in both places** — on the order (as before) and
+   on the new package record. This puts everything that used to work back to
+   working, without losing the new per-package view.
+2. **For single-package orders, confirm the package when the order is
+   confirmed.** The "wait for all packages" rule then only ever holds back
+   orders that really do have more than one package.
+3. **Recommended:** when an order genuinely is being held back, show the
+   reason on the order ("Waiting on 1 of 2 packages") so it doesn't look
+   broken.
+4. **Re-check Areas 1 to 4 live**, re-run the automated checks, then fill in
+   the Pass or Fail lines above.
 
-## Open question for discussion
+---
 
-Should a **multi-leg** order's parent `tracking_number` field show the first
-leg's tracking, the US leg's specifically, or stay blank with all tracking
-visible only per-leg? Item 1 above keeps existing behaviour working, but for
-a genuine 2-package order the single order-level field can only ever tell
-part of the story — worth deciding deliberately rather than by default.
+## One question we should decide together
+
+For an order that genuinely ships in **two packages**, what should the order's
+single Tracking Number box show?
+
+Options: the first package's number, the US warehouse package's number, or
+leave it blank and show tracking only per package.
+
+The fix above keeps things working by putting *something* there, but for a
+true two-package order one box can only ever tell part of the story. Worth
+deciding on purpose rather than letting it happen by default.
