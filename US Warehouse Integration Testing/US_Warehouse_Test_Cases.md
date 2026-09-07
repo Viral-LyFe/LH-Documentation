@@ -550,7 +550,8 @@ fully confirm the healthy side too.
 
 ## Test Case 11 — Order for an Item 1Click Doesn't Recognize
 
-**Order ID:** _(to be filled in when this test is run)_
+**Order ID:** `LYF-SH-2026-1853` (rejected, unrecognized SKU) — see also
+`LYF-SH-2026-1847` / `1660258` (registered-but-0-stock comparison case)
 
 **What we're checking:** if we submit an order for an item that was never
 registered on 1Click's side, they told us it gets put "on hold" in their
@@ -576,9 +577,45 @@ through fine?
 <img width="1657" height="772" alt="image" src="https://github.com/user-attachments/assets/a0f566ee-9c24-45cc-8fb5-24048ec4f6fb" />
 <img width="1567" height="707" alt="image" src="https://github.com/user-attachments/assets/ac4d1ae3-c43f-4ea8-bc32-a3b7830ec1d1" />
 
+**Answered live (2026-09-07):** the open question is resolved —
+**1Click does NOT silently hold an unrecognized SKU.** They reject it
+outright at Create Order time with a real HTTP 406 and a specific, clear
+error body:
+```json
+{"content":{"itemErrors":[{"errors":["SKU ... does not exist in the system. Order ... was not imported."],"sku":"...","lineID":1,"po":"..."}],"status":406}}
+```
+No order is ever created on 1Click's side in this case — nothing to look up
+on their dashboard at all, confirmed via a direct API cross-check.
 
-**Result:** ☐ Pass ☐ Fail
-**Notes:**
+**A related, separate real gap was found in the same test:** a
+**registered** SKU with 0 stock (e.g. `MHRB-200-AC`, forced to US on order
+`LYF-SH-2026-1847` / `1660658`) *is* accepted by Create Order (real 200,
+real order ID returned) — but querying 1Click's own order-status endpoint
+(`/api/v2/orders`) for that same order afterward returns an empty list,
+`total: 0`, as if 1Click has no record of it. Confirmed at the raw HTTP
+level (both via our `po` reference and via 1Click's own numeric order ID) —
+not a lookup-key mismatch on our side. This is a genuine, separate finding
+worth raising with 1Click directly: their own Create Order response says
+success with a real ID, but their status endpoint can't find that same
+order moments later.
+
+**Fix shipped (2026-09-07):** two real gaps this testing surfaced were
+closed:
+1. `create_order()` used to discard 1Click's real rejection reason on any
+   HTTP-error response, showing only a generic `"406 Client Error: ..."`
+   string. It now parses `itemErrors[].errors[]` out of the response body
+   when present, so `oneclick_error` on a failed order shows the actual,
+   actionable reason.
+2. New auto-registration: the stock-check stage now proactively registers
+   any never-before-seen SKU with 1Click's real item master
+   (`addItemMaster`) the moment it's found unrecognized, then re-checks
+   stock for it — see **TC-BOM-12** in the companion BOM/Kit test doc for
+   full detail and live verification evidence.
+
+**Result:** ☑ Pass
+**Notes:** Order `LYF-SH-2026-1853` intentionally left in `1Click Error`
+status as documented evidence (never actually reached 1Click — rejected
+before an order was ever created there).
 
 ---
 

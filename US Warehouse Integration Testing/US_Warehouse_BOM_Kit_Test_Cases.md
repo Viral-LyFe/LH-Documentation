@@ -645,6 +645,71 @@ Force US / Force India confirmation dialog..."*. Confirmed the legitimate
 
 ---
 
+### TC-BOM-12 — Auto-Register an Unrecognized SKU with 1Click at Stock-Check Time
+
+**What we're checking:** Test Case 11 (main test doc) found that a SKU
+1Click has never seen either silently collapses to "0 available" (stock
+check) or gets rejected outright with an unhelpful generic error (Create
+Order 406). This closes the gap: the stock check itself now proactively
+registers any never-before-seen SKU with 1Click's real item master
+(`addItemMaster`), so subsequent stock checks and Create Order calls
+recognize it, instead of it staying permanently invisible to 1Click.
+
+**Order shape:** an order with one row using a genuinely never-registered
+SKU (confirmed beforehand via a direct `get_inventory()` call returning
+`total: 0`), alongside a second row using an already-registered SKU sitting
+at 0 stock — to prove the two cases are handled distinctly.
+
+**Steps:**
+1. Confirm a real SKU is unrecognized (`get_inventory` returns it absent
+   from the response entirely).
+2. Run real (non-mocked) routing (`explode_and_check_bom_availability`).
+3. Check the `Integration Request` log sequence, and independently re-query
+   `get_inventory` for the same SKU afterward.
+
+**Expected Result:**
+- A real `addItemMaster` call fires automatically for the unrecognized SKU
+  only — never for a SKU already recognized (even at 0 stock).
+- A follow-up `get_inventory` re-check for just the newly-registered SKU(s)
+  runs immediately after, so this order's routing decision uses fresh data.
+- The routing decision itself is unchanged — a freshly-registered SKU still
+  at 0 stock routes to Factory exactly like any other 0-stock item; this
+  feature only affects whether 1Click *knows about* the SKU afterward, not
+  whether it counts as "in stock."
+- Registration failure (e.g. 1Click rejects the item master for some other
+  reason) must never block or fail the order's routing — the SKU simply
+  stays unrecognized (0 available), same as before this feature existed.
+- Separately, `create_order()`'s error handling now parses 1Click's real
+  rejection reason (`itemErrors[].errors[]`) out of a failed Create Order
+  response body, instead of only showing a generic HTTP status line.
+
+**Verified live** (2026-09-07): created a real Item + real Lyfe Order using
+a genuinely unrecognized SKU, ran the real (unmocked) routing function.
+Confirmed via the `Integration Request` log the exact real sequence:
+inventory check (SKU absent) → `addItemMaster` call (`"success": true`,
+real `itemID` returned) → re-check inventory call (SKU now present, still
+0 available). Independently re-queried `get_inventory` afterward and
+confirmed the SKU is now genuinely recognized by 1Click on its own,
+unrelated to our own logs. Confirmed an already-registered SKU
+(`MHRB-200-AC`, 0 stock) never triggers any registration call.
+
+**Verified via automated test suite**
+(`test_bom_kit_routing.py`, new `TestAutoRegisterUnrecognizedSku` class, 3
+tests, all passing):
+- Unrecognized SKU triggers registration + re-check; both it and an
+  already-registered 0-stock SKU correctly land in Factory.
+- An already-registered SKU never triggers `add_item_master`.
+- A simulated registration failure never blocks routing — the order still
+  completes, no exception propagates.
+- Confirmed no regressions across all 4 existing test suites (30 tests
+  total: `test_bom_kit_routing.py` now 9, `test_pd1_mixed_order_non_tubing.py`
+  2, `test_mixed_order_combined_posting.py` 8, `test_force_us_and_
+  oneclick_error_alert.py` 11).
+
+**Result:** ☑ Pass.
+
+---
+
 ## Summary table (to fill in once test cases are executed)
 
 | Test Case | Order/BOM Used | Result |
@@ -660,6 +725,7 @@ Force US / Force India confirmation dialog..."*. Confirmed the legitimate
 | TC-BOM-9 — Force US on a Kit/BOM Order (Dialog + Same BOM Fix) | Automated: `test_force_us_and_oneclick_error_alert.py` | ☑ Pass |
 | TC-BOM-10 — Factory Leg Destination Locked After Confirm Split | Automated: `test_mixed_order_combined_posting.py` + live DB verification | ☑ Pass |
 | TC-BOM-11 — Force US / Force India Dialog Cannot Be Dismissed Without Confirming | Automated: `test_force_us_and_oneclick_error_alert.py` + live DB verification (`LYF-SH-2026-1847` / `1660658`) | ☑ Pass |
+| TC-BOM-12 — Auto-Register Unrecognized SKU at Stock-Check Time | Automated: `test_bom_kit_routing.py` + live verification (`AUTOREG-TEST-23B1F7`, real 1Click `itemID: 230013`) | ☑ Pass |
 
 ---
 
