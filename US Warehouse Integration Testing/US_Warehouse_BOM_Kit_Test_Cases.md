@@ -484,20 +484,18 @@ explicit decision to keep the retry decision manual.
   `test_pd1_mixed_order_non_tubing.py` (2 tests), and
   `test_mixed_order_combined_posting.py` (7 tests) — all still passing.
 
-> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-9.1 — Screenshot of the new Force US
-> confirmation dialog on a real kit/BOM order, showing the table (Item
-> Code / Qty to Deliver / Available in 1Click) with the kit's real
-> components listed — NOT the kit's own SKU — plus the Override Reason
-> field and "Confirm & Post to 1Click" button ]**
+**Order of Kit**
+<img width="1662" height="567" alt="image" src="https://github.com/user-attachments/assets/575d6ae3-32cb-4417-a618-51ef4479201c" />
 
-> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-9.2 — Screenshot of the mutual-
-> exclusivity error message when Force US is selected on an order that
-> already has Factory Leg Destination set ]**
+**Force US ( Assigning to US )**
+<img width="1650" height="867" alt="image" src="https://github.com/user-attachments/assets/7d47e10b-6bb5-4d90-b327-3165eb0c82e6" />
 
-> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-9.3 — Screenshot of a real Integration
-> Request log entry showing the 1Click Create Order payload with the real
-> component SKUs (e.g. `KJTFL-16-ABZ` / `MHRB-200-AC`), confirming the kit's
-> own SKU was never sent ]**
+**IF Factory Lag is set then not allow Force US**
+<img width="1872" height="487" alt="image" src="https://github.com/user-attachments/assets/d1b75f74-b93e-4fab-a901-264ee3c9f0a5" />
+
+**Payload not sending a Kit SKU**
+<img width="1671" height="886" alt="image" src="https://github.com/user-attachments/assets/eabdfab4-5f3f-4fec-a6f9-94fc4b70897b" />
+
 
 **Result:** ☑ Pass.
 
