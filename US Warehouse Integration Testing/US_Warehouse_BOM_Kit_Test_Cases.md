@@ -710,6 +710,89 @@ tests, all passing):
 
 ---
 
+### TC-BOM-13 — Order Leg: Per-Shipment Tracking + Gated "Completed"
+
+**What we're checking:** live testing of `LYF-SH-2026-1858` (a Mixed
+"Direct to Customer" order — 4 real components ship from 1Click's US
+warehouse, 2 real components ship from Factory straight to the customer)
+found a real gap: both legs try to write the single `tracking_number`/
+`carrier` pair on Lyfe Order, and "Completed" fires from whichever
+tracking number happens to be present, with no awareness that a second,
+separate physical package exists. Closes this with a new **Order Leg**
+doctype — one row per real physical delivery leg, each independently
+tracked, with the parent order only marked Completed once **every** leg
+independently shows delivered.
+
+**Scope, per explicit user decision:** every Lyfe Order gets Order Leg
+row(s), even single-shipment ones (US_FULL, plain India dropship) — not
+just Mixed orders — so the dashboard and completion logic always read
+from the same place. The existing Transfer Order (Factory→US internal
+warehouse movement) stays completely separate and untouched — it's not a
+customer-facing delivery leg.
+
+**Order shape:** 1 leg for US_FULL / India-direct / Route D / Mixed "Via
+US Warehouse". **2 independent legs** for Mixed "Direct to Customer" — the
+scenario that motivated this feature.
+
+**What changed:**
+1. New doctype `Order Leg` (+ `Order Leg Item` child) — `lyfe_order` link,
+   `leg_type` (US Warehouse -> Customer / Factory -> Customer), `status`
+   (Pending/Shipped/Delivered), `carrier`, `tracking_number`, own item
+   list. Modeled on the existing `Lyfe Order Reshipment` precedent (the
+   established pattern in this app for "one Lyfe Order, N independently-
+   tracked child shipments").
+2. `_create_order_legs_for_outcome()` in `lyfe_order.py` creates the
+   right leg(s) the moment routing finalizes, idempotent.
+3. `save_oneclick_response()` now writes tracking onto the matching Order
+   Leg instead of `doc.tracking_number` directly — fixes, as a side
+   effect, the pre-existing bug where `_submit_combined_mixed_order`'s
+   caller never called `doc.save()` (the write now lands on a separately-
+   saved document, not a discarded in-memory attribute).
+4. New `all_legs_delivered()` gate added to **both** real setters of
+   `status = "Completed"` (`order_tracking.py` and its genuine separate
+   duplicate `order_tracking_service.py`, the 17Track webhook path) — an
+   order with zero legs is never blocked (backward-compat fallback to the
+   old single-tracking-number behavior).
+5. New own tracking scheduler (`order_leg/tracking.py`, hourly) reuses the
+   same doctype-agnostic carrier-tracking helpers every other tracker in
+   this app already shares.
+6. Dashboard (`lyfe_orders_status_overview.py`) gets new
+   `get_order_legs`/`get_active_order_legs` endpoints plus a per-order
+   `legs_pending` indicator.
+
+**Verified live:**
+- A real, pre-existing order with zero legs (`LYF-SH-2026-1756`, real
+  Shipped status, real tracking number `383557621220`) — simulated a real
+  Delivered tracking payload through the actual gated code path, confirmed
+  it still correctly reached `status = "Completed"` unaffected — proves
+  the backward-compat fallback works exactly as intended.
+- A real, fresh 2-leg Mixed "Direct to Customer" order (`LYF-SH-2026-1859`,
+  real 6-component kit `KIT6-MIXEDTEST-FDF8F5` — 4 components in
+  `4BSOT90-150-*` sizes routed US, 2 routed Factory) — confirmed 2 real
+  Order Leg rows created (`LH2969-LEG-01` Factory, `LH2969-LEG-02` US
+  Warehouse) with the correct item split. Confirmed `all_legs_delivered`
+  correctly returns `False` with 0/2 and 1/2 legs delivered, and `True`
+  only once both are.
+
+**Verified via automated test suite** (`test_order_leg.py`, 6 tests, all
+passing): leg creation for US_FULL/India-direct/Mixed-2-leg outcomes;
+idempotency (no duplicate legs on re-creation); `all_legs_delivered`'s
+full state progression; zero-legs backward-compat fallback. Re-ran all 4
+existing suites (30 tests) — no regressions; 36 tests total across the
+whole session's US Warehouse test coverage.
+
+> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-13.1 — Screenshot of a Mixed "Direct
+> to Customer" order's two real Order Leg records, each showing its own
+> leg_type, carrier, tracking_number, and status ]**
+
+> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-13.2 — Screenshot of the Status
+> Overview dashboard showing the "legs pending" indicator on an order
+> with one leg still in transit ]**
+
+**Result:** ☑ Pass.
+
+---
+
 ## Summary table (to fill in once test cases are executed)
 
 | Test Case | Order/BOM Used | Result |
@@ -726,6 +809,7 @@ tests, all passing):
 | TC-BOM-10 — Factory Leg Destination Locked After Confirm Split | Automated: `test_mixed_order_combined_posting.py` + live DB verification | ☑ Pass |
 | TC-BOM-11 — Force US / Force India Dialog Cannot Be Dismissed Without Confirming | Automated: `test_force_us_and_oneclick_error_alert.py` + live DB verification (`LYF-SH-2026-1847` / `1660658`) | ☑ Pass |
 | TC-BOM-12 — Auto-Register Unrecognized SKU at Stock-Check Time | Automated: `test_bom_kit_routing.py` + live verification (`AUTOREG-TEST-23B1F7`, real 1Click `itemID: 230013`) | ☑ Pass |
+| TC-BOM-13 — Order Leg: Per-Shipment Tracking + Gated "Completed" | Automated: `test_order_leg.py` + live verification (`LYF-SH-2026-1756` zero-leg fallback, `LYF-SH-2026-1859` real 2-leg gate) | ☑ Pass |
 
 ---
 
