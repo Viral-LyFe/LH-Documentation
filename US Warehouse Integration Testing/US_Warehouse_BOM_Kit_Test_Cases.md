@@ -712,7 +712,7 @@ tests, all passing):
 
 ### TC-BOM-13 — Order Leg: Per-Shipment Tracking + Gated "Completed"
 
-**What we're checking:** live testing of `LYF-SH-2026-1858` (a Mixed
+**What we're checking:** live testing of `LYF-MN-2026-0035` (a Mixed
 "Direct to Customer" order — 4 real components ship from 1Click's US
 warehouse, 2 real components ship from Factory straight to the customer)
 found a real gap: both legs try to write the single `tracking_number`/
@@ -781,13 +781,14 @@ full state progression; zero-legs backward-compat fallback. Re-ran all 4
 existing suites (30 tests) — no regressions; 36 tests total across the
 whole session's US Warehouse test coverage.
 
-> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-13.1 — Screenshot of a Mixed "Direct
-> to Customer" order's two real Order Leg records, each showing its own
-> leg_type, carrier, tracking_number, and status ]**
+<img width="1710" height="867" alt="image" src="https://github.com/user-attachments/assets/b23f78eb-75dc-43b8-b676-04dfd3cc1485" />
 
-> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-13.2 — Screenshot of the Status
-> Overview dashboard showing the "legs pending" indicator on an order
-> with one leg still in transit ]**
+<img width="1695" height="547" alt="image" src="https://github.com/user-attachments/assets/23620559-1954-43a1-a2f6-b6d2305de501" />
+
+<img width="1917" height="566" alt="image" src="https://github.com/user-attachments/assets/103227f0-fb55-4fd8-8ff5-0feaab2a9138" />
+
+<img width="1917" height="617" alt="image" src="https://github.com/user-attachments/assets/b63af389-96e3-4740-b303-b587bda73f56" />
+
 
 **Result:** ☑ Pass.
 
