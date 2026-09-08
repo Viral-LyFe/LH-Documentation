@@ -796,7 +796,7 @@ whole session's US Warehouse test coverage.
 ### TC-BOM-14 — US-Leg Tracking Field Visibility for Mixed "Via US Warehouse" Orders
 
 **What we're checking:** live re-testing of Test Case 5 (main test doc) on
-a fresh order, `LYF-SH-2026-1861`, found that after Confirm Split → "Via
+a fresh order, `LYF-MN-2026-0034`, found that after Confirm Split → "Via
 US Warehouse" the order's form showed the wrong tracking field pair —
 `tracking_number`/`carrier`/`shipping_charges` (final leg, US warehouse →
 customer) instead of `tracking_number_us`/`carrier_us`/
@@ -822,7 +822,7 @@ shipped yet).
    visibility logic had no knowledge of at all.
 
 2. **A hidden second copy of the old rule.** Fixing the JSON `depends_on`
-   alone had no visible effect on `LYF-SH-2026-1861` — three stale
+   alone had no visible effect on `LYF-MN-2026-0034` — three stale
    Property Setters (`Lyfe Order-tracking_number-depends_on`,
    `-carrier-depends_on`, `-shipping_charges-depends_on`) were silently
    overriding the JSON at runtime with an older, unrelated condition
@@ -856,7 +856,7 @@ only reached the US warehouse, not the customer.
    (same convention as the 2026-08-24 precedent) corrects the three stale
    Property Setters to match the new JSON condition.
 
-**Verified live** on `LYF-SH-2026-1861`: confirmed via direct evaluation
+**Verified live** on `LYF-MN-2026-0034`: confirmed via direct evaluation
 of the live field metadata (post-migrate, post-patch) that
 `tracking_number_us`/`carrier_us`/`shipping_charges_us` are now visible
 and `tracking_number`/`carrier`/`shipping_charges` are hidden — matching
@@ -866,7 +866,7 @@ side, confirming both pairs stay mutually exclusive in every case:
 
 | Scenario | US-leg fields visible | Final-leg fields visible |
 |---|---|---|
-| TC 5 Mixed, Via US Warehouse (`LYF-SH-2026-1861`) | ✅ | ❌ |
+| TC 5 Mixed, Via US Warehouse (`LYF-MN-2026-0034`) | ✅ | ❌ |
 | Route D (`order_via_us_warehouse=1`) | ✅ | ❌ |
 | Plain US_FULL / India-direct (neither set) | ❌ | ✅ |
 | Mixed, Via US Warehouse, already delivered to US | ❌ | ✅ |
@@ -1009,7 +1009,7 @@ duplicate-submission bug found during verification is fixed).
 | TC-BOM-11 — Force US / Force India Dialog Cannot Be Dismissed Without Confirming | Automated: `test_force_us_and_oneclick_error_alert.py` + live DB verification (`LYF-SH-2026-1847` / `1660658`) | ☑ Pass |
 | TC-BOM-12 — Auto-Register Unrecognized SKU at Stock-Check Time | Automated: `test_bom_kit_routing.py` + live verification (`AUTOREG-TEST-23B1F7`, real 1Click `itemID: 230013`) | ☑ Pass |
 | TC-BOM-13 — Order Leg: Per-Shipment Tracking + Gated "Completed" | Automated: `test_order_leg.py` + live verification (`LYF-SH-2026-1756` zero-leg fallback, `LYF-SH-2026-1859` real 2-leg gate) | ☑ Pass |
-| TC-BOM-14 — US-Leg Tracking Field Visibility for Mixed "Via US Warehouse" | Live verification (`LYF-SH-2026-1861`, 5-scenario field visibility check) | ☑ Pass |
+| TC-BOM-14 — US-Leg Tracking Field Visibility for Mixed "Via US Warehouse" | Live verification (`LYF-MN-2026-0034`, 5-scenario field visibility check) | ☑ Pass |
 | TC-BOM-15 — 1Click Create Order: Auto-Register Missing SKU, No Auto-Resubmit | Live verification (`LYF-MN-2026-0028` auto-register + no-resubmit; duplicate-submission bug fixed) | ☑ Pass |
 
 ---
