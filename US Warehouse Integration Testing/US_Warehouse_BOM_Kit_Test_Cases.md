@@ -887,6 +887,113 @@ exercise this specific visibility function directly).
 
 ---
 
+### TC-BOM-15 — 1Click Create Order: Auto-Register Missing SKU, No Auto-Resubmit; Fixed a Real Duplicate-Submission Bug Found While Verifying It
+
+**What we're checking:** when a Create Order call to 1Click fails because a
+line item's SKU was never registered with 1Click (`"SKU ... does not exist
+in the system"`), the system should automatically register that SKU with
+1Click — but must **never** automatically resubmit the order. Reposting to
+1Click must always be a deliberate, manual human action.
+
+**Order shape:** Real ShipStation Orders → Lyfe Order, one line item with a
+SKU that has a real `Item` master in ERPNext but was never registered with
+1Click (`RETRY-TEST-C5FUIO` on `LYF-MN-2026-0028`).
+
+**Why this needed a fix in the first place:** before this change, a SKU
+unknown to 1Click simply failed the order with no recovery path — a human
+had to notice the "SKU does not exist" error, register the SKU with 1Click
+by hand (a separate manual step outside this app), then retry. The
+stock-check stage (`explode_and_check_bom_availability` /
+`_resolve_force_us_items`'s inventory lookup) already auto-registers an
+unrecognized SKU proactively during routing/preview — but a SKU can still
+reach Create Order unregistered whenever that earlier stage doesn't run
+first for it.
+
+**Change made:**
+1. `create_order()` (`oneclick_api.py`) now parses 1Click's real error body
+   on a failed Create Order call — previously discarded entirely, because
+   `raise_for_status()` raises before `resp.json()` is ever called, leaving
+   only a generic `"406 Client Error: ..."` string with no actionable
+   reason. The real body (`{"content":{"itemErrors":[...]}}`) is now parsed
+   so the surfaced error names the exact SKU and reason.
+2. When the failure is specifically a "SKU does not exist" rejection, the
+   missing SKU(s) are registered via the existing `add_item_master()`. The
+   order is then left in **`1Click Error`**, with the error message stating
+   the SKU was auto-registered and to retry manually — **no automatic
+   resubmission**.
+
+**A real, separate bug found while verifying this (root-caused and fixed
+in the same pass):** live testing on `LYF-SH-2026-1862` (an earlier version
+of this feature that *did* auto-resubmit once) showed a second, spurious
+Create Order POST firing ~6 seconds after the first one had already
+succeeded — for the same order, correctly rejected 406 by 1Click since it
+already had the order. Root cause: `maybe_reroute_after_shipstation_sync`
+(fired by the routine 15-minute ShipStation sync scheduler re-checking the
+same order) treated `"Submitted to 1Click"` as a safe "pre-fulfillment"
+status eligible for auto re-routing, because it reused
+`ONECLICK_HOLD_STATUSES` — a set that intentionally includes `"Submitted to
+1Click"` for a *different*, unrelated purpose (protecting that status from
+auto-reassignment elsewhere in the codebase). **Fixed** by narrowing that
+function's re-route condition to only `{"New", "Factory Assignment"}` — an
+order that was never submitted to 1Click at all. `"1Click Error"` was
+removed from the auto-route set entirely (see next paragraph — this was
+tightened further per explicit user decision).
+
+**Per explicit user decision (2026-09-08), auto-resubmission was removed
+entirely, not just narrowed:** the original version of this feature did a
+one-shot automatic retry (register SKU, then immediately resubmit the same
+payload once). The user explicitly asked for this to be removed — SKU
+auto-registration is fine (a safe, additive lookup with no shipping
+consequence), but reposting the actual order to 1Click must always be a
+deliberate human action, never automatic. Both the `create_order()` retry
+call and `maybe_reroute_after_shipstation_sync`'s inclusion of `"1Click
+Error"` in its auto-route set were removed accordingly.
+
+**Verified live** on `LYF-MN-2026-0028`:
+1. Force US on the order (SKU `RETRY-TEST-C5FUIO`, not yet registered with
+   1Click) → Create Order failed with `"SKU RETRY-TEST-C5FUIO does not
+   exist in the system... (Auto-registered ['RETRY-TEST-C5FUIO'] — retry
+   manually now.)"` → order correctly landed in **`1Click Error`**, not
+   resubmitted.
+2. Integration Request log confirmed the `addItemMaster` call that followed
+   the failure completed successfully — the SKU is now registered with
+   1Click.
+3. Confirmed no code path resubmits automatically — the order stayed in
+   `1Click Error` until a human retries it.
+
+**Note on reproducing the original failure via the Force US dialog
+specifically:** the Force US confirmation dialog itself calls
+`preview_force_us_items` before the user even confirms, which runs a real
+1Click inventory check (`get_inventory`) to populate the "Available in
+1Click" column — and that inventory check already auto-registers any
+unrecognized SKU as a side effect, before Create Order ever runs. So a
+fresh SKU tested via the Force US **dialog** (as opposed to a direct
+`apply_route_plan_override` call, or any other path that reaches Create
+Order without first going through a stock/inventory check) will usually
+already be registered by the time Create Order runs, and post successfully
+on the first attempt with no visible failure — confirmed live on
+`LYF-MN-2026-0029` and `LYF-MN-2026-0030` (both SKUs auto-registered during
+the dialog's preview step, both orders reached `Submitted to 1Click`
+directly, no Create Order failure shown). This is expected, not a
+regression — it's the same proactive auto-registration this fix's Change
+#2 above explicitly cites as already existing prior to this change. The
+failure-then-manual-retry path is only visible when a SKU reaches Create
+Order without going through that preview/stock-check first (as it did on
+`LYF-MN-2026-0028`).
+
+> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-15.1 — Screenshot of `LYF-MN-2026-0028`
+> in "1Click Error" after Force US, showing the error message: SKU not
+> found, auto-registered, retry manually now ]**
+
+> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-15.2 — Screenshot of the `addItemMaster`
+> Integration Request log entry for the same order, status "Completed",
+> confirming the SKU was successfully registered with 1Click ]**
+
+**Result:** ☑ Pass (auto-register + no-auto-resubmit behavior confirmed;
+duplicate-submission bug found during verification is fixed).
+
+---
+
 ## Summary table (to fill in once test cases are executed)
 
 | Test Case | Order/BOM Used | Result |
@@ -905,6 +1012,7 @@ exercise this specific visibility function directly).
 | TC-BOM-12 — Auto-Register Unrecognized SKU at Stock-Check Time | Automated: `test_bom_kit_routing.py` + live verification (`AUTOREG-TEST-23B1F7`, real 1Click `itemID: 230013`) | ☑ Pass |
 | TC-BOM-13 — Order Leg: Per-Shipment Tracking + Gated "Completed" | Automated: `test_order_leg.py` + live verification (`LYF-SH-2026-1756` zero-leg fallback, `LYF-SH-2026-1859` real 2-leg gate) | ☑ Pass |
 | TC-BOM-14 — US-Leg Tracking Field Visibility for Mixed "Via US Warehouse" | Live verification (`LYF-SH-2026-1861`, 5-scenario field visibility check) | ☑ Pass |
+| TC-BOM-15 — 1Click Create Order: Auto-Register Missing SKU, No Auto-Resubmit | Live verification (`LYF-MN-2026-0028` auto-register + no-resubmit; duplicate-submission bug fixed) | ☑ Pass |
 
 ---
 
