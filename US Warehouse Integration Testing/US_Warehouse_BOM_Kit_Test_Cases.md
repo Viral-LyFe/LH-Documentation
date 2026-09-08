@@ -633,13 +633,11 @@ Force US / Force India confirmation dialog..."*. Confirmed the legitimate
   `test_pd1_mixed_order_non_tubing.py` (2 tests), and
   `test_mixed_order_combined_posting.py` (8 tests) — all still passing.
 
-> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-11.1 — Screenshot of the Force US
-> dialog with an attempted outside-click / Escape / X-button dismissal,
-> showing the dialog remains open (no X button visible) ]**
+<img width="1917" height="906" alt="image" src="https://github.com/user-attachments/assets/e5a51eb4-e7df-481a-863f-9e70cc3cb698" />
 
-> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-11.2 — Screenshot of the server-side
-> validation error when attempting to save an order with route_plan changed
-> to Force US/Force India outside the confirmation dialog flow ]**
+
+<img width="1627" height="807" alt="image" src="https://github.com/user-attachments/assets/54ace0ab-4077-4926-b036-4009817491bd" />
+
 
 **Result:** ☑ Pass.
 
