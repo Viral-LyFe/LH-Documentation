@@ -93,9 +93,10 @@ Our Integration Request logs only prove **we sent the right call** — the
 portal is what proves **1Click actually received and processed it
 correctly**. Worth a direct spot-check for each of these:
 
-1. **TC-BOM-12 / TC-BOM-15** — SKUs `TC12-VERIFY-MTW4CY` (Item ID `230024`)
-   and `RETRY-TEST-C5FUIO` should now appear as real registered items in
-   1Click's item master.
+1. ✅ **Done 2026-09-08** — **TC-BOM-12 / TC-BOM-15** — user confirmed both
+   `TC12-VERIFY-MTW4CY` (Item ID `230024`) and `RETRY-TEST-C5FUIO` are real,
+   registered items in 1Click's item master. Screenshots still pending for
+   the record, but the behavior itself is confirmed.
 2. **Test Case 12** — Submitting the Same Order Twice: confirm on 1Click's
    side that a duplicate PO number was actually rejected/deduped by them,
    not just that our code didn't send it twice.

@@ -717,10 +717,14 @@ stays 0 stock, auto-registration only makes 1Click aware the item exists.
 Independently re-queried `get_inventory` afterward, outside the test
 flow, and confirmed the SKU is now genuinely known to 1Click on its own.
 
+**1Click portal confirmed** (2026-09-08): user directly checked the 1Click
+portal's item master and confirmed SKU `TC12-VERIFY-MTW4CY` (Item ID
+`230024`) is a real, registered item — proof the auto-registration reached
+1Click's own system, not just our Integration Request logs.
+
 > 📷 **[ IMAGE PLACEHOLDER — TC-BOM-12.1 — Screenshot from the 1Click
-> portal's item master, showing SKU `TC12-VERIFY-MTW4CY` (Item ID
-> `230024`) as a real, registered item — proof the auto-registration
-> reached 1Click's own system, not just our Integration Request logs ]**
+> portal's item master showing SKU `TC12-VERIFY-MTW4CY` (Item ID `230024`)
+> — behavior already confirmed, screenshot pending for the record ]**
 
 **Result:** ☑ Pass.
 
@@ -981,6 +985,11 @@ Error"` in its auto-route set were removed accordingly.
    1Click.
 3. Confirmed no code path resubmits automatically — the order stayed in
    `1Click Error` until a human retries it.
+
+**1Click portal confirmed** (2026-09-08): user directly checked the 1Click
+portal's item master and confirmed SKU `RETRY-TEST-C5FUIO` is a real,
+registered item — proof the auto-registration reached 1Click's own
+system, not just our Integration Request logs.
 
 **Note on reproducing the original failure via the Force US dialog
 specifically:** the Force US confirmation dialog itself calls
