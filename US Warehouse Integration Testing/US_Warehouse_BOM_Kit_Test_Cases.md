@@ -767,10 +767,6 @@ portal's item master and confirmed SKU `TC12-VERIFY-MTW4CY` (Item ID
 `230024`) is a real, registered item — proof the auto-registration reached
 1Click's own system, not just our Integration Request logs.
 
-> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-12.1 — Screenshot from the 1Click
-> portal's item master showing SKU `TC12-VERIFY-MTW4CY` (Item ID `230024`)
-> — behavior already confirmed, screenshot pending for the record ]**
-
 **Result:** ☑ Pass.
 
 ---
