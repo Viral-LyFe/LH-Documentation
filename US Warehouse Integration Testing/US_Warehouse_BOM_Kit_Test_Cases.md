@@ -706,6 +706,23 @@ tests, all passing):
   2, `test_mixed_order_combined_posting.py` 8, `test_force_us_and_
   oneclick_error_alert.py` 11).
 
+**Re-confirmed live** (2026-09-08, `LYF-MN-2026-0036`, SKU
+`TC12-VERIFY-MTW4CY`): confirmed unrecognized beforehand
+(`get_inventory` returned `total: 0`). Ran the real routing function;
+`Integration Request` log showed the exact expected sequence —
+`inventory.cfm` (SKU absent) → `items.cfc` (`addItemMaster`, real 1Click
+`itemID: 230024` returned) → `inventory.cfm` re-check (SKU now present, 0
+available). Routing correctly still sent it to Factory
+(`_full_us_avail: False`, `_inventory_check_failed: False`) — 0 stock
+stays 0 stock, auto-registration only makes 1Click aware the item exists.
+Independently re-queried `get_inventory` afterward, outside the test
+flow, and confirmed the SKU is now genuinely known to 1Click on its own.
+
+> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-12.1 — Screenshot from the 1Click
+> portal's item master, showing SKU `TC12-VERIFY-MTW4CY` (Item ID
+> `230024`) as a real, registered item — proof the auto-registration
+> reached 1Click's own system, not just our Integration Request logs ]**
+
 **Result:** ☑ Pass.
 
 ---
