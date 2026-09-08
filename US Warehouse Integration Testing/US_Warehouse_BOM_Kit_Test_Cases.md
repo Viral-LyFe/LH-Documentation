@@ -981,13 +981,16 @@ failure-then-manual-retry path is only visible when a SKU reaches Create
 Order without going through that preview/stock-check first (as it did on
 `LYF-MN-2026-0028`).
 
-> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-15.1 — Screenshot of `LYF-MN-2026-0028`
-> in "1Click Error" after Force US, showing the error message: SKU not
-> found, auto-registered, retry manually now ]**
+<img width="1651" height="752" alt="Screenshot 2026-09-08 161657" src="https://github.com/user-attachments/assets/05d91d26-7b67-4e95-a5ef-2988f969b3d2" />
 
-> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-15.2 — Screenshot of the `addItemMaster`
-> Integration Request log entry for the same order, status "Completed",
-> confirming the SKU was successfully registered with 1Click ]**
+-------------
+
+<img width="1666" height="792" alt="Screenshot 2026-09-08 162058" src="https://github.com/user-attachments/assets/611e0b52-8798-4eed-822f-414bd5984c3c" />
+
+-------
+**Add Missing SKU ON one click**
+<img width="1665" height="776" alt="image" src="https://github.com/user-attachments/assets/0d46601a-5f8c-4310-9e96-8f73a2c63872" />
+
 
 **Result:** ☑ Pass (auto-register + no-auto-resubmit behavior confirmed;
 duplicate-submission bug found during verification is fixed).
