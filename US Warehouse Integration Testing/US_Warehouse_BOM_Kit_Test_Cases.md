@@ -793,6 +793,100 @@ whole session's US Warehouse test coverage.
 
 ---
 
+### TC-BOM-14 — US-Leg Tracking Field Visibility for Mixed "Via US Warehouse" Orders
+
+**What we're checking:** live re-testing of Test Case 5 (main test doc) on
+a fresh order, `LYF-SH-2026-1861`, found that after Confirm Split → "Via
+US Warehouse" the order's form showed the wrong tracking field pair —
+`tracking_number`/`carrier`/`shipping_charges` (final leg, US warehouse →
+customer) instead of `tracking_number_us`/`carrier_us`/
+`shipping_charges_us` (this leg, Factory → US warehouse — the one
+actually in progress at this point).
+
+**Order shape:** Mixed order, two real SKUs (`3.5FT-TB-200-SB` simulated
+in US stock, `MHRB-200-AC` real 0 stock), Confirm Split → "Via US
+Warehouse" done, Transfer Order created and still Draft (Factory hasn't
+shipped yet).
+
+**Root cause, confirmed by reading the code directly, in two layers:**
+
+1. **The field visibility rule itself.** Both `lyfe_order.json`'s
+   `depends_on` on all six tracking fields and its JS mirror
+   (`_update_us_warehouse_tracking_visibility` in `lyfe_order.js`) decided
+   which pair to show using only `doc.order_via_us_warehouse` — a flag set
+   in exactly one place in the whole codebase, `route_via_us_warehouse()`
+   (the older, separate Route D manual override). The Mixed-order "Via US
+   Warehouse" flow (`confirm_warehouse_split` → `_hold_for_india_
+   components`) never sets this flag — it uses a completely different
+   field, `factory_leg_destination = "Via US Warehouse"`, which the
+   visibility logic had no knowledge of at all.
+
+2. **A hidden second copy of the old rule.** Fixing the JSON `depends_on`
+   alone had no visible effect on `LYF-SH-2026-1861` — three stale
+   Property Setters (`Lyfe Order-tracking_number-depends_on`,
+   `-carrier-depends_on`, `-shipping_charges-depends_on`) were silently
+   overriding the JSON at runtime with an older, unrelated condition
+   (keyed off `workflow_state`, not `factory_leg_destination` at all).
+   This is the exact same class of drift this app's own commit history
+   already has a precedent and fix pattern for
+   (`sync_lyfe_order_status_property_setter.py`, commit `558b36f`,
+   2026-08-24) — a field edited directly on the live site at some point,
+   without the matching Property Setter ever being updated or removed
+   alongside it. The three US-leg fields (`tracking_number_us` etc.) had
+   no such override.
+
+**Why this is a real data-integrity risk, not cosmetic:** if a user had
+entered Factory's real US-warehouse-bound tracking number into the
+visible-but-wrong final-leg fields, the scheduler that polls
+`tracking_number`/`carrier` (`fetch_ready_orders`/`apply_normalised_to_
+order`) would interpret "delivered" as the *customer* having received the
+package — including marking the order `Completed` — when the package had
+only reached the US warehouse, not the customer.
+
+**Fix:**
+1. `lyfe_order.json` — both `depends_on` expressions (US-leg fields AND
+   final-leg fields, 6 fields total) extended to also treat
+   `factory_leg_destination == "Via US Warehouse"` as genuinely "US-bound
+   right now", keeping the two pairs mutually exclusive exactly as before.
+2. `lyfe_order.js` — `_update_us_warehouse_tracking_visibility`'s `via_us`
+   computation updated to match the JSON condition exactly (this
+   function's own comment already states it exists specifically to mirror
+   `depends_on` as defense-in-depth against a lagged reload).
+3. New idempotent patch `sync_lyfe_order_tracking_field_depends_on.py`
+   (same convention as the 2026-08-24 precedent) corrects the three stale
+   Property Setters to match the new JSON condition.
+
+**Verified live** on `LYF-SH-2026-1861`: confirmed via direct evaluation
+of the live field metadata (post-migrate, post-patch) that
+`tracking_number_us`/`carrier_us`/`shipping_charges_us` are now visible
+and `tracking_number`/`carrier`/`shipping_charges` are hidden — matching
+the order's real state (`factory_leg_destination = "Via US Warehouse"`,
+`delivered_to_us_warehouse = 0`). Checked all 5 relevant scenarios side by
+side, confirming both pairs stay mutually exclusive in every case:
+
+| Scenario | US-leg fields visible | Final-leg fields visible |
+|---|---|---|
+| TC 5 Mixed, Via US Warehouse (`LYF-SH-2026-1861`) | ✅ | ❌ |
+| Route D (`order_via_us_warehouse=1`) | ✅ | ❌ |
+| Plain US_FULL / India-direct (neither set) | ❌ | ✅ |
+| Mixed, Via US Warehouse, already delivered to US | ❌ | ✅ |
+| Mixed, Direct to Customer (not Via US Warehouse) | ❌ | ✅ |
+
+Re-ran all 38 existing automated tests — no regressions (none of them
+exercise this specific visibility function directly).
+
+> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-14.1 — Screenshot of `LYF-SH-2026-1861`
+> before the fix, showing the wrong Tracking Number / Carrier / Shipping
+> Charges fields visible after Confirm Split → Via US Warehouse ]**
+
+> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-14.2 — Screenshot of the same order
+> after the fix, correctly showing Tracking Number (US) / Carrier (US) /
+> Shipping Charges (US) instead ]**
+
+**Result:** ☑ Pass.
+
+---
+
 ## Summary table (to fill in once test cases are executed)
 
 | Test Case | Order/BOM Used | Result |
@@ -810,6 +904,7 @@ whole session's US Warehouse test coverage.
 | TC-BOM-11 — Force US / Force India Dialog Cannot Be Dismissed Without Confirming | Automated: `test_force_us_and_oneclick_error_alert.py` + live DB verification (`LYF-SH-2026-1847` / `1660658`) | ☑ Pass |
 | TC-BOM-12 — Auto-Register Unrecognized SKU at Stock-Check Time | Automated: `test_bom_kit_routing.py` + live verification (`AUTOREG-TEST-23B1F7`, real 1Click `itemID: 230013`) | ☑ Pass |
 | TC-BOM-13 — Order Leg: Per-Shipment Tracking + Gated "Completed" | Automated: `test_order_leg.py` + live verification (`LYF-SH-2026-1756` zero-leg fallback, `LYF-SH-2026-1859` real 2-leg gate) | ☑ Pass |
+| TC-BOM-14 — US-Leg Tracking Field Visibility for Mixed "Via US Warehouse" | Live verification (`LYF-SH-2026-1861`, 5-scenario field visibility check) | ☑ Pass |
 
 ---
 

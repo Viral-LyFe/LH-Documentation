@@ -253,6 +253,43 @@ site that were confirmed before this fix (`LYF-MN-2026-0037`,
 keep their original two-shipment behavior — nothing about already-confirmed
 orders was touched or retroactively changed.
 
+**Real gap found and fixed, 2026-09-07 — wrong tracking fields shown after
+Confirm Split:** re-running this test live on a fresh order,
+`LYF-SH-2026-1861` (`3.5FT-TB-200-SB` simulated in US stock + `MHRB-200-AC`
+real 0 stock, real address), after Confirm Split → "Via US Warehouse" the
+order's form showed the **wrong pair of tracking fields**. It displayed
+**Tracking Number / Carrier / Shipping Charges** (the fields meant for the
+*final* leg — US warehouse to customer) instead of **Tracking Number (US) /
+Carrier (US) / Shipping Charges (US)** (the fields meant for *this* leg —
+Factory shipping to the US warehouse, which is what's actually in progress
+at this point in the flow).
+
+**Why this mattered, not just cosmetic:** if someone had entered Factory's
+real tracking number into the wrong (but visible) Tracking Number field,
+our system would track that shipment and, once the carrier reported it
+delivered — meaning delivered **to the US warehouse**, not to the
+customer — would have read that as the whole order being complete,
+potentially marking it **Completed** before the customer ever received
+anything.
+
+**Root cause:** the field-visibility rule only knew about the older,
+separate "Force via US Warehouse" override (a different flag from the one
+this Mixed-order flow actually uses) — it had never been taught to
+recognize "Via US Warehouse" chosen through Confirm Split as also meaning
+"this order is currently going via the US warehouse." A second, hidden
+copy of the old (wrong) rule was also silently active behind the scenes,
+so the first fix attempt had no visible effect until that second copy was
+found and corrected too.
+
+**Fixed and verified live** on `LYF-SH-2026-1861`: the order now correctly
+shows only Tracking Number (US) / Carrier (US) / Shipping Charges (US).
+Checked five different order situations side by side to confirm nothing
+else changed — a plain US-only order, a Factory-only order, the older
+"Force via US Warehouse" flow, and a Mixed order already delivered to the
+US warehouse — all still show the correct fields for their own situation.
+See **TC-BOM-14** in the companion BOM/Kit test doc for the full technical
+write-up.
+
 ---
 
 ## Test Case 6 — Shipping Paperwork Shows the Right Address
