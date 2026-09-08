@@ -1384,39 +1384,62 @@ the same time, does the system correctly prevent both from being told
 - Only one of the two orders should be treated as "in stock" and routed to
   the US warehouse; the other should not.
 
-**Re-run 2026-09-08 — real, conclusive result:** used real SKU
-`3.5FT-TB-200-SB` at 40 real available units (from earlier testing that
-day). Created two real orders, each requesting 30 units (60 combined,
-exceeding the 40 available) — `LYF-MN-2026-0037` and `LYF-MN-2026-0038`.
-Ran both through real routing as two independent OS processes at the same
-time (not threads in one process — an earlier attempt using Python threads
-inside a single process produced misleading results due to Frappe's
-per-request context not being thread-safe; switching to separate processes
-gave a genuine concurrent test against 1Click's real API).
+**Re-run attempt 2026-09-08 — INVALIDATED, see correction below.** A first
+attempt used real Python threads inside one process, which gave clearly
+broken results (one order's routing silently no-op'd) — correctly
+identified as unsafe and abandoned in favor of two independent OS
+processes for a second attempt.
 
-**Result:**
-- **`LYF-MN-2026-0037`** — correctly routed `US_FULL`, real 1Click order
-  created: `1661693`.
-- **`LYF-MN-2026-0038`** — our own routing check also initially saw enough
-  stock (both orders' stock checks landed close enough together to both
-  see the same 40-available snapshot), but its real Create Order call was
-  rejected by **1Click's own API** with a genuine `406 Client Error` — our
-  system correctly surfaced this as `1Click Error`, not a silent success.
-- Real stock confirmed afterward: `100` on-hand → `40` (from earlier
-  testing) → **`10`** after this test — matching exactly one 30-unit order
-  (A) being accepted, not both.
+**⚠️ Correction (2026-09-08, found by the user reviewing the 1Click portal
+directly):** the second attempt's "B correctly rejected, A correctly
+accepted" result reported here originally was **wrong** — it did not
+actually test a fresh concurrent race at all. Re-checking the full,
+unfiltered `Integration Request` timeline (not just the latest entry)
+showed `LYF-MN-2026-0038` had **already been successfully created on
+1Click** (`1661692`) by the earlier, abandoned threaded attempt — before
+the "clean" second attempt even ran. So the second attempt's Create Order
+call for `LYF-MN-2026-0038` was really **resubmitting a PO 1Click already
+had**, not a fresh order competing for stock. 1Click's `406 Client Error`
+(with an empty, unhelpful body) was 1Click rejecting a **duplicate PO
+submission**, not an oversell rejection. The local Lyfe Order record was
+left showing `1Click Error` even though a real, successful order
+(`1661692`) existed on 1Click's side the whole time — reconciled by hand
+after the user caught this by checking the 1Click portal directly (order
+list showed both `1661692` and `1661693`; stock still showed 100, matching
+1Click's real orders view rather than the lower figure our own
+`get_inventory` call was reporting for "available").
 
-**What this proves:** our own stock-check step can race (two near-
-simultaneous checks can both see the same "enough stock" snapshot before
-either order is actually booked) — but this is safely caught one layer
-down: **1Click's own API is the real source of truth and correctly
-rejects an oversell**, and our system correctly reflects that rejection as
-`1Click Error` rather than a false "Submitted to 1Click." No order was
-ever oversold or double-booked in reality.
+**Two real, separate problems this surfaced (both still open, not yet
+fixed):**
+1. **Test data hygiene, not a code bug:** my second "clean" attempt reused
+   the same two Lyfe Order records instead of creating genuinely fresh
+   ones, so it wasn't actually a valid concurrent test — the race
+   condition Test Case 24 is meant to prove has **still not been properly,
+   conclusively tested**.
+2. **A real gap, worth fixing regardless of this test:** when 1Click
+   rejects a Create Order call for an already-existing PO, our error
+   message is a bare `"406 Client Error: for url: ..."` with no real
+   reason — exactly the kind of unhelpful error `create_order()`'s
+   `itemErrors` parsing (added for the SKU-not-found case, see TC-BOM-15)
+   was meant to prevent, but this particular rejection shape doesn't carry
+   an `itemErrors` body, so nothing useful gets surfaced. Someone looking
+   at this order in the UI has no way to tell "this failed because 1Click
+   already has it" from any other generic 406.
+3. **A discrepancy between our `get_inventory()` reading and what the
+   1Click portal shows** (`available: 10` in our API response vs. the
+   portal still showing `100`) — not yet explained; needs investigation
+   into whether "available" in the API means something different from
+   what the portal UI displays (e.g. allocated-but-not-yet-shipped vs.
+   physical on-hand), or whether there's a sync delay/caching issue on
+   1Click's side.
 
-**Result:** ☑ Pass — the actual race condition was tested for real, with
-real concurrent processes and real limited stock, and the system did not
-oversell.
+**Result:** ☐ Pass ☐ Fail — **still inconclusive.** The original
+"conclusive" result above was incorrect and has been retracted. This test
+needs a genuinely fresh pair of orders (not reused ones) run concurrently,
+with the full Integration Request timeline checked (not just the latest
+entry) before drawing any conclusion, and ideally cross-checked directly
+against the 1Click portal the same way the user did here — not just our
+own API responses.
 
 ---
 

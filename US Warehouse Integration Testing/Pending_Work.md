@@ -14,17 +14,31 @@ Source documents this pulls from:
 
 ## A. Re-test needed (real gaps or inconclusive results — do these first)
 
-### ~~1. Test Case 24 — Two Orders for the Same Low-Stock Item at the Same Time~~ ✅ Done 2026-09-08
-**Status:** ☑ Pass — re-run for real. Two real orders (`LYF-MN-2026-0037`,
-`LYF-MN-2026-0038`) each requesting 30 units of `3.5FT-TB-200-SB` (40 real
-available, so 60 combined exceeded stock), routed concurrently as two
-independent OS processes. Order A correctly routed `US_FULL` and posted to
-1Click (`1661693`); Order B's own stock check also initially saw enough
-stock, but 1Click's own Create Order API rejected it (`406 Client Error`)
-and our system correctly surfaced that as `1Click Error`, not a false
-success. Real stock confirmed 40 → 10 afterward, matching exactly one
-30-unit order being accepted. No oversell occurred. See full write-up in
-`US_Warehouse_Test_Cases.md`, Test Case 24.
+### 1. Test Case 24 — Two Orders for the Same Low-Stock Item at the Same Time
+**Status:** ☐ Still inconclusive — **a "Pass" claimed here earlier today
+was wrong and has been retracted.** Caught by the user checking the 1Click
+portal directly: `LYF-MN-2026-0038` (claimed "correctly rejected as an
+oversell") had actually already been successfully created on 1Click
+(`1661692`) by an earlier, abandoned test attempt — the later "clean"
+re-run was resubmitting a PO 1Click already had, not testing a fresh race.
+1Click's rejection was a duplicate-PO rejection, not an oversell
+rejection. Full correction written into `US_Warehouse_Test_Cases.md`, Test
+Case 24.
+
+**Two real, separate issues this surfaced (both still open):**
+- When 1Click rejects a duplicate PO submission, our error message is a
+  bare, unhelpful `"406 Client Error: for url: ..."` with no real reason
+  shown to the user — a genuine gap, not just a test-methodology mistake.
+- Our `get_inventory()` API reading (`available: 10`) did not match what
+  the user saw on the actual 1Click portal (`100`) — not yet explained;
+  needs investigation into what "available" means in the API response vs.
+  the portal UI.
+
+**What to do:** Re-run with two genuinely fresh Lyfe Order records (never
+reused), check the FULL Integration Request timeline (not just the latest
+entry) before concluding anything, and cross-check the real result
+directly on the 1Click portal — not just our own API responses — the same
+way the user caught this correction.
 
 ### 2. Test Case 10 — One Bad Tracking Update Doesn't Corrupt Others
 **Status:** ☑ Pass, but with a caveat — only the "broken response doesn't
@@ -136,4 +150,4 @@ correctly**. Worth a direct spot-check for each of these:
 | `LYF-MN-2026-0034` | TC-BOM-14 — Via US Warehouse, confirmed working | `3.5FT-TB-200-SB`, `MHRB-200-AC` |
 | `LYF-MN-2026-0035` (`LH2971`) | TC-BOM-13 — Direct to Customer, 2-leg confirmation | `3.5FT-TB-200-SB`, `MHRB-200-AC` |
 | `LYF-MN-2026-0036` | TC-BOM-12 — stock-check-time auto-register re-verification | `TC12-VERIFY-MTW4CY` (1Click Item ID `230024`) |
-| `LYF-MN-2026-0037` / `LYF-MN-2026-0038` | Test Case 24 — real concurrent oversell test | `3.5FT-TB-200-SB` (real 1Click order `1661693` for A; B correctly rejected 406) |
+| `LYF-MN-2026-0037` / `LYF-MN-2026-0038` | Test Case 24 — attempted concurrent test, **invalidated** (see correction) | `3.5FT-TB-200-SB` — both have real 1Click orders (`1661693`, `1661692`); test itself does not prove/disprove the race condition |
