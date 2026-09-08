@@ -568,13 +568,9 @@ change the field post-confirmation correctly raised
 `frappe.ValidationError` with the message *"Factory Leg Destination is
 locked once the warehouse split has been confirmed (currently ...)"*.
 
-> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-10.1 — Screenshot of the Factory Leg
-> Destination field showing as read-only/greyed-out on a confirmed Mixed
-> order's form ]**
+**Once split is confirmed can not change the factory dirction**
 
-> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-10.2 — Screenshot of the validation
-> error shown when attempting to change Factory Leg Destination after
-> Confirm Split (via form save or API) ]**
+<img width="1657" height="651" alt="image" src="https://github.com/user-attachments/assets/b8a31629-ad61-4b24-9228-f4651500b737" />
 
 **Result:** ☑ Pass.
 
