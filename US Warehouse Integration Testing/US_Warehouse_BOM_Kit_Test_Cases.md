@@ -875,13 +875,8 @@ side, confirming both pairs stay mutually exclusive in every case:
 Re-ran all 38 existing automated tests — no regressions (none of them
 exercise this specific visibility function directly).
 
-> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-14.1 — Screenshot of `LYF-SH-2026-1861`
-> before the fix, showing the wrong Tracking Number / Carrier / Shipping
-> Charges fields visible after Confirm Split → Via US Warehouse ]**
+<img width="1747" height="697" alt="image" src="https://github.com/user-attachments/assets/93a2a590-1a95-4500-892a-33f4e5820263" />
 
-> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-14.2 — Screenshot of the same order
-> after the fix, correctly showing Tracking Number (US) / Carrier (US) /
-> Shipping Charges (US) instead ]**
 
 **Result:** ☑ Pass.
 
