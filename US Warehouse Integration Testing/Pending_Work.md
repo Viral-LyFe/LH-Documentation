@@ -88,7 +88,7 @@ simply isn't present on this branch.
 
 | # | Test Case | What to screenshot |
 |---|---|---|
-| 5 | **TC-BOM-10** | 10.1: Factory Leg Destination field shown read-only/greyed-out on a confirmed Mixed order's form. 10.2: the validation error shown when attempting to change it after Confirm Split (via form save or API). |
+| ~~5~~ | ~~**TC-BOM-10**~~ | ✅ Done 2026-09-08 — 10.1 screenshot added (field read-only on confirmed order). 10.2 has no UI screenshot by design (field is correctly uneditable in the UI, so the server-side guard is only reachable via script) — re-verified live instead, exact error text captured in the doc. |
 | 6 | **TC-BOM-12** | Reference already captured: `LYF-MN-2026-0036`, SKU `TC12-VERIFY-MTW4CY`, 1Click Item ID `230024`. Go to the **1Click portal** and screenshot that item master record to prove the auto-registration reached 1Click's own system, not just our Integration Request logs. |
 | 7 | **Test Case 8** | Result line already says Pass (`LYF-MN-2026-0047`, 2026-09-02) — confirm the existing embedded screenshot in the doc is actually from this order's form; replace if not. |
 | 8 | **Test Case 25** | Screenshot of the order before and after the tracking check, showing the wrong manually-entered tracking number stayed unchanged. |

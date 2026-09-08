@@ -597,6 +597,26 @@ locked once the warehouse split has been confirmed (currently ...)"*.
 
 <img width="1657" height="651" alt="image" src="https://github.com/user-attachments/assets/b8a31629-ad61-4b24-9228-f4651500b737" />
 
+**Re-verified live 2026-09-08** on `LYF-MN-2026-0035`
+(`factory_leg_destination = "Direct to Customer"`,
+`warehouse_split_confirmed = 1`). The UI correctly does not allow this
+field to be edited at all (already confirmed by the screenshot above) —
+the server-side guard is therefore only reachable by bypassing the UI
+directly via script, exactly as originally verified. Attempted a direct
+`doc.factory_leg_destination = "Via US Warehouse"; doc.save()` — correctly
+blocked:
+
+```
+ValidationError: Factory Leg Destination is locked once the warehouse
+split has been confirmed (currently "Direct to Customer").
+```
+
+Order rolled back untouched, real value confirmed unchanged afterward. No
+UI screenshot exists for this half by design — the field being
+uneditable in the UI (10.1's screenshot) IS this check's UI-layer
+enforcement; the server-side message above is the enforcement layer
+underneath it, only reachable via script/API.
+
 **Result:** ☑ Pass.
 
 ---
