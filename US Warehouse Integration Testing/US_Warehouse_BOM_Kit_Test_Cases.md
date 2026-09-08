@@ -773,6 +773,15 @@ scenario that motivated this feature.
   Warehouse) with the correct item split. Confirmed `all_legs_delivered`
   correctly returns `False` with 0/2 and 1/2 legs delivered, and `True`
   only once both are.
+- Re-confirmed 2026-09-08 on a second independent order (`LYF-MN-2026-0035`
+  / `LH2971`, SKUs `3.5FT-TB-200-SB` US / `MHRB-200-AC` Factory, Confirm
+  Split → "Direct to Customer"): 2 real Order Leg rows created
+  (`LH2971-LEG-01` Factory → Customer, `LH2971-LEG-02` US Warehouse →
+  Customer), both `Pending`, correctly listed in the Order Leg list view
+  filtered to `LH2971` and on the Status Overview dashboard's "Factory →
+  Customer (after split)" card. Warehouse Split tab confirmed
+  `Split Confirmed` ✓, `Factory Leg Destination = Direct to Customer`,
+  `US Portion Posted to 1Click` ✓.
 
 **Verified via automated test suite** (`test_order_leg.py`, 6 tests, all
 passing): leg creation for US_FULL/India-direct/Mixed-2-leg outcomes;
