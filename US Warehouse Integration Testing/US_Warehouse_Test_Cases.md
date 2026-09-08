@@ -617,12 +617,36 @@ bug (`status`/`workflow_state` back to "Awaiting Shipping",
 `track_status` cleared) — this was a deliberate demonstration of the bug,
 not a real order that should be left in a wrong state.
 
-**Result:** ☑ Pass (healthy order, now fully proven) / ⚠️ **Fail** (broken
-order — real bug, not yet fixed). **This test case as a whole cannot be
-marked Pass until the fallback `else` branch in `apply_normalised_to_order`
-is fixed to require some real signal (e.g. a non-empty `raw_status` or
-`status_description`) before advancing to "Shipped," instead of treating
-"unrecognized" as "must be shipped."**
+**A second, worse reproduction** — using a real tracking number
+(`383571424926`, real carrier `fedex_walleted`/`se-3525244`, already
+registered on 17Track — order `LYF-MN-2026-0040`, later `LYF-MN-2026-0041`
+after the fix): confirmed real, valid 17Track data applies correctly
+first (`raw_status: InTransit`, real events/dates, order correctly moves
+to "Shipped" with real detail shown), then confirmed a garbled response
+on that SAME already-correctly-tracked order **destroyed the real data**
+— `track_status` wiped from a real value to empty, `tracking_status_desc`
+overwritten with all-"N/A" placeholders, even though `status` happened to
+already be "Shipped" so the status field itself looked unaffected. This
+is data corruption on a genuinely correct order, not just a first-time
+false positive.
+
+**Fixed 2026-09-08:** added a guard at the top of `apply_normalised_to_order`
+— if a response has no real signal at all (`raw_status`,
+`status_description`, and `carrier_status_description` all empty), the
+update is skipped entirely (same effect as a `pending`/`not ok` provider
+result) and the next scheduled run retries, instead of writing anything.
+Re-ran all three scenarios post-fix and confirmed correct: (1) a garbled
+response on a fresh order no longer advances status, (2) real data still
+applies exactly as before (no regression), (3) a garbled response on an
+already-correctly-tracked order no longer overwrites the real data.
+
+Added a dedicated regression test suite,
+`test_order_tracking_garbled_response.py` (3 tests, all passing), plus
+re-ran all existing suites (11 tests) with no regressions.
+
+**Result:** ☑ **Pass** — both halves of this test case are now fully
+proven, and the real bug the re-run surfaced has been fixed and
+regression-tested.
 
 ---
 

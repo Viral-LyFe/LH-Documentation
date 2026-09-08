@@ -41,25 +41,24 @@ entry) before concluding anything, and cross-check the real result
 directly on the 1Click portal — not just our own API responses — the same
 way the user caught this correction.
 
-### 2. Test Case 10 — One Bad Tracking Update Doesn't Corrupt Others
-**Status:** ⚠️ **Re-run 2026-09-08 found a real bug — needs a code fix,
-not just a re-test.** Healthy order half now fully proven (real order
-`LYF-SH-2026-1813`, real tracking number, unaffected by anything). Broken
-order half **failed**: `apply_normalised_to_order`'s fallback `else`
-branch (`order_tracking.py`, ~line 738) treats any unrecognized/garbled
-tracking response as "must have shipped" and advances the order's real
-workflow status to "Shipped" — instead of skipping it and retrying next
-run, which is what this test case exists to require. `tracking_number`/
-`carrier` fields themselves stay correct, but the actual order status gets
-silently corrupted, which has real downstream consequences (SLA timers,
-customer notifications, dashboard visibility).
+### ~~2. Test Case 10 — One Bad Tracking Update Doesn't Corrupt Others~~ ✅ Done 2026-09-08
+**Status:** ☑ Pass — bug found AND fixed. Healthy order half fully proven
+(real order `LYF-SH-2026-1813`, real tracking number, unaffected by
+anything). Broken order half initially **failed**: `apply_normalised_to_order`'s
+fallback `else` branch treated any unrecognized/garbled tracking response
+as "must have shipped," advancing status to "Shipped" off zero real data
+— and on a second reproduction (real tracking number `383571424926`, real
+FedEx carrier already on 17Track), a garbled response **destroyed real,
+correct tracking data** on an already-Shipped order.
 
-**What to do:** Fix `apply_normalised_to_order`'s fallback branch to
-require some real signal (non-empty `raw_status` or
-`status_description`) before advancing to "Shipped" — an unrecognized/
-empty response should fall through to a no-op (skip, retry next run),
-matching the same safety already correctly applied to the "delivered" and
-"awaiting shipping" branches. Re-test after the fix.
+**Fixed:** added a guard in `apply_normalised_to_order` (`order_tracking.py`)
+— a response with no real signal at all is now skipped entirely instead of
+being written or advancing status. Verified all three scenarios post-fix
+(fresh-order false-positive, real-data-still-works, real-data-preserved-
+against-garbage). New regression suite added:
+`test_order_tracking_garbled_response.py` (3 tests, passing). Full existing
+suite (11 tests) still passing, no regressions. Committed on
+`prod-us_warehouse_integration`.
 
 ### 3. TC-BOM-6 — BOM Component With No SKU
 **Status:** ☑ Real gap confirmed — **not yet fixed**. This is a genuine
@@ -161,4 +160,6 @@ correctly**. Worth a direct spot-check for each of these:
 | `LYF-MN-2026-0035` (`LH2971`) | TC-BOM-13 — Direct to Customer, 2-leg confirmation | `3.5FT-TB-200-SB`, `MHRB-200-AC` |
 | `LYF-MN-2026-0036` | TC-BOM-12 — stock-check-time auto-register re-verification | `TC12-VERIFY-MTW4CY` (1Click Item ID `230024`) |
 | `LYF-MN-2026-0037` / `LYF-MN-2026-0038` | Test Case 24 — attempted concurrent test, **invalidated** (see correction) | `3.5FT-TB-200-SB` — both had real 1Click orders (`1661693`, `1661692`); 1Click's later resync cleared their order history, so these POs are free for a fresh re-test |
-| `LYF-MN-2026-0039` | Test Case 10 — broken-response bug demonstration, reverted after confirming | `TC10-BROKEN-TEST-001` (test tracking number, not a real SKU) |
+| `LYF-MN-2026-0039` | Test Case 10 — first broken-response bug demonstration, reverted after confirming | `TC10-BROKEN-TEST-001` (test tracking number, not a real SKU) |
+| `LYF-MN-2026-0040` | Test Case 10 — second reproduction: real data destroyed by garbled response, reverted | Real tracking number `383571424926` (real FedEx order `LYF-SH-2026-1841`'s tracking, reused) |
+| `LYF-MN-2026-0041` | Test Case 10 — post-fix verification (all 3 scenarios confirmed correct), reverted | Same real tracking number `383571424926` |
