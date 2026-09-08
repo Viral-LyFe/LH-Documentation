@@ -434,6 +434,37 @@ and the MIFO-required safety block are all confirmed working live.
 
 ---
 
+### TC-BOM-8 — `item_bom` Manually Cleared After a BOM Was Already Auto-Created from a Drawing
+
+**What we're checking:** the confirmed gap noted above — using "Parse BOM
+from Drawing" creates/updates a `Lyfe BOM` but does **not** link it back to
+the order row's `item_bom`. This test confirms what actually happens if
+that manual link step is skipped.
+
+**Order shape:** one order row, drawing attached, "Parse BOM from Drawing"
+used to create a real `Lyfe BOM`, but `item_bom` deliberately left blank on
+the order row (simulating someone forgetting the manual step).
+
+**Steps:**
+1. Run the drawing-to-BOM flow, confirm a `Lyfe BOM` was created.
+2. Do **not** set `item_bom` on the order row.
+3. Run routing.
+
+**Expected Result:**
+- The row is treated as a plain, non-BOM item — its own SKU (the parent
+  kit's SKU, if one exists) is checked directly against 1Click, **not** its
+  components.
+- If the parent kit SKU itself has no real 1Click stock entry (likely,
+  since kits are usually not stocked as a single unit), the row incorrectly
+  routes to Factory even though its individual components might genuinely
+  be available in the US warehouse.
+- **This confirms the gap is real and has a visible, wrong-routing
+  consequence** — not just a cosmetic omission. Worth deciding whether to
+  build an explicit "link this BOM to the order row" step into the
+  drawing-parsing confirm flow, or an explicit warning/reminder in the UI.
+
+---
+
 ### TC-BOM-9 — Force US on a Kit/BOM Order (Confirmation Dialog + Same BOM Fix)
 
 **The same root-cause bug found in TC-BOM-7** (a kit/BOM row's own SKU sent
@@ -546,37 +577,6 @@ locked once the warehouse split has been confirmed (currently ...)"*.
 > Confirm Split (via form save or API) ]**
 
 **Result:** ☑ Pass.
-
----
-
-### TC-BOM-8 — `item_bom` Manually Cleared After a BOM Was Already Auto-Created from a Drawing
-
-**What we're checking:** the confirmed gap noted above — using "Parse BOM
-from Drawing" creates/updates a `Lyfe BOM` but does **not** link it back to
-the order row's `item_bom`. This test confirms what actually happens if
-that manual link step is skipped.
-
-**Order shape:** one order row, drawing attached, "Parse BOM from Drawing"
-used to create a real `Lyfe BOM`, but `item_bom` deliberately left blank on
-the order row (simulating someone forgetting the manual step).
-
-**Steps:**
-1. Run the drawing-to-BOM flow, confirm a `Lyfe BOM` was created.
-2. Do **not** set `item_bom` on the order row.
-3. Run routing.
-
-**Expected Result:**
-- The row is treated as a plain, non-BOM item — its own SKU (the parent
-  kit's SKU, if one exists) is checked directly against 1Click, **not** its
-  components.
-- If the parent kit SKU itself has no real 1Click stock entry (likely,
-  since kits are usually not stocked as a single unit), the row incorrectly
-  routes to Factory even though its individual components might genuinely
-  be available in the US warehouse.
-- **This confirms the gap is real and has a visible, wrong-routing
-  consequence** — not just a cosmetic omission. Worth deciding whether to
-  build an explicit "link this BOM to the order row" step into the
-  drawing-parsing confirm flow, or an explicit warning/reminder in the UI.
 
 ---
 
