@@ -693,6 +693,11 @@ confirmed the SKU is now genuinely recognized by 1Click on its own,
 unrelated to our own logs. Confirmed an already-registered SKU
 (`MHRB-200-AC`, 0 stock) never triggers any registration call.
 
+<img width="1700" height="687" alt="image" src="https://github.com/user-attachments/assets/3e0c2a41-d919-421f-88a1-cfeec589c4ed" />
+
+<img width="1591" height="602" alt="image" src="https://github.com/user-attachments/assets/ea160bff-62be-428a-bd20-659eac6fd551" />
+
+
 **Verified via automated test suite**
 (`test_bom_kit_routing.py`, new `TestAutoRegisterUnrecognizedSku` class, 3
 tests, all passing):
