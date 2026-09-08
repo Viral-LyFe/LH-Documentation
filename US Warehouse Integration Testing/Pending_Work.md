@@ -25,14 +25,15 @@ re-run was resubmitting a PO 1Click already had, not testing a fresh race.
 rejection. Full correction written into `US_Warehouse_Test_Cases.md`, Test
 Case 24.
 
-**Two real, separate issues this surfaced (both still open):**
+**One real, separate issue this surfaced (still open):**
 - When 1Click rejects a duplicate PO submission, our error message is a
   bare, unhelpful `"406 Client Error: for url: ..."` with no real reason
   shown to the user — a genuine gap, not just a test-methodology mistake.
-- Our `get_inventory()` API reading (`available: 10`) did not match what
-  the user saw on the actual 1Click portal (`100`) — not yet explained;
-  needs investigation into what "available" means in the API response vs.
-  the portal UI.
+
+(A second suspected issue — our `get_inventory()` reading `available: 10`
+not matching the 1Click portal's `100` — turned out to be a stale/cached
+portal page on the user's end. A manual refresh confirmed the portal
+agrees with our API. No real discrepancy; nothing to fix here.)
 
 **What to do:** Re-run with two genuinely fresh Lyfe Order records (never
 reused), check the FULL Integration Request timeline (not just the latest

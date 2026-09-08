@@ -1405,12 +1405,13 @@ submission**, not an oversell rejection. The local Lyfe Order record was
 left showing `1Click Error` even though a real, successful order
 (`1661692`) existed on 1Click's side the whole time — reconciled by hand
 after the user caught this by checking the 1Click portal directly (order
-list showed both `1661692` and `1661693`; stock still showed 100, matching
-1Click's real orders view rather than the lower figure our own
-`get_inventory` call was reporting for "available").
+list showed both `1661692` and `1661693`; the user's browser was showing a
+stale/cached portal page at that moment — a manual refresh immediately
+after showed the portal correctly reporting `available: 10`, matching our
+API exactly. Confirmed not a real discrepancy: 1Click's API and portal
+agree once the page is actually refreshed. No investigation needed here.
 
-**Two real, separate problems this surfaced (both still open, not yet
-fixed):**
+**One real, separate problem this surfaced (still open, not yet fixed):**
 1. **Test data hygiene, not a code bug:** my second "clean" attempt reused
    the same two Lyfe Order records instead of creating genuinely fresh
    ones, so it wasn't actually a valid concurrent test — the race
@@ -1425,13 +1426,6 @@ fixed):**
    an `itemErrors` body, so nothing useful gets surfaced. Someone looking
    at this order in the UI has no way to tell "this failed because 1Click
    already has it" from any other generic 406.
-3. **A discrepancy between our `get_inventory()` reading and what the
-   1Click portal shows** (`available: 10` in our API response vs. the
-   portal still showing `100`) — not yet explained; needs investigation
-   into whether "available" in the API means something different from
-   what the portal UI displays (e.g. allocated-but-not-yet-shipped vs.
-   physical on-hand), or whether there's a sync delay/caching issue on
-   1Click's side.
 
 **Result:** ☐ Pass ☐ Fail — **still inconclusive.** The original
 "conclusive" result above was incorrect and has been retracted. This test
