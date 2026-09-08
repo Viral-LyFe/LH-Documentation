@@ -42,16 +42,24 @@ directly on the 1Click portal — not just our own API responses — the same
 way the user caught this correction.
 
 ### 2. Test Case 10 — One Bad Tracking Update Doesn't Corrupt Others
-**Status:** ☑ Pass, but with a caveat — only the "broken response doesn't
-corrupt data" half was proven. Neither real order used (`LYF-MN-2026-0034`
-control / `LYF-MN-2026-0040` simulated failure) had a real tracking number
-on file at test time, so the "healthy order still updates normally
-alongside a broken one" half was never actually confirmed.
+**Status:** ⚠️ **Re-run 2026-09-08 found a real bug — needs a code fix,
+not just a re-test.** Healthy order half now fully proven (real order
+`LYF-SH-2026-1813`, real tracking number, unaffected by anything). Broken
+order half **failed**: `apply_normalised_to_order`'s fallback `else`
+branch (`order_tracking.py`, ~line 738) treats any unrecognized/garbled
+tracking response as "must have shipped" and advances the order's real
+workflow status to "Shipped" — instead of skipping it and retrying next
+run, which is what this test case exists to require. `tracking_number`/
+`carrier` fields themselves stay correct, but the actual order status gets
+silently corrupted, which has real downstream consequences (SLA timers,
+customer notifications, dashboard visibility).
 
-**What to do:** Re-run with one order that already has a real tracking
-number on file, run alongside a simulated-broken-response order in the same
-tracking check pass. Confirm the healthy order's tracking still updates
-correctly.
+**What to do:** Fix `apply_normalised_to_order`'s fallback branch to
+require some real signal (non-empty `raw_status` or
+`status_description`) before advancing to "Shipped" — an unrecognized/
+empty response should fall through to a no-op (skip, retry next run),
+matching the same safety already correctly applied to the "delivered" and
+"awaiting shipping" branches. Re-test after the fix.
 
 ### 3. TC-BOM-6 — BOM Component With No SKU
 **Status:** ☑ Real gap confirmed — **not yet fixed**. This is a genuine
@@ -152,4 +160,5 @@ correctly**. Worth a direct spot-check for each of these:
 | `LYF-MN-2026-0034` | TC-BOM-14 — Via US Warehouse, confirmed working | `3.5FT-TB-200-SB`, `MHRB-200-AC` |
 | `LYF-MN-2026-0035` (`LH2971`) | TC-BOM-13 — Direct to Customer, 2-leg confirmation | `3.5FT-TB-200-SB`, `MHRB-200-AC` |
 | `LYF-MN-2026-0036` | TC-BOM-12 — stock-check-time auto-register re-verification | `TC12-VERIFY-MTW4CY` (1Click Item ID `230024`) |
-| `LYF-MN-2026-0037` / `LYF-MN-2026-0038` | Test Case 24 — attempted concurrent test, **invalidated** (see correction) | `3.5FT-TB-200-SB` — both have real 1Click orders (`1661693`, `1661692`); test itself does not prove/disprove the race condition |
+| `LYF-MN-2026-0037` / `LYF-MN-2026-0038` | Test Case 24 — attempted concurrent test, **invalidated** (see correction) | `3.5FT-TB-200-SB` — both had real 1Click orders (`1661693`, `1661692`); 1Click's later resync cleared their order history, so these POs are free for a fresh re-test |
+| `LYF-MN-2026-0039` | Test Case 10 — broken-response bug demonstration, reverted after confirming | `TC10-BROKEN-TEST-001` (test tracking number, not a real SKU) |

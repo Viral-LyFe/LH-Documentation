@@ -574,14 +574,55 @@ time?
 
 > 📷 **[ IMAGE PLACEHOLDER — Screenshot comparing both orders after the test — one shows untouched/skipped tracking, the other shows a normal update ]*
 
-**Result:** ☑ Pass ☐ Fail (with a caveat)
-**Notes:** Executed 2026-09-02. No data corruption occurred — confirms the
-core safety claim. **Caveat:** neither of the two real orders used for this
-run had a tracking number yet at the time of testing, so the "healthy order
-still updates normally" half of this test wasn't fully proven, only the
-"broken one doesn't corrupt anything" half. **Recommend re-running once you
-have a real order with an actual tracking number already on file**, to
-fully confirm the healthy side too.
+**Re-run 2026-09-08 — real result, found a genuine bug:**
+
+**Healthy control order** — `LYF-SH-2026-1813` (real, pre-existing order,
+Awaiting Shipping, real tracking number `383571724008` already on file).
+Ran the real `track_and_update_order()` unmocked — a genuine 17Track API
+call. **Confirmed correct:** tracking number/carrier unchanged, status
+correctly stayed "Awaiting Shipping" matching the real live carrier status
+("Shipment information sent to FedEx"). **This finally proves the half of
+this test that was never proven before** — a healthy order's tracking
+check completes normally and isn't disturbed by anything happening to a
+different order in the same run.
+
+**Broken order** — `LYF-MN-2026-0039` (fresh test order, tracking number
+`TC10-BROKEN-TEST-001`, real carrier code). Simulated a genuinely garbled
+17Track response (`{"ok": true, "data": {"garbage": null, "status": null}}`
+— no `raw_status`, no `status_description`) via the same order's own
+`_call_tracking_provider`, matching this app's established test-mocking
+pattern.
+
+**Result: ⚠️ FAIL — real bug found.** `apply_normalised_to_order()`'s
+fallback `else` branch (`order_tracking.py`, ~line 738) treats *any*
+response that isn't recognized as "delivered" or one of the two
+`_AWAITING_SHIPPING_STATUSES` (`InfoReceived`/`NotFound`) as **"must have
+shipped"** — with no check that the response actually contained real
+tracking data. The garbled response had `raw_status: None` and
+`status: None`, which doesn't match "delivered" and doesn't match either
+awaiting-shipping status, so it fell through to the `else` branch and
+**incorrectly advanced the order's real workflow status to "Shipped"** —
+with every displayed field showing "N/A". This is the exact failure mode
+this test case exists to catch: a broken/garbled response should be
+skipped and retried next run, not silently interpreted as a real shipping
+event. `tracking_number`/`carrier` themselves were not corrupted (still
+correct), but the order's actual **workflow status** was — arguably worse,
+since a wrong "Shipped" status has real downstream consequences (customer
+notifications, SLA timers, dashboard visibility) that a merely-unchanged
+tracking field would not.
+
+Reverted `LYF-MN-2026-0039`'s incorrect state by hand after confirming the
+bug (`status`/`workflow_state` back to "Awaiting Shipping",
+`is_override_order_status` cleared, garbage `tracking_status_desc`/
+`track_status` cleared) — this was a deliberate demonstration of the bug,
+not a real order that should be left in a wrong state.
+
+**Result:** ☑ Pass (healthy order, now fully proven) / ⚠️ **Fail** (broken
+order — real bug, not yet fixed). **This test case as a whole cannot be
+marked Pass until the fallback `else` branch in `apply_normalised_to_order`
+is fixed to require some real signal (e.g. a non-empty `raw_status` or
+`status_description`) before advancing to "Shipped," instead of treating
+"unrecognized" as "must be shipped."**
 
 ---
 
