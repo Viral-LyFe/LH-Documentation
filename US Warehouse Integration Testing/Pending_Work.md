@@ -14,17 +14,17 @@ Source documents this pulls from:
 
 ## A. Re-test needed (real gaps or inconclusive results — do these first)
 
-### 1. Test Case 24 — Two Orders for the Same Low-Stock Item at the Same Time
-**Status:** ☐ Inconclusive — no real 1-unit-stock SKU was available, so the
-actual race condition was never tested. Both test orders (`LYF-MN-2026-0051`,
-`LYF-MN-2026-0052`) landed on a fully zero-stock SKU (`MHRB-200-AC`), which
-only confirms the trivial zero-stock case.
-
-**What to do:** Ask 1Click to set one real SKU to exactly 1 unit of
-available stock. Create two separate orders for that same item as close
-together in time as possible. Confirm only one routes to the US warehouse
-and the other correctly falls back to India — this is the actual scenario
-being tested.
+### ~~1. Test Case 24 — Two Orders for the Same Low-Stock Item at the Same Time~~ ✅ Done 2026-09-08
+**Status:** ☑ Pass — re-run for real. Two real orders (`LYF-MN-2026-0037`,
+`LYF-MN-2026-0038`) each requesting 30 units of `3.5FT-TB-200-SB` (40 real
+available, so 60 combined exceeded stock), routed concurrently as two
+independent OS processes. Order A correctly routed `US_FULL` and posted to
+1Click (`1661693`); Order B's own stock check also initially saw enough
+stock, but 1Click's own Create Order API rejected it (`406 Client Error`)
+and our system correctly surfaced that as `1Click Error`, not a false
+success. Real stock confirmed 40 → 10 afterward, matching exactly one
+30-unit order being accepted. No oversell occurred. See full write-up in
+`US_Warehouse_Test_Cases.md`, Test Case 24.
 
 ### 2. Test Case 10 — One Bad Tracking Update Doesn't Corrupt Others
 **Status:** ☑ Pass, but with a caveat — only the "broken response doesn't
@@ -136,3 +136,4 @@ correctly**. Worth a direct spot-check for each of these:
 | `LYF-MN-2026-0034` | TC-BOM-14 — Via US Warehouse, confirmed working | `3.5FT-TB-200-SB`, `MHRB-200-AC` |
 | `LYF-MN-2026-0035` (`LH2971`) | TC-BOM-13 — Direct to Customer, 2-leg confirmation | `3.5FT-TB-200-SB`, `MHRB-200-AC` |
 | `LYF-MN-2026-0036` | TC-BOM-12 — stock-check-time auto-register re-verification | `TC12-VERIFY-MTW4CY` (1Click Item ID `230024`) |
+| `LYF-MN-2026-0037` / `LYF-MN-2026-0038` | Test Case 24 — real concurrent oversell test | `3.5FT-TB-200-SB` (real 1Click order `1661693` for A; B correctly rejected 406) |

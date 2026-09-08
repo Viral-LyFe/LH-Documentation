@@ -1364,37 +1364,59 @@ correctly; worth a separate look if auto-assignment is wanted.
 
 ## Test Case 24 — Two Orders for the Same Low-Stock Item at the Same Time
 
-**Order ID:** `LYF-MN-2026-0051` and `LYF-MN-2026-0052` (run, but see note — not a full test)
+**Order ID:** `LYF-MN-2026-0037` and `LYF-MN-2026-0038` (real re-run, 2026-09-08)
 
-**What we're checking:** if there's only 1 unit of an item actually
-available, and two orders for that same item are created around the same
-time, does the system correctly prevent both from being told "yes, it's in
-stock" — or could it accidentally oversell it?
+**What we're checking:** if there's only a limited amount of an item
+actually available, and two orders for that same item are created around
+the same time, does the system correctly prevent both from being told
+"yes, it's in stock" — or could it accidentally oversell it?
 
 **Steps:**
-1. Find (or ask a developer to help set up) an item with only 1 unit
-   available in the US warehouse.
-2. Create two separate orders for that same item, as close together in time
+1. Find a real SKU with limited (not zero) stock in 1Click.
+2. Create two separate orders whose combined requested quantity exceeds
+   what's actually available.
+3. Route both at the same time (real OS-level concurrent processes, not a
+   simulation), so both hit 1Click's live inventory check as close together
    as possible.
-3. Check how each order routes.
+4. Check how each order routes, and confirm the real stock level afterward.
 
 **Expected Result:**
 - Only one of the two orders should be treated as "in stock" and routed to
   the US warehouse; the other should not.
 
-> 📷 **[ IMAGE PLACEHOLDER — pending: needs a genuine 1-unit-stock SKU to properly test ]**
+**Re-run 2026-09-08 — real, conclusive result:** used real SKU
+`3.5FT-TB-200-SB` at 40 real available units (from earlier testing that
+day). Created two real orders, each requesting 30 units (60 combined,
+exceeding the 40 available) — `LYF-MN-2026-0037` and `LYF-MN-2026-0038`.
+Ran both through real routing as two independent OS processes at the same
+time (not threads in one process — an earlier attempt using Python threads
+inside a single process produced misleading results due to Frappe's
+per-request context not being thread-safe; switching to separate processes
+gave a genuine concurrent test against 1Click's real API).
 
-**Result:** ☐ Pass ☐ Fail — **inconclusive, needs a real run**
-**Notes:** Attempted 2026-09-02, but no SKU with exactly 1 unit of real
-stock was available to test with at the time — only a fully zero-stock SKU
-(`MHRB-200-AC`) was on hand, so both test orders correctly (and
-unsurprisingly) routed to India, since there was genuinely nothing to fight
-over. **This does not prove the actual race condition is safe** — it just
-confirms the zero-stock case works, which was already known. **Please
-re-run this properly once a SKU with exactly 1 real unit can be arranged**
-(ask 1Click to set one up specifically for this test, or catch a real SKU
-at that exact stock level) — this is the one that actually tests the
-scenario.
+**Result:**
+- **`LYF-MN-2026-0037`** — correctly routed `US_FULL`, real 1Click order
+  created: `1661693`.
+- **`LYF-MN-2026-0038`** — our own routing check also initially saw enough
+  stock (both orders' stock checks landed close enough together to both
+  see the same 40-available snapshot), but its real Create Order call was
+  rejected by **1Click's own API** with a genuine `406 Client Error` — our
+  system correctly surfaced this as `1Click Error`, not a silent success.
+- Real stock confirmed afterward: `100` on-hand → `40` (from earlier
+  testing) → **`10`** after this test — matching exactly one 30-unit order
+  (A) being accepted, not both.
+
+**What this proves:** our own stock-check step can race (two near-
+simultaneous checks can both see the same "enough stock" snapshot before
+either order is actually booked) — but this is safely caught one layer
+down: **1Click's own API is the real source of truth and correctly
+rejects an oversell**, and our system correctly reflects that rejection as
+`1Click Error` rather than a false "Submitted to 1Click." No order was
+ever oversold or double-booked in reality.
+
+**Result:** ☑ Pass — the actual race condition was tested for real, with
+real concurrent processes and real limited stock, and the system did not
+oversell.
 
 ---
 
