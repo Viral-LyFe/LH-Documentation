@@ -311,16 +311,41 @@ This is the exact same class of bug the 2026-09-03 fix addressed, existing
 one level deeper for BOM-exploded components. Factory would never know
 this component was ever on the order.
 
-**Anything Need to Fix:** Yes. The fix is small and mirrors the existing
-plain-row pattern exactly — in the `item_bom` branch's loop, instead of
-`continue` on a blank `sku`, append the same `no_sku_item=True` component
-shape the plain-row branch already returns (with `bom_reference` set to
-the BOM, unlike the plain-row case where it's `None`).
+**Fixed 2026-09-08.** The `item_bom` branch's loop now mirrors the
+existing plain-row pattern exactly — instead of `continue` on a blank
+`sku`, it appends the same `no_sku_item=True` component shape the
+plain-row branch already returns (with `bom_reference` set to the BOM,
+unlike the plain-row case where it's `None`):
 
-**Result:** ☑ Pass (test correctly detects and documents the gap) — the
-test asserts today's actual (buggy) behavior and includes an inline note
-telling whoever fixes the code to invert the assertions once it's fixed,
-so the test starts failing loudly again if the fix regresses.
+```python
+for child in bom.child_items:
+    sku = child.sku or child.item_code or ""
+    if not sku:
+        components.append({
+            "sku": "", "item_code": "",
+            "item_name": child.item_name or f"BOM {row.item_bom} row {child.idx} (no SKU)",
+            "quantity": int(child.quantity or 1) * int(row.quantity),
+            "bom_reference": row.item_bom,
+            "source_order_item": source_label,
+            "no_sku_item": True,
+        })
+        continue
+    components.append({...})
+```
+
+**Verified:** `TestBomKitComponentWithNoSku`'s test was inverted per its
+own inline instruction — now asserts the correct behavior (a kit with one
+good US-stocked component + one no-SKU component correctly routes
+`MIXED_US_COMPONENTS_INDIA_TO_US`, the no-SKU component preserved with
+`no_sku_item=True` and the right `bom_reference`) instead of documenting
+the gap. All 9 tests in `test_bom_kit_routing.py` pass; full suite
+re-run (41 tests across 6 modules) with no regressions. Live-verified
+directly against `_explode_order_row_to_components` with a real `Lyfe BOM`
+containing a genuinely blank-SKU child row — the no-SKU component now
+correctly appears instead of vanishing.
+
+**Result:** ☑ Pass — real gap found (2026-09-04), fixed and
+regression-tested (2026-09-08).
 
 **Note on the test data used:** `Custom BOM Items.sku` is a mandatory
 (`reqd=1`) schema field — a real no-SKU BOM row can never occur through
@@ -1036,7 +1061,7 @@ duplicate-submission bug found during verification is fixed).
 | TC-BOM-3 — Two Kits, Both Fully US Stock | Mocked, 4 real SKUs | ☑ Pass |
 | TC-BOM-4 — Two Kits, One Fully US / One Fully Factory | Mocked, 4 real SKUs | ☑ Pass |
 | TC-BOM-5 — Kit + Plain Item Together | Mocked, 3 real SKUs | ☑ Pass |
-| TC-BOM-6 — BOM Component With No SKU | Mocked, 1 real SKU + 1 malformed row | ☑ **Real gap confirmed** — see notes below, not yet fixed |
+| TC-BOM-6 — BOM Component With No SKU | Mocked, 1 real SKU + 1 malformed row | ☑ Pass — real gap found 2026-09-04, fixed 2026-09-08 |
 | TC-BOM-7 — Full Resume Lifecycle for a Kit Order | `LYF-SH-2026-1836` / `ASN-2026-00015` / `MIFO-2026-4093` | ☑ Pass — fixed 2026-09-04, see notes |
 | TC-BOM-8 — `item_bom` Not Linked After Drawing-Based BOM Creation | _(not yet built — needs your answer to the open question below)_ | ☐ Pending your confirmation |
 | TC-BOM-9 — Force US on a Kit/BOM Order (Dialog + Same BOM Fix) | Automated: `test_force_us_and_oneclick_error_alert.py` | ☑ Pass |

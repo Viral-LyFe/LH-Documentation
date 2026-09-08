@@ -60,12 +60,15 @@ against-garbage). New regression suite added:
 suite (11 tests) still passing, no regressions. Committed on
 `prod-us_warehouse_integration`.
 
-### 3. TC-BOM-6 — BOM Component With No SKU
-**Status:** ☑ Real gap confirmed — **not yet fixed**. This is a genuine
-known bug, not a testing gap.
-
-**What to do:** Decide whether to fix this before final sign-off, or
-explicitly accept and document it as a known limitation for this release.
+### ~~3. TC-BOM-6 — BOM Component With No SKU~~ ✅ Done 2026-09-08
+**Status:** ☑ Pass — real gap found (2026-09-04), fixed and
+regression-tested (2026-09-08). `_explode_order_row_to_components`'s
+`item_bom` branch now preserves a no-SKU BOM child row (flagged
+`no_sku_item=True`, routed to Factory) instead of silently dropping it,
+mirroring the existing plain-row fix. Test inverted to assert correct
+behavior; all 9 tests in `test_bom_kit_routing.py` pass; full suite
+(41 tests, 6 modules) re-run with no regressions. Live-verified against a
+real Lyfe BOM with a genuinely blank-SKU child row.
 
 ### 4. TC-BOM-8 — `item_bom` Not Linked After Drawing-Based BOM Creation
 **Status:** ☐ Pending your confirmation. The underlying feature ("Parse BOM
