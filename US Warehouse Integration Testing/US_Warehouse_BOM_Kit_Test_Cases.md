@@ -1163,13 +1163,11 @@ visible status, never attempted a second Create Order call.
 - Confirmed no regressions across all other suites (52 tests total, 8
   modules).
 
-> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-16.1 — Screenshot of the order at
-> "US Warehouse Delivered", showing the new "Post to 1Click" button in
-> the toolbar ]**
+> <img width="1735" height="735" alt="image" src="https://github.com/user-attachments/assets/2acce6f5-fc54-427e-8974-baf90905a9c4" />
 
-> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-16.2 — Screenshot of the order after
-> clicking "Post to 1Click", now at "Submitted to 1Click" with a real
-> 1Click order ID ]**
+
+> <img width="1652" height="672" alt="image" src="https://github.com/user-attachments/assets/5b781073-a4ad-4da6-ae4f-268ae46646bc" />
+
 
 **Result:** ☑ Pass.
 
