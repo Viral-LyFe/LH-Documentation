@@ -125,6 +125,24 @@ correctly**. Worth a direct spot-check for each of these:
    `LYF-MN-2026-0028`, `LYF-MN-2026-0029`) — confirm on the 1Click side
    these were NOT accidentally created as duplicate/partial orders despite
    showing as failed on our end.
+6. **Test Case 11's registered-but-0-stock order-lookup gap — ask 1Click
+   directly.** A registered SKU with 0 stock (`MHRB-200-AC`, order
+   `LYF-SH-2026-1847` / real 1Click order `1660658`) was accepted by
+   Create Order (real HTTP 200, real order ID returned) — but querying
+   1Click's own order-status endpoint (`/api/v2/orders`) for that same
+   order moments later returned an empty list, `total: 0`, as if the
+   order doesn't exist. Confirmed at the raw HTTP level, both via our
+   `po` reference and via 1Click's own numeric order ID — ruled out as a
+   lookup-key mismatch on our side. **Likely the same root cause as the
+   PO-lookup mismatch Kevin's email later surfaced** (their status
+   endpoint appears to key off a different internal PO/order number than
+   what Create Order echoes back to us) — worth raising both findings
+   together in the next message to 1Click: *"Create Order returns a real
+   success + order ID, but your own /api/v2/orders status endpoint can't
+   find that same order moments later, whether we query by the `po` we
+   sent or by the `id` you returned. Confirmed on real orders `1660658`
+   and `1664352`/`1662182` (2026-09-08/09) — can you confirm what
+   identifier your status endpoint actually expects?"*
 
 ---
 
