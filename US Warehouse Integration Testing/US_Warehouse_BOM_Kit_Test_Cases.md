@@ -1068,6 +1068,113 @@ duplicate-submission bug found during verification is fixed).
 
 ---
 
+### TC-BOM-16 — "US Warehouse Delivered" No Longer Auto-Posts to 1Click; Manual "Post to 1Click" Button
+
+**What we're checking:** per explicit user decision, once a Factory-leg
+shipment's tracking shows it has arrived at the US warehouse, the order
+must **stop** at `workflow_state = "US Warehouse Delivered"` — it should
+no longer automatically continue through `Ready for Dispatch` straight to
+`Submitted to 1Click` inside a single "Track Order" click, with no human
+ever confirming the delivery milestone on its own. A new **"Post to
+1Click"** button (visible only while the order is in this exact status)
+is the new, deliberate manual step CS uses to actually submit the order —
+`Ready for Dispatch` is skipped entirely, not a step CS has to click
+through.
+
+**Background — the real behavior that prompted this:** clicking "Track
+Order" on a real order (`LYF-MN-2026-0071`) showed status
+`Ready for Dispatch` in a before-screenshot, and `Submitted to 1Click` in
+the after-refresh screenshot. Tracing the real code and the order's own
+`Version` history confirmed this was genuine, working-as-designed
+behavior at the time — the US-leg tracker
+(`track_and_update_order_us`) detected a real "Delivered" event and drove
+the order through **two** real, committed workflow transitions in the
+same request (`US Warehouse Delivered → Ready for Dispatch`, immediately
+followed by the code that posts to 1Click). Per explicit user decision,
+this two-step auto-continue is exactly what needed to change — the order
+should visibly stop at `US Warehouse Delivered` so CS has a real
+checkpoint before the order is submitted.
+
+**Steps:**
+1. Take a genuinely Mixed order (`Via US Warehouse`) through Confirm
+   Split, MIFO submission, and a real Factory-leg US tracking number
+   (`tracking_number_us`/`carrier_us`).
+2. Trigger the US-leg tracking check (real scheduler, or "Track Order")
+   with a real/simulated `Delivered` response.
+3. Confirm the order stops at `US Warehouse Delivered` — `oneclick_order_id`
+   still empty, no auto-advance.
+4. Open the order form — confirm the **"Post to 1Click"** button is
+   visible only now, in this exact status.
+5. Click it — confirm the order posts to 1Click and reaches
+   `Submitted to 1Click`, with `Ready for Dispatch` never appearing as a
+   visible intermediate state.
+6. Separately: confirm a Force US / US_FULL order (already posted to
+   1Click at *routing* time, long before any delivery event) reaching
+   `US Warehouse Delivered` and clicking the same button doesn't attempt
+   to post a second time — it only corrects the visible status.
+
+**Fix:**
+1. `order_tracking.py` — `track_and_update_order_us()` no longer calls
+   `apply_workflow(doc, "Ready for Dispatch")` (or its side effect of
+   auto-marking the linked Transfer Order "Received", which independently
+   triggered posting) — it now stops after the
+   `US Warehouse Delivered` transition.
+2. `lyfe_order.py` — new whitelisted method
+   `post_order_after_us_warehouse_delivery()`:
+   - Refuses to run unless `workflow_state == "US Warehouse Delivered"`
+     (a real server-side gate, not just a UI hint that hides the button).
+   - If `oneclick_order_id` is already set (Force US case — nothing to
+     post), just corrects `status`/`workflow_status`/`workflow_state` to
+     `Submitted to 1Click` together (per the CLAUDE.md status-triple
+     rule).
+   - Otherwise reuses `_maybe_resume_oneclick_order()` — the exact same
+     real posting function the Transfer-Order-Received trigger already
+     uses — so both delivery-detection paths converge on one real posting
+     mechanism, never a duplicated one.
+3. `lyfe_order.js` — new **"Post to 1Click"** button, visible only while
+   `frm.doc.workflow_state === "US Warehouse Delivered"`. Deliberately
+   kept **separate** from the pre-existing **"Post US Portion to 1Click"**
+   button (Warehouse Split group) — that one is a different, legacy
+   fallback for the "Direct to Customer" split scenario, posting only the
+   US-covered portion via a different function
+   (`post_us_leg_to_oneclick`); this new button posts the **combined**
+   full order (US + Factory items together) for the "Via US Warehouse"
+   scenario. Confirmed they serve genuinely different real scenarios, not
+   overlapping — kept both.
+
+**Verified live** end-to-end on a real order (`LYF-MN-2026-0072`):
+simulated a real `Delivered` US-leg tracking response — order correctly
+stopped at `US Warehouse Delivered` (`oneclick_order_id` still empty).
+Called the new button's backing method — order correctly posted, real
+1Click order `1664353`, status `Submitted to 1Click`. Separately
+confirmed the already-posted (Force US) case: setting a real
+`oneclick_order_id` and calling the same method only corrected the
+visible status, never attempted a second Create Order call.
+
+**Verified via automated test suite**
+(`test_us_warehouse_delivered_manual_post.py`, 4 tests, all passing):
+- A `Delivered` US-leg response stops the order at `US Warehouse
+  Delivered`, never auto-advancing further.
+- The button's method is blocked outside `US Warehouse Delivered`.
+- An already-posted order only corrects status, never calls the resume
+  function.
+- A not-yet-posted order correctly calls `_maybe_resume_oneclick_order()`
+  with the right `fulfillment_route_tag` gate set.
+- Confirmed no regressions across all other suites (52 tests total, 8
+  modules).
+
+> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-16.1 — Screenshot of the order at
+> "US Warehouse Delivered", showing the new "Post to 1Click" button in
+> the toolbar ]**
+
+> 📷 **[ IMAGE PLACEHOLDER — TC-BOM-16.2 — Screenshot of the order after
+> clicking "Post to 1Click", now at "Submitted to 1Click" with a real
+> 1Click order ID ]**
+
+**Result:** ☑ Pass.
+
+---
+
 ## Summary table (to fill in once test cases are executed)
 
 | Test Case | Order/BOM Used | Result |
@@ -1087,6 +1194,7 @@ duplicate-submission bug found during verification is fixed).
 | TC-BOM-13 — Order Leg: Per-Shipment Tracking + Gated "Completed" | Automated: `test_order_leg.py` + live verification (`LYF-SH-2026-1756` zero-leg fallback, `LYF-SH-2026-1859` real 2-leg gate) | ☑ Pass |
 | TC-BOM-14 — US-Leg Tracking Field Visibility for Mixed "Via US Warehouse" | Live verification (`LYF-MN-2026-0034`, 5-scenario field visibility check) | ☑ Pass |
 | TC-BOM-15 — 1Click Create Order: Auto-Register Missing SKU, No Auto-Resubmit | Live verification (`LYF-MN-2026-0028` auto-register + no-resubmit; duplicate-submission bug fixed) | ☑ Pass |
+| TC-BOM-16 — US Warehouse Delivered No Longer Auto-Posts; Manual Post to 1Click Button | Automated: `test_us_warehouse_delivered_manual_post.py` + live verification (`LYF-MN-2026-0072`, real order `1664353`) | ☑ Pass |
 
 ---
 
