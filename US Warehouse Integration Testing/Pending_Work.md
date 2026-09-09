@@ -90,7 +90,7 @@ simply isn't present on this branch.
 |---|---|---|
 | ~~5~~ | ~~**TC-BOM-10**~~ | ✅ Done 2026-09-08 — 10.1 screenshot added (field read-only on confirmed order). 10.2 has no UI screenshot by design (field is correctly uneditable in the UI, so the server-side guard is only reachable via script) — re-verified live instead, exact error text captured in the doc. |
 | ~~6~~ | ~~**TC-BOM-12**~~ | ✅ Done 2026-09-08 — 2 screenshots already in the doc from the 2026-09-07 live test are sufficient proof; no separate 1Click portal screenshot needed (portal already confirmed directly by the user, see item C.1 below). |
-| 7 | **Test Case 8** | Result line already says Pass (`LYF-MN-2026-0047`, 2026-09-02) — confirm the existing embedded screenshot in the doc is actually from this order's form; replace if not. |
+| ~~7~~ | ~~**Test Case 8**~~ | ✅ Done 2026-09-09 — re-verified live on fresh order `LYF-MN-2026-0089` (`LH3026`), real screenshot uploaded showing "1Click Error" status, full traceback, and the raw `"success": false` API response. |
 | ~~8~~ | ~~**Test Case 25**~~ | ✅ Done 2026-09-09 — re-verified live on fresh order `LYF-MN-2026-0029`, both screenshots captured (before: "Tracking Pending" message; after: real tracking check ran, field unchanged). |
 | ~~9~~ | ~~**Test Case 26**~~ | ✅ Done 2026-09-09 — re-verified live via `_resolve_carrier`, screenshot captured, test record deleted afterward. |
 | 10 | **Test Case 27** | Screenshot showing both timestamps (marked-Received vs. actual 1Click stock confirmation) side by side. |
