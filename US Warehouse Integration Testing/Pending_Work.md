@@ -82,6 +82,31 @@ simply isn't present on this branch.
 - If yes → needs a real test pass once merged in.
 - If no → mark this test case as out-of-scope/deferred for this round.
 
+### 5. Test Case 12 — No pre-submission dedup guard on our side (code-level gap, NOT the same as item 1's error-message issue)
+**Status:** ☐ Not fixed. Confirmed real, distinct from item A.1 above —
+A.1 is only about making 1Click's duplicate-PO rejection message clearer
+(surfaced during the TC 24 investigation); this item is about **never
+attempting the second Create Order call at all**.
+
+**What TC 12 found (2026-09-02, order `LYF-MN-2026-0049`):** submitting
+the same order to 1Click twice was "safe" — 1Click itself rejected the
+second attempt with a real 406, no duplicate order created. But the
+protection came **entirely from 1Click's side**. Our own code has no
+guard that stops it from attempting a second submission in the first
+place — it only finds out the second call failed after actually calling
+1Click again. The test case's own notes explicitly flag this: *"Worth
+fixing on our side too, so a second attempt is stopped before ever
+calling 1Click, rather than relying on them to reject it every time."*
+
+**What to do:** Add a pre-submission check to `create_order()` (or its
+callers) — if the order already has a real `oneclick_order_id` set, skip
+the Create Order call entirely and surface a clear "already submitted"
+message immediately, instead of relying on 1Click's own rejection as the
+only safety net. Worth checking whether `apply_route_plan_override`'s
+existing `if doc.oneclick_order_id: frappe.throw(...)` guard (used for
+Force US/Force India) can be reused or generalized, rather than writing
+a second, separate check.
+
 ---
 
 ## B. Screenshots/proof still missing (behavior already confirmed working — just needs the image)
