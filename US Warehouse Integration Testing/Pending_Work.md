@@ -146,11 +146,24 @@ correctly**. Worth a direct spot-check for each of these:
    failure, confirm with 1Click whether their real API has ever actually
    returned this kind of failure in production, so we know the handling
    isn't purely theoretical.
-5. **Any order still sitting in "1Click Error" from today's tests** (e.g.
+5. **Test Case 14's genuine stock-race behavior — ask 1Click directly.**
+   We only proved our system correctly handles a **rejection** response
+   when stock runs out between our check and the actual booking (the only
+   failure shape 1Click's API documents) — but what their real sandbox
+   *actually* does in a true stock race (reject entirely vs. ship partial
+   vs. backorder) is still unconfirmed. If the real answer turns out to be
+   a partial-success response rather than an outright rejection, our code
+   has **no special handling for that shape today** and would need a
+   follow-up fix. Same "pending 1Click's answer" bucket as items 4 and 6
+   below — batch into the same message to 1Click: *"In a genuine stock
+   race (two orders competing for the last unit), does Create Order
+   reject the losing order outright, ship a partial quantity, or create a
+   backorder? We need to know which response shape to build for."*
+6. **Any order still sitting in "1Click Error" from today's tests** (e.g.
    `LYF-MN-2026-0028`, `LYF-MN-2026-0029`) — confirm on the 1Click side
    these were NOT accidentally created as duplicate/partial orders despite
    showing as failed on our end.
-6. **Test Case 11's registered-but-0-stock order-lookup gap — ask 1Click
+7. **Test Case 11's registered-but-0-stock order-lookup gap — ask 1Click
    directly.** A registered SKU with 0 stock (`MHRB-200-AC`, order
    `LYF-SH-2026-1847` / real 1Click order `1660658`) was accepted by
    Create Order (real HTTP 200, real order ID returned) — but querying
