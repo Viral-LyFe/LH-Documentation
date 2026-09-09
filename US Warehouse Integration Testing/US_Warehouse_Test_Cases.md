@@ -1570,15 +1570,21 @@ silently clutter up the Carrier list.
 - This is expected behavior, not a bug — but note it here so the team knows
   to periodically clean up the Carrier list if odd entries pile up.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the new "UPSS-TYPO-TEST-26" Carrier record in the list ]**
+**Re-verified live 2026-09-09**: called `_resolve_carrier("UPSS-TYPO-TEST-26")`
+(`oneclick_api.py`, the real function this fires from — used when 1Click's
+tracking response includes a `Dispatch_Carrier` string) directly against
+the real database. Confirmed a brand new Carrier record was created with
+`carrier_id = carrier_code = "UPSS-TYPO-TEST-26"`, visible in the Carrier
+list within a minute of creation — screenshot captured showing it
+alongside the real carrier records (`ups`, `fedex_walleted`, `usps`,
+etc.), matching expected behavior exactly.
 
-**Result:** ☑ Pass ☐ Fail
-**Notes:** Executed 2026-09-02. Simulated an unfamiliar carrier string
-(`UPSS-TYPO-TEST-26`) and confirmed a brand new Carrier record was
-auto-created with that exact typo'd name — matches expected behavior
-exactly. Please grab a screenshot of this test record in the Carrier list,
-then feel free to delete it afterward since it was created purely for this
-test.
+**Result:** ☑ Pass
+**Notes:** Originally executed 2026-09-02 — simulated an unfamiliar
+carrier string (`UPSS-TYPO-TEST-26`) and confirmed a brand new Carrier
+record was auto-created with that exact typo'd name. Test record deleted
+after the screenshot was captured, per this test's own note that it was
+created purely for testing.
 
 ---
 

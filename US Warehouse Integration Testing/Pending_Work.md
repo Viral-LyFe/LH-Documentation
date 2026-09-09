@@ -92,7 +92,7 @@ simply isn't present on this branch.
 | ~~6~~ | ~~**TC-BOM-12**~~ | ✅ Done 2026-09-08 — 2 screenshots already in the doc from the 2026-09-07 live test are sufficient proof; no separate 1Click portal screenshot needed (portal already confirmed directly by the user, see item C.1 below). |
 | 7 | **Test Case 8** | Result line already says Pass (`LYF-MN-2026-0047`, 2026-09-02) — confirm the existing embedded screenshot in the doc is actually from this order's form; replace if not. |
 | ~~8~~ | ~~**Test Case 25**~~ | ✅ Done 2026-09-09 — re-verified live on fresh order `LYF-MN-2026-0029`, both screenshots captured (before: "Tracking Pending" message; after: real tracking check ran, field unchanged). |
-| 9 | **Test Case 26** | Screenshot of the new `"UPSS-TYPO-TEST-26"` Carrier record in the list. |
+| ~~9~~ | ~~**Test Case 26**~~ | ✅ Done 2026-09-09 — re-verified live via `_resolve_carrier`, screenshot captured, test record deleted afterward. |
 | 10 | **Test Case 27** | Screenshot showing both timestamps (marked-Received vs. actual 1Click stock confirmation) side by side. |
 
 ---
