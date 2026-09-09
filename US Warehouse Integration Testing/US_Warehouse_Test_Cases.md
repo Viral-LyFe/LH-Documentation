@@ -1402,8 +1402,14 @@ cancels an order that's already been submitted to 1Click.
   message someone could miss or scroll past. The task lands in the same
   Project used by the other 1Click-related SLA rule (`SLAR-0020`), marked
   Urgent priority, with the order name and 1Click Order ID in the subject.
-- Step 4 (switching to Factory-only after 1Click submission) — not yet
-  separately verified; needs a run against a real Submitted-to-1Click order.
+- Step 4 (switching to Factory-only after 1Click submission) — **verified
+  live 2026-09-09** against a real Submitted-to-1Click order
+  (`LYF-MN-2026-0091`, real 1Click order `1664356`): calling
+  `force_factory_only_fulfillment` correctly refused with
+  `"Cannot switch to Factory-only fulfillment — 1Click order 1664356
+  already exists for the US-warehouse portion of this order. Cancel or
+  resolve that with 1Click first."` — matching the hard rule documented
+  in the function's own docstring exactly. No gap found.
 
 **Full real end-to-end run (2026-09-03):** built a genuinely real order
 through the actual production pipeline, not a shortcut:
