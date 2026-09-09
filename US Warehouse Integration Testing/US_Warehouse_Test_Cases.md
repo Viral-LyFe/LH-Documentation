@@ -1693,7 +1693,7 @@ blank. No `bench migrate` needed (pure Python change, no schema change).
 |---|---|---|
 | 1 — US Full Order | `LYF-MN-2026-0029` | ☑ Pass |
 | 2 — India Direct | `LYF-MN-2026-0030` | ☑ Pass |
-| 3 — Route via US Warehouse | `LYF-SH-2026-1799` | ☑ Pass |
+| 3 — Route via US Warehouse | `LYF-MN-2026-0031` | ☑ Pass |
 | 4 — Auto-book on Arrival | `LYF-MN-2026-0053` | ☑ Pass |
 | 5 — Mixed Order | `LYF-MN-2026-0032` / `LYF-MN-2026-0055` | ☑ Pass |
 | 6 — Shipping Paperwork Address | `LYF-MN-2026-0053` | ☑ Pass |
@@ -1714,7 +1714,7 @@ blank. No `bench migrate` needed (pure Python change, no schema change).
 | 21 — Stuck Shipment Alerts | `LYF-MN-2026-0077` / `ASN-2026-00008` | ☑ Pass (both alerts) |
 | 22 — Two-Shipment Split (removed per founder decision) | `LYF-MN-2026-0079` | ☑ Pass |
 | 23 — Cancel After Submission | `LYF-MN-2026-0080` | ☑ Pass |
-| 24 — Same-Item Double Order Race | `LYF-MN-2026-0051` / `-0052` | ☐ Inconclusive — needs a real 1-unit SKU |
+| 24 — Same-Item Double Order Race | `LYF-MN-2026-0037` / `-0038` (invalidated re-run, see body) | ☐ Still inconclusive — needs genuinely fresh orders + full Integration Request timeline check before concluding |
 | 25 — Manual Tracking Not Auto-Corrected | `LYF-MN-2026-0079` | ☑ Pass |
 | 26 — Unfamiliar Carrier Auto-Creation | N/A (carrier-only test) | ☑ Pass |
 | 27 — Received ≠ 1Click Confirmation | `LYF-MN-2026-0080` | ☑ Pass |
