@@ -862,6 +862,61 @@ whole session's US Warehouse test coverage.
 
 **Result:** ☑ Pass.
 
+**Follow-up fix (2026-09-09) — the same "duplicated logic, only one copy
+fixed" bug shape also existed in Order Leg's own tracker:**
+
+Re-verified, per user feedback, whether Test Case 10's garbled-tracking-
+response guard (`apply_normalised_to_order`'s `no_real_tracking_signal`
+check, `order_tracking.py`) also protects Order Leg's own, separate
+tracking-apply function (`apply_normalised_to_leg`, `order_leg/tracking.py`,
+introduced above in TC-BOM-13). It did not — this is a genuinely different
+function, and the fix was never automatically inherited. This is the same
+bug shape already seen 3 times this session (TC-BOM-13's `Completed`-gate
+duplicated across `order_tracking.py`/`order_tracking_service.py`; TC-BOM-14's
+stale Property Setters below; TC-BOM-15's `ONECLICK_HOLD_STATUSES` reused for
+an unrelated purpose) — now a confirmed 4th instance.
+
+**Bug, reproduced live:** a genuinely garbled/empty tracking-provider
+response (no `raw_status`, no `status_description`, no
+`carrier_status_description`) fell straight through
+`apply_normalised_to_leg`'s status logic into the "must be in transit"
+`else` branch, incorrectly advancing a fresh leg from `Pending` straight to
+`Shipped` with `delivery_detection_status = "In Transit"` — off zero real
+tracking data. Reproduced on a real Order Leg, `LH3026-LEG-02`: set
+`{"garbage": None, "status": None}` as the tracking payload, confirmed the
+leg wrongly flipped to Shipped. Reverted the leg to clean state.
+
+**Fix:** added the identical guard shape as the parent fix, right after the
+existing `current_status == "Delivered"` early-return in
+`apply_normalised_to_leg` — if there is no real signal in any of the three
+fields, no-op and return `reason: "no_real_tracking_signal"`, leaving the
+leg untouched for the next scheduled run to retry:
+
+```python
+status_description = data.get("status_description") or data.get("carrier_status_description") or data.get("status")
+raw_status = data.get("raw_status") or ""
+if not raw_status and not status_description and not data.get("carrier_status_description"):
+    out["ok"] = True
+    out["reason"] = "no_real_tracking_signal"
+    return out
+```
+
+**Verified live, same real leg:**
+- Garbled response now correctly no-ops (`reason: "no_real_tracking_signal"`,
+  leg stays `Pending`, `delivery_detection_status` untouched).
+- Real tracking data still applies normally (advances `Pending` →
+  `Shipped`, sets `delivery_detection_status = "In Transit"`).
+- A follow-up garbled response after real data was applied does **not**
+  overwrite/destroy the real data — leg stays `Shipped`.
+- Leg reverted to clean state after testing.
+
+**Automated test coverage:** new `test_order_leg_garbled_response.py` (3
+tests — fresh leg not advanced, real data not destroyed by a follow-up
+garbled response, real data still applies normally). Full 55-test suite
+across all 9 modules re-run — no regressions.
+
+**Result:** ☑ Pass (fixed).
+
 ---
 
 ### TC-BOM-14 — US-Leg Tracking Field Visibility for Mixed "Via US Warehouse" Orders
