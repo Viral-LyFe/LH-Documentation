@@ -1524,14 +1524,25 @@ it, or does the wrong number just stay there?
   confirm it's actually true, and to flag whether the business is OK with
   it staying this way.
 
-> 📷 **[ IMAGE PLACEHOLDER — Screenshot of the order before and after the tracking check, showing the wrong number unchanged ]**
+**Re-verified live 2026-09-09** on a fresh order, `LYF-MN-2026-0029`
+(`LH2968`): manually saved tracking number `WRONGTRACK123456` with
+carrier `fedex_walleted` — confirmed via the form's own "Tracking
+Pending" message that the number was accepted as entered. Ran the real
+tracking check (`track_and_update_order`) — 17Track correctly, honestly
+reported `raw_status: "NotFound"` (it doesn't recognize the fake number,
+as expected) — and confirmed afterward: `tracking_number` and `carrier`
+both stayed exactly as manually entered, `status` correctly stayed
+"Awaiting Shipping" (matches yesterday's `NotFound` →
+`_AWAITING_SHIPPING_STATUSES` fix, never advances to "Shipped" off a
+not-found response).
 
 **Result:** ☑ Pass
-**Notes:** Verified live 2026-09-03 on `LYF-MN-2026-0079` — manually set
-tracking number to a deliberately wrong value, ran the real tracking sync
-(`sync_tracking_for_submitted_orders`), confirmed the field stayed exactly
-as entered afterward. Confirms this is intentional, working behavior —
-still worth a business decision on whether it should stay this way.
+**Notes:** Originally verified live 2026-09-03 on `LYF-MN-2026-0079` —
+manually set tracking number to a deliberately wrong value, ran the real
+tracking sync (`sync_tracking_for_submitted_orders`), confirmed the field
+stayed exactly as entered afterward. Confirms this is intentional,
+working behavior — still worth a business decision on whether it should
+stay this way.
 
 ---
 

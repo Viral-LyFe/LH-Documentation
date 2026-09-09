@@ -91,7 +91,7 @@ simply isn't present on this branch.
 | ~~5~~ | ~~**TC-BOM-10**~~ | ✅ Done 2026-09-08 — 10.1 screenshot added (field read-only on confirmed order). 10.2 has no UI screenshot by design (field is correctly uneditable in the UI, so the server-side guard is only reachable via script) — re-verified live instead, exact error text captured in the doc. |
 | ~~6~~ | ~~**TC-BOM-12**~~ | ✅ Done 2026-09-08 — 2 screenshots already in the doc from the 2026-09-07 live test are sufficient proof; no separate 1Click portal screenshot needed (portal already confirmed directly by the user, see item C.1 below). |
 | 7 | **Test Case 8** | Result line already says Pass (`LYF-MN-2026-0047`, 2026-09-02) — confirm the existing embedded screenshot in the doc is actually from this order's form; replace if not. |
-| 8 | **Test Case 25** | Screenshot of the order before and after the tracking check, showing the wrong manually-entered tracking number stayed unchanged. |
+| ~~8~~ | ~~**Test Case 25**~~ | ✅ Done 2026-09-09 — re-verified live on fresh order `LYF-MN-2026-0029`, both screenshots captured (before: "Tracking Pending" message; after: real tracking check ran, field unchanged). |
 | 9 | **Test Case 26** | Screenshot of the new `"UPSS-TYPO-TEST-26"` Carrier record in the list. |
 | 10 | **Test Case 27** | Screenshot showing both timestamps (marked-Received vs. actual 1Click stock confirmation) side by side. |
 
@@ -166,3 +166,5 @@ correctly**. Worth a direct spot-check for each of these:
 | `LYF-MN-2026-0039` | Test Case 10 — first broken-response bug demonstration, reverted after confirming | `TC10-BROKEN-TEST-001` (test tracking number, not a real SKU) |
 | `LYF-MN-2026-0040` | Test Case 10 — second reproduction: real data destroyed by garbled response, reverted | Real tracking number `383571424926` (real FedEx order `LYF-SH-2026-1841`'s tracking, reused) |
 | `LYF-MN-2026-0041` | Test Case 10 — post-fix verification (all 3 scenarios confirmed correct), reverted | Same real tracking number `383571424926` |
+| `LYF-MN-2026-0028` (2026-09-09) | Real US_FULL order posted to 1Click after config restore | `3.5FT-TB-200-SB`, real 1Click order `1662182` |
+| `LYF-MN-2026-0029` (`LH2968`) | Test Case 25 — wrong manually-entered tracking number stays unchanged | Test tracking number `WRONGTRACK123456` (not a real SKU issue) |
