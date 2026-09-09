@@ -544,8 +544,10 @@ to India by mistake?
 <img width="1676" height="672" alt="image" src="https://github.com/user-attachments/assets/1ecd25b0-461d-445f-b5d0-d176a51060c6" />
 
 
-**Result:** ☑ Pass ☐ Fail
-**Notes:** 
+**Result:** ☑ Pass
+**Notes:** See below for the full write-up, and the "Second code path"
+section further down for the Force US preview's separate handling of
+this same failure mode.
 
 ### Handling Inventory Check Failures Before Routing
 
@@ -580,6 +582,37 @@ Instead of waiting for the recheck to work, a human can directly assign the orde
 
 - **Before:** a broken inventory check silently misrouted the order and left no trace.
 - **Now:** it stops, flags itself clearly as `1Click Error`, lets someone retry the exact same check with one click, or lets someone skip the check entirely and choose the warehouse by hand.
+
+### Second code path — clarifying the Summary table's "second code path still needs testing" note (2026-09-09)
+
+The Summary table row for this test case was annotated "Pass (see note —
+second code path still needs testing)" with no explanation anywhere in
+this section of what that second path actually is. **Clarified and
+verified live:** it refers to `preview_force_us_items()` /
+`_resolve_force_us_items()` (`lyfe_order.js`/`.py`, added for TC-BOM-9) —
+the Force US confirmation dialog's own live 1Click stock lookup, which
+runs completely separately from `explode_and_check_bom_availability()`
+(the function everything above this section describes). Force US
+deliberately skips the normal routing stock check entirely, but the
+dialog still calls `get_inventory()` on its own, purely to show the user
+real "Available in 1Click" numbers before they confirm.
+
+**Confirmed live, both real scenarios:**
+- A genuinely **failed** stock lookup (simulated network/API exception)
+  → every component's `available_in_1click` comes back `None`, which the
+  dialog renders as **"Unknown"**.
+- A genuine **0-stock** response → `available_in_1click` comes back a
+  real `0`, rendered as the literal number.
+
+These are correctly distinguished on both sides — the failure never
+silently shows as "0" in the Force US preview. This mirrors the same
+"failure vs. zero" distinction the main routing path (above) already
+gets right; the Force US preview path independently gets it right too,
+via its own `try/except` (`_resolve_force_us_items`) falling back to
+`None` rather than `0` on any exception, paired with the JS explicitly
+checking for `null`/`undefined` before falling back to "Unknown".
+
+**Result (second code path):** ☑ Pass — verified live 2026-09-09.
 
 ---
 
@@ -1729,7 +1762,7 @@ blank. No `bench migrate` needed (pure Python change, no schema change).
 | 6 — Shipping Paperwork Address | `LYF-MN-2026-0053` | ☑ Pass |
 | 7 — Tracking Updates | `LYF-MN-2026-0091` | ☑ Pass |
 | 8 — Silent Failure on Create Order ⭐ | `LYF-MN-2026-0047` | ☑ Pass |
-| 9 — Stock Check Failure Misroutes | `LYF-MN-2026-0048` | ☑ Pass (see note — second code path still needs testing) |
+| 9 — Stock Check Failure Misroutes | `LYF-MN-2026-0048` | ☑ Pass (both code paths — main routing check and Force US preview — verified) |
 | 10 — Bad Tracking Doesn't Corrupt | `LYF-MN-2026-0034` / `-0040` | ☑ Pass (partial — re-run recommended) |
 | 11 — Unknown SKU / 1Click Hold | _(blocked — needs 1Click's answer)_ | ☐ Pass ☐ Fail |
 | 12 — Duplicate Submission | `LYF-MN-2026-0049` | ☑ Pass (1Click blocked it, not our own code) |
