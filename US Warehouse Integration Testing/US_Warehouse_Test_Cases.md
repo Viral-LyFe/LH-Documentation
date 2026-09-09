@@ -419,7 +419,7 @@ Since the order now has a real tracking number, it's no longer skipped by the 17
 
 ## Test Case 8 — Order Fails Silently on 1Click's Side (Looks Successful, Isn't) ⭐ Highest Priority
 
-**Order ID:** `LYF-MN-2026-0047`
+**Order ID:** `LYF-MN-2026-0088`
 
 **What we're checking:** if 1Click says "we got it" but secretly failed to
 actually create the order, does our system notice — or does it show
@@ -436,6 +436,9 @@ actually create the order, does our system notice — or does it show
 - No 1Click order number appears on the order.
 
 <img width="1617" height="821" alt="image" src="https://github.com/user-attachments/assets/997cebf0-aed2-48ff-84d2-6f809d48ecec" />
+
+<img width="1705" height="887" alt="image" src="https://github.com/user-attachments/assets/24e822fe-ee8c-4a64-baef-6267a12b914b" />
+
 
 ## Root problem being tested
 
