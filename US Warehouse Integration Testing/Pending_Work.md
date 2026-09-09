@@ -94,6 +94,7 @@ simply isn't present on this branch.
 | ~~8~~ | ~~**Test Case 25**~~ | ✅ Done 2026-09-09 — re-verified live on fresh order `LYF-MN-2026-0029`, both screenshots captured (before: "Tracking Pending" message; after: real tracking check ran, field unchanged). |
 | ~~9~~ | ~~**Test Case 26**~~ | ✅ Done 2026-09-09 — re-verified live via `_resolve_carrier`, screenshot captured, test record deleted afterward. |
 | 10 | **Test Case 27** | Screenshot showing both timestamps (marked-Received vs. actual 1Click stock confirmation) side by side. |
+| ~~11~~ | ~~**TC-BOM-16**~~ | ✅ Done 2026-09-09 — both screenshots added (button visible at "US Warehouse Delivered"; order at "Submitted to 1Click" after clicking it). |
 
 ---
 
