@@ -474,13 +474,21 @@ Already tested and confirmed — this ran on `LYF-MN-2026-0047` on 2026-09-02 wi
 - `oneclick_order_id` stayed empty.
 - Code was re-verified as unchanged and matching this behavior exactly.
 
+**Re-verified live 2026-09-09** on a fresh order, `LYF-MN-2026-0089`
+(`LH3026`): simulated a real HTTP 200 response with `"success": false` in
+the body (the exact real-world 1Click quirk this test targets), via Force
+US so Create Order was reached directly. Confirmed identical behavior:
+status correctly shows `1Click Error`, `oneclick_order_id` stayed empty,
+and the real error message/raw API response are both visible on the
+order's 1Click Logistics tab — screenshot shows the full traceback
+(`create_oneclick_order` → `_submit_single_oneclick_order` → `create_order`
+→ `_raise_if_failed`) alongside the raw `"success": false` response body.
+
 ## Bottom line
 
 This one is genuinely solid — **no gap found**. It's the one item on Srishti's list that was already fully correct from the start, and real execution confirmed it.
 
-**Remaining action:** grab the screenshot from `LYF-MN-2026-0047`'s order form for the test doc's proof placeholder.
-
-**Result:** ☑ Pass ☐ Fail
+**Result:** ☑ Pass
 **Notes:** Executed 2026-09-02 (developer-run, simulated response). Order
 correctly landed in status **"1Click Error"** with `oneclick_order_id`
 empty. Matches expected result exactly — please still grab the screenshot
