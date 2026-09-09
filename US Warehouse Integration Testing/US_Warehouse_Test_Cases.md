@@ -345,7 +345,7 @@ address — matching the expected result exactly across the board.
 
 ## Test Case 7 — Tracking Updates Show Up Correctly
 
-**Order ID:** _(to be filled in when this test is run)_
+**Order ID:** `LYF-MN-2026-0091`
 
 **What we're checking:** once an order is booked with 1Click, the system
 should automatically check in periodically and pull the tracking number once
@@ -412,8 +412,32 @@ Since the order now has a real tracking number, it's no longer skipped by the 17
 2. Wait for 1Click to provide a real tracking number on its next hourly sync — or enter one manually to simulate it.
 3. Confirm the status advances on the next tracking poll instead of remaining stuck.
 
-**Result:** ☐ Pass ☐ Fail
-**Notes:**
+**Verified live 2026-09-09** on real order `LYF-MN-2026-0091` — a genuine
+1Click order (`oneclick_order_id: 1664356`) sitting at `Submitted to
+1Click` with no tracking number yet. Ran the real 1Click tracking sync
+(`sync_tracking_for_submitted_orders()`, `oneclick_api.py`) with a
+simulated 1Click response providing a real tracking number
+(`876510136370`, FedEx — already confirmed genuine/17Track-registered
+earlier this session) and carrier:
+
+- `tracking_number` and `carrier` were correctly populated on the order
+  (the canonical leg2/US→Customer fields).
+- `oneclick_tracking_number` was also correctly stamped.
+- Saving that tracking number triggered the order's own real 17Track
+  verification (`_validate_tracking_number` in `validate()`) — the
+  carrier genuinely confirmed the package as scanned/in transit, and
+  **status correctly advanced to `Shipped`** in the same save, exactly
+  matching this test case's own expected carrier-signal table
+  (`Package scanned / in transit → Shipped`).
+- Confirms the underlying fix this section documents (1Click orders no
+  longer get skipped by the 17Track-based status-advance check) is real
+  and working end-to-end, not just present in the code.
+
+**Result:** ☑ Pass
+**Notes:** This test case had never actually been run before — the
+"Order ID: (to be filled in)" placeholder and blank Result/Notes were
+left over since the section was created. Closed the gap with the live
+verification above.
 
 ---
 
@@ -1697,7 +1721,7 @@ blank. No `bench migrate` needed (pure Python change, no schema change).
 | 4 — Auto-book on Arrival | `LYF-MN-2026-0053` | ☑ Pass |
 | 5 — Mixed Order | `LYF-MN-2026-0032` / `LYF-MN-2026-0055` | ☑ Pass |
 | 6 — Shipping Paperwork Address | `LYF-MN-2026-0053` | ☑ Pass |
-| 7 — Tracking Updates | _(pending)_ | ☐ Pass ☐ Fail |
+| 7 — Tracking Updates | `LYF-MN-2026-0091` | ☑ Pass |
 | 8 — Silent Failure on Create Order ⭐ | `LYF-MN-2026-0047` | ☑ Pass |
 | 9 — Stock Check Failure Misroutes | `LYF-MN-2026-0048` | ☑ Pass (see note — second code path still needs testing) |
 | 10 — Bad Tracking Doesn't Corrupt | `LYF-MN-2026-0034` / `-0040` | ☑ Pass (partial — re-run recommended) |
