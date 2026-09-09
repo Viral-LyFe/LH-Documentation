@@ -1579,6 +1579,10 @@ list within a minute of creation — screenshot captured showing it
 alongside the real carrier records (`ups`, `fedex_walleted`, `usps`,
 etc.), matching expected behavior exactly.
 
+
+<img width="1617" height="767" alt="image" src="https://github.com/user-attachments/assets/884e3b73-ce39-4d00-a1c3-c52717a20136" />
+
+
 **Result:** ☑ Pass
 **Notes:** Originally executed 2026-09-02 — simulated an unfamiliar
 carrier string (`UPSS-TYPO-TEST-26`) and confirmed a brand new Carrier
