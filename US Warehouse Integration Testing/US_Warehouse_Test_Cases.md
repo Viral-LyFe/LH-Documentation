@@ -1536,6 +1536,11 @@ both stayed exactly as manually entered, `status` correctly stayed
 `_AWAITING_SHIPPING_STATUSES` fix, never advances to "Shipped" off a
 not-found response).
 
+<img width="1736" height="592" alt="Screenshot 2026-09-09 113656" src="https://github.com/user-attachments/assets/41a936c5-d74c-4bc5-9c67-74e043709ace" />
+
+<img width="1687" height="807" alt="Screenshot 2026-09-09 113848" src="https://github.com/user-attachments/assets/08ae5f67-676c-40bf-a3a0-f5040066368d" />
+
+
 **Result:** ☑ Pass
 **Notes:** Originally verified live 2026-09-03 on `LYF-MN-2026-0079` —
 manually set tracking number to a deliberately wrong value, ran the real
