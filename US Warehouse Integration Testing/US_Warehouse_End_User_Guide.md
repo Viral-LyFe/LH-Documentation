@@ -275,30 +275,7 @@ stuck with no explanation.
 
 ---
 
-## Use Case 11 — Two orders competing for the same low-stock item
-
-**What it means:**
-If very few units of an item are left in the US warehouse, and two orders
-for that item come in around the same time, there's a theoretical risk that
-both could be told "yes, it's in stock" when only one really has enough.
-
-**Where this stands today:** this exact scenario has been tested but the
-results were **inconclusive** — a clean, fully controlled test hasn't been
-completed yet. **Until this is confirmed safe, treat low-stock items with
-extra care**: if you know an item has very limited stock (1–2 units) and
-you're aware of another order for the same item being processed around the
-same time, flag it to the technical team rather than assuming the system
-will sort it out correctly on its own.
-
-**What you need to do if you ever see this happen** (an order shows
-"Submitted to 1Click" for an item you know was nearly out of stock, or an
-order fails with a generic, unhelpful error after a stock-limited item):
-report it to the technical team with the order number, rather than retrying
-blindly. This is a known open item being tracked for a proper fix.
-
----
-
-## Use Case 12 — Cancelling an order that's already been sent to 1Click
+## Use Case 11 — Cancelling an order that's already been sent to 1Click
 
 **What it means:**
 A customer wants to cancel after the order has already been posted to
@@ -313,7 +290,7 @@ actual cancellation itself is still a manual step.
 
 ---
 
-## Use Case 13 — An order sits too long without shipping (SLA follow-up)
+## Use Case 12 — An order sits too long without shipping (SLA follow-up)
 
 **What happens automatically:**
 Once an order is posted to 1Click, the system tracks how long it's been
@@ -363,6 +340,3 @@ or received).
   the order number rather than trying to fix it manually — some of these
   steps talk to 1Click's live system, and manual edits can create a
   mismatch between our records and 1Click's.
-- **Low-stock items competing between two orders (Use Case 11)** are still
-  a known open item — flag anything unusual there rather than assuming it's
-  fine.
