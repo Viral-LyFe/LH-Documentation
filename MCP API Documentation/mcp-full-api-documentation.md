@@ -429,7 +429,7 @@ Every tool is documented with the same four sections:
 | Dashboard | Tool prefix | Count | Allowed roles (base gate) |
 |---|---|---|---|
 | Founder Dashboard | `get_founder_*` | 25 | System Manager, Super Admin |
-| Customer Intelligence Dashboard | `get_cid_*` | 11 | System Manager, Super Admin |
+| Customer Intelligence Dashboard | `get_cid_*` | 11 | System Manager, Super Admin, Customer Service |
 | Quotation Analysis Dashboard | `get_quotation_*` | 17 | System Manager, Sales Manager, Sales User |
 
 All three dashboards' base gate (`require_dashboard_role()`) is backed by the single `DASHBOARD_ROLES` dict in `mcp_audit.py`, which is also read directly by each dashboard's own backend `_check_permission()` — the same policy is enforced whether a caller reaches the data via MCP or by calling the whitelisted Desk-side Python function directly. See the companion document for the full per-tool breakdown, including the Customer Intelligence Dashboard's additional per-field sensitivity stripping (email, COGS, quotation pricing, order history, business-sensitive $ figures).

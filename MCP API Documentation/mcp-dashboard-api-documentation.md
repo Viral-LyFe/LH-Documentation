@@ -328,20 +328,22 @@ name — omit `arguments` entirely, or pass `{}`, for a tool with no parameters)
 
 ## 2.0 Dashboard-level Security (applies to all 11 tools)
 
-- **Allowed roles:** `System Manager`, `Super Admin` (+ `Administrator`, implicit).
-- **Gate mechanics:** every tool calls `require_dashboard_role("customer_intelligence_dashboard")` first. This dashboard's underlying `cid/shared.py::_check_permission()` was, uniquely among the three dashboards, already re-checking this same role set server-side before 2026-09-10 — as of that date it was refactored to call `require_dashboard_role()` directly too, so Page `.json`, backend, and MCP all read from the one `DASHBOARD_ROLES` dict rather than three independently-maintained copies of the same role set.
+- **Allowed roles:** `System Manager`, `Super Admin`, `Customer Service` (+ `Administrator`, implicit). **Widened 2026-09-10** to add `Customer Service` — previously System Manager/Super Admin only. `customer_intelligence_dashboard.json`'s Page `roles` list was updated to match, and `bench migrate` run to sync `Has Role`.
+- **Gate mechanics:** every tool calls `require_dashboard_role("customer_intelligence_dashboard")` first. This dashboard's underlying `cid/shared.py::_check_permission()` was, uniquely among the three dashboards, already re-checking this same role set server-side before 2026-09-10 — as of that date it was refactored to call `require_dashboard_role()` directly too, so Page `.json`, backend, and MCP all read from the one `DASHBOARD_ROLES` dict rather than three independently-maintained copies of the same role set. This means the 2026-09-10 Customer Service widening took effect on all three surfaces (Desk page, backend, MCP) from a single dict change.
 - **Two write endpoints are permanently excluded from MCP, at any role:** `set_component_gap_state` (mutates a Component Gap Flag record) and `confirm_customer_type` (mutates `Customer.custom_customer_type`). No tool wraps either — this connector is read-only project-wide.
-- **Field-level sensitivity stripping (2026-09-10) — the defining security feature of this dashboard's tools.** In addition to the dashboard-level role gate above, six of these eleven tools apply an *independent, per-field-category* role check before returning their result. This exists so that if the dashboard-level gate is ever widened in the future (e.g. to include `Factory` or `Customer Service`), sensitive fields do not become visible to the newly-added role automatically just because the tool call itself now succeeds — each category below still requires its own explicit role grant, checked separately:
+- **Field-level sensitivity stripping — the defining security feature of this dashboard's tools.** In addition to the dashboard-level role gate above, six of these eleven tools apply an *independent, per-field-category* role check before returning their result. This exists so that if the dashboard-level gate is ever widened in the future (e.g. to include `Factory`), sensitive fields do not become visible to the newly-added role automatically just because the tool call itself now succeeds — each category below still requires its own explicit role grant, checked separately:
 
   | Category | Fields stripped if not allowed | Allowed roles |
   |---|---|---|
   | Email / contact details | `_identity_key`, `identity_key` (these carry the customer's raw email, e.g. `"email:name@example.com"`) | Super Admin, System Manager |
-  | COGS / margin | `cogs`, `cogs_resolved`, `margin`, `margin_pct` (including nested occurrences inside `matrix[category][population]` and `metrics.margin`) | Super Admin, System Manager, Factory |
+  | COGS / margin (backs the Customer List tile's **Profit** column) | `cogs`, `cogs_resolved`, `margin`, `margin_pct` (including nested occurrences inside `matrix[category][population]` and `metrics.margin`) | Super Admin, System Manager |
   | Quotation pricing tied to a named customer | `quotations` (whole array) | Super Admin, System Manager, Customer Service |
   | Order-level history tied to identity | `orders`, `order_exceptions` | Super Admin, System Manager, Customer Service |
   | Business-sensitive, not personal | `value_at_risk`, `total_opportunity`, `opportunity_amount` | Super Admin, System Manager, Customer Service |
 
-  **Today, in production, this is a no-op**: only Super Admin and System Manager can call these tools at all, and both are allowed in every category above, so nothing is currently stripped for any real caller. It activates automatically the moment the tool-level gate is widened — verified live by temporarily widening `DASHBOARD_ROLES["customer_intelligence_dashboard"]` in-memory (never committed) and confirming Factory sees COGS/margin but not email or quotation/order history, and Customer Service sees quotations/orders/business-$ figures but not email or COGS.
+  **COGS/margin role set (2026-09-10, revised same day):** `Customer Service` was briefly added to `_COGS_ROLES` (matching the base dashboard widening), then explicitly excluded again per a follow-up instruction — Profit/margin visibility is Super Admin/System Manager only, even though Customer Service can open the dashboard and call every other tool in this file. `Factory` remains listed even though it has no tool-call access to this dashboard at all today — kept for the same "future widening" reason as elsewhere. Customer Service IS still included in `_QUOTATION_ROLES`/`_ORDER_HISTORY_ROLES`/`_BUSINESS_SENSITIVE_ROLES` — only the COGS/margin category is restricted narrower than the base dashboard gate. Verified live: a real Customer Service-role test user can open the dashboard and call `get_cid_customer_list`, but the response's rows do not contain `margin`/`margin_pct`/`cogs_resolved`; Super Admin and System Manager both still see those fields.
+
+  The Desk page's own JS mirrors this exactly: `customer_intelligence_dashboard.js`'s `canSeeProfit()` checks only `Super Admin`/`System Manager` via `frappe.user.has_role()`, independent of the page-level role gate above — a deliberate, explicit check rather than "same as the page," so a future role added to the page's `roles` list does not automatically also see the Profit column. Customer Service can open the page and see every other Customer List column, but the Profit `<th>`/`<td>` are omitted from the rendered table entirely for that role. **Note:** this client-side restriction only hides the column in the rendered table — `cid/customers.py::get_customer_list()` (the whitelisted Desk-side function) still returns `margin`/`margin_pct`/`cogs_resolved` in its raw response to any caller who can open the page; there is no server-side masking layer on the Desk-side whitelisted method itself, only on the MCP tool's response (see the COGS/margin row above) and the rendered UI. A Customer Service-role user calling `cid/customers.get_customer_list()` directly (bypassing the Desk page's JS) would still receive the real `margin` value in the raw API response — this is a UI-layer restriction, not a data-access control, on the Desk side; the MCP tool's stripping is the actual access control for that surface.
   - Stripping deletes the key entirely (`dict.pop()`) — it never sets the value to `null`/`0`, so a masked field is never confused with a genuine empty/zero value.
 
 ## 2.1 `get_cid_filter_options`
@@ -352,7 +354,7 @@ name — omit `arguments` entirely, or pass `{}`, for a tool with no parameters)
 
 **Technical Details** — `() -> dict`, returns `{"categories": [...]}`.
 
-**Security** — System Manager/Super Admin only (§2.0). No field-stripping applies (no sensitive fields in this response).
+**Security** — System Manager/Super Admin/Customer Service (§2.0). No field-stripping applies (no sensitive fields in this response).
 
 ## 2.2 `get_cid_founder_summary`
 
@@ -362,7 +364,7 @@ name — omit `arguments` entirely, or pass `{}`, for a tool with no parameters)
 
 **Technical Details** — `(filters: str | None) -> dict`, shaped `{"matrix": {category: {population: {revenue, cogs, order_count, cogs_resolved, margin, ...}}}}`.
 
-**Security** — System Manager/Super Admin only (§2.0). **COGS field-stripping applies**: `cogs`, `cogs_resolved`, `margin`, `margin_pct` are removed from every `matrix[category][population]` cell for a caller not in `_COGS_ROLES` (Super Admin, System Manager, Factory).
+**Security** — System Manager/Super Admin/Customer Service (§2.0). **COGS field-stripping applies**: `cogs`, `cogs_resolved`, `margin`, `margin_pct` are removed from every `matrix[category][population]` cell for a caller not in `_COGS_ROLES` (Super Admin, System Manager, Factory — Customer Service is NOT in this set, despite having tool-call access to this dashboard).
 
 ## 2.3 `get_cid_founder_trends`
 
@@ -372,7 +374,7 @@ name — omit `arguments` entirely, or pass `{}`, for a tool with no parameters)
 
 **Technical Details** — `(filters: str | None) -> dict`.
 
-**Security** — System Manager/Super Admin only. No field-stripping applied to this tool (contains no email/COGS/quotation/order-history fields per current inspection).
+**Security** — System Manager/Super Admin/Customer Service. No field-stripping applied to this tool (contains no email/COGS/quotation/order-history fields per current inspection).
 
 ## 2.4 `get_cid_at_risk_summary`
 
@@ -382,7 +384,7 @@ name — omit `arguments` entirely, or pass `{}`, for a tool with no parameters)
 
 **Technical Details** — `(filters: str | None) -> dict`, keyed by population → `{"at_risk_count": int, "value_at_risk": float}`.
 
-**Security** — System Manager/Super Admin only (§2.0). **Business-sensitive-$ stripping applies**: `value_at_risk` is removed from every population's cell for a caller not in `_BUSINESS_SENSITIVE_ROLES` (Super Admin, System Manager, Customer Service); `at_risk_count` alone is never stripped.
+**Security** — System Manager/Super Admin/Customer Service (§2.0). **Business-sensitive-$ stripping applies**: `value_at_risk` is removed from every population's cell for a caller not in `_BUSINESS_SENSITIVE_ROLES` (Super Admin, System Manager, Customer Service); `at_risk_count` alone is never stripped.
 
 ## 2.5 `get_cid_segment_movement`
 
@@ -392,7 +394,7 @@ name — omit `arguments` entirely, or pass `{}`, for a tool with no parameters)
 
 **Technical Details** — `() -> list`, each row: `display_name`, `customer`, `population`, `gained: [...]`, `lost: [...]`.
 
-**Security** — System Manager/Super Admin only. No field-stripping currently applied to this tool (returns customer name/segment data, not email/COGS/quotation/order fields).
+**Security** — System Manager/Super Admin/Customer Service. No field-stripping currently applied to this tool (returns customer name/segment data, not email/COGS/quotation/order fields).
 
 ## 2.6 `get_cid_sample_conversion_summary`
 
@@ -402,17 +404,17 @@ name — omit `arguments` entirely, or pass `{}`, for a tool with no parameters)
 
 **Technical Details** — `() -> dict`.
 
-**Security** — System Manager/Super Admin only. No field-stripping applied (aggregate-only, no per-customer identity or COGS/quotation data).
+**Security** — System Manager/Super Admin/Customer Service. No field-stripping applied (aggregate-only, no per-customer identity or COGS/quotation data).
 
 ## 2.7 `get_cid_customer_list`
 
 **API Details** — delegates to `cid/customers.get_customer_list`.
 
-**Functional Details** — the per-customer list: revenue, average order value, margin, return rate, custom-order share, last order date.
+**Functional Details** — the per-customer list: revenue, average order value, margin (rendered on the Desk page's Customer List table as the **Profit** column), return rate, custom-order share, last order date.
 
 **Technical Details** — `(filters: str | None, limit: int = 200) -> list`. Each row includes `display_name`, `customer`, `population`, `segments`, `order_count`, `revenue`, `aov`, `last_order_date`, `custom_share_pct`, `return_rate_pct`, `margin`, `margin_pct`, `cogs_resolved`, `_identity_key`.
 
-**Security** — System Manager/Super Admin only (§2.0). **Both email and COGS stripping apply** to every row: `_identity_key` (email) is removed for a caller not in `_EMAIL_ROLES`; `margin`, `margin_pct`, `cogs_resolved` are removed for a caller not in `_COGS_ROLES`.
+**Security** — System Manager/Super Admin/Customer Service (§2.0). **Both email and COGS stripping apply** to every row: `_identity_key` (email) is removed for a caller not in `_EMAIL_ROLES` (Super Admin, System Manager); `margin`, `margin_pct`, `cogs_resolved` — the fields backing the Desk page's Profit column — are removed for a caller not in `_COGS_ROLES` (Super Admin, System Manager, Factory). **Customer Service can call this tool (base dashboard access) but never receives the Profit fields** — the one tool in this file where the field-level restriction is narrower than the tool-call gate for a role that otherwise has full access to every other field this tool returns.
 
 ## 2.8 `get_cid_return_outliers`
 
@@ -422,7 +424,7 @@ name — omit `arguments` entirely, or pass `{}`, for a tool with no parameters)
 
 **Technical Details** — `(filters: str | None, min_orders: int = 3, outlier_threshold_pct: int = 25) -> list`.
 
-**Security** — System Manager/Super Admin only. No field-stripping currently applied (returns `display_name`/`customer`/order and return counts — no email key, COGS, or quotation/order-history fields in the current implementation).
+**Security** — System Manager/Super Admin/Customer Service. No field-stripping currently applied (returns `display_name`/`customer`/order and return counts — no email key, COGS, or quotation/order-history fields in the current implementation).
 
 ## 2.9 `get_cid_component_gap_summary`
 
@@ -432,7 +434,7 @@ name — omit `arguments` entirely, or pass `{}`, for a tool with no parameters)
 
 **Technical Details** — `() -> dict`, returns `{"total_opportunity": float, "customers_flagged": int, "awaiting_approval": int, "last_refreshed": ...}`.
 
-**Security** — System Manager/Super Admin only (§2.0). **Business-sensitive-$ stripping applies**: `total_opportunity` is removed for a caller not in `_BUSINESS_SENSITIVE_ROLES`.
+**Security** — System Manager/Super Admin/Customer Service (§2.0). **Business-sensitive-$ stripping applies**: `total_opportunity` is removed for a caller not in `_BUSINESS_SENSITIVE_ROLES`.
 
 ## 2.10 `get_cid_component_gap_list`
 
@@ -442,7 +444,7 @@ name — omit `arguments` entirely, or pass `{}`, for a tool with no parameters)
 
 **Technical Details** — `(filters: str | None, include_completed: int = 0, from_date: str | None, to_date: str | None) -> list`.
 
-**Security** — System Manager/Super Admin only (§2.0). **Business-sensitive-$ stripping applies** per row: `opportunity_amount` is removed for a caller not in `_BUSINESS_SENSITIVE_ROLES`.
+**Security** — System Manager/Super Admin/Customer Service (§2.0). **Business-sensitive-$ stripping applies** per row: `opportunity_amount` is removed for a caller not in `_BUSINESS_SENSITIVE_ROLES`.
 
 ## 2.11 `get_cid_customer_profile`
 
@@ -452,7 +454,7 @@ name — omit `arguments` entirely, or pass `{}`, for a tool with no parameters)
 
 **Technical Details** — `(identity_key: str) -> dict`. `identity_key` is the customer's identity key as returned by `get_cid_customer_list`/`get_cid_segment_movement` (e.g. `"email:name@example.com"`). Returns `identity_key`, `display_name`, `customer`, `population`, `segments`, `metrics` (nested dict including `metrics.margin.*`), `order_exceptions`, `orders` (array: name, order_date, order_type, status, total_amount, source_quotation, order_source), `quotations` (array: name, transaction_date, grand_total, status, custom_order_type).
 
-**Security** — System Manager/Super Admin only (§2.0). **This tool has the most extensive field-stripping of any tool in this file** — all four applicable categories:
+**Security** — System Manager/Super Admin/Customer Service (§2.0). **This tool has the most extensive field-stripping of any tool in this file** — all four applicable categories:
   - `identity_key` removed if caller not in `_EMAIL_ROLES`.
   - `quotations` (entire array) removed if caller not in `_QUOTATION_ROLES`.
   - `orders`, `order_exceptions` removed if caller not in `_ORDER_HISTORY_ROLES`.
