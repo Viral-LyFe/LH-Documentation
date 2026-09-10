@@ -47,24 +47,24 @@ Nothing different — treat it exactly like any other Factory order.
 
 ---
 
-## Use Case 3 — Order stuck in "1Click Error"
+## Use Case 3 — Changing your mind: route an India order through the US
+warehouse instead
 
 **What it means:**
-The system tried to check stock or post the order to 1Click, and something
-went wrong on 1Click's side (a temporary connection problem, or one of the
-item codes wasn't recognized by 1Click yet).
+An order was going to ship directly from India, but you've decided it
+should go through the US warehouse first instead (e.g. to combine with
+other items, or speed up final delivery).
 
 **What you need to do:**
-1. Open the order and look at the error message shown on the order.
-2. If it mentions a missing/unregistered item — the system usually
-   auto-registers it and retries by itself. Wait a few minutes and refresh.
-3. If it's still stuck, use the **"Recheck Inventory"** button on the order.
-   This re-runs the stock check from scratch.
-4. If it keeps failing, escalate to the technical team with the order
-   number — don't manually change the status.
+1. Open the order (it must not have shipped yet).
+2. Click **"Route via US Warehouse Instead."**
+3. Confirm the popup.
 
-**Important:** never manually mark this order as if it were successfully
-posted. Let the system resolve it or escalate.
+**What happens after:**
+The order switches to the "ship via US warehouse first" plan. A new
+internal shipping record is created to track the goods moving from the
+Factory to the US warehouse. The order otherwise still looks and behaves
+like a normal Factory order.
 
 ---
 
@@ -87,6 +87,10 @@ to come from the Factory first.
      goes out from the US warehouse as one shipment.
 4. Once confirmed, the Factory portion is created as a **Transfer Order**
    (if "Via US Warehouse") and you track it like a normal Factory shipment.
+
+**One rule to know:** a customer should never receive two separate boxes
+for what they think is one order unless you specifically chose "Direct to
+Customer." The system does not silently split shipments on its own.
 
 ---
 
@@ -114,6 +118,12 @@ tracking number can't be used for some reason): change the status directly
 to **"US Warehouse Delivered."** Never leave it on "Received" — that status
 means something different in the system and does not trigger the next step
 correctly.
+
+**Worth knowing:** marking the internal shipment "Received" reflects our
+own team's belief that the goods arrived — it is not 1Click confirming they
+physically checked the stock into their own system. In practice the order
+books with 1Click almost instantly afterward, but this is a known small
+timing gap, not something to worry about day to day.
 
 ---
 
@@ -156,7 +166,8 @@ correction is needed).
 **What you need to do:**
 1. Open the order.
 2. Use the **route override** option and choose **"Force US."**
-3. Enter a reason (required) — this is logged for audit purposes.
+3. Enter a reason (required — the system will not let you save without
+   one).
 4. Confirm. The system will attempt to post directly to 1Click.
 
 **If it fails:** the order will show an error explaining why (e.g. genuinely
@@ -168,6 +179,26 @@ gone through a Mixed-order split (Use Case 4) with a Factory portion
 assigned. If you see an error about this, it means the order is already
 committed to a Mixed shipping plan — clear that plan first if you really
 want to switch it to Force US.
+
+---
+
+## Use Case 7b — "Force India" — manually deciding an order should ship
+from India instead
+
+**When to use this:**
+The opposite of Force US — the item is sitting in the US warehouse, but you
+want it to ship from India instead for some reason.
+
+**What you need to do:**
+1. Open the order.
+2. Use the route override option and choose **"Force India."**
+3. Enter a reason (required, same as Force US).
+4. Confirm.
+
+**What happens after:**
+The order routes to Factory/India as normal. No order is created on 1Click,
+even though stock was available there. Your reason is saved and visible on
+the order for later reference.
 
 ---
 
@@ -200,8 +231,109 @@ don't need to do anything for this to happen.
 
 **What you need to do:**
 Nothing, in the normal case. If the order still ends up in "1Click Error"
-after this (see Use Case 3), escalate — there may be a genuine problem with
-that item's setup.
+after this (see Use Case 10), escalate — there may be a genuine problem
+with that item's setup.
+
+**Also worth knowing:** if the SKU field on an order item is blank but the
+item's name contains a recognizable code (e.g. a code in parentheses), the
+system can often figure out the right SKU on its own. This happens
+automatically in the background — nothing to do here unless an item is
+still stuck unresolved.
+
+---
+
+## Use Case 10 — Order stuck in "1Click Error"
+
+**What it means:**
+The system tried to check stock or post the order to 1Click, and something
+went wrong — this covers a few different real situations:
+
+- 1Click reported success on the surface but actually rejected the order
+  behind the scenes (the system always checks for this, never just trusts
+  a generic "OK").
+- 1Click didn't respond at all (timed out).
+- An item code wasn't recognized (usually auto-resolves itself — see Use
+  Case 9).
+- The order was accidentally submitted a second time (1Click itself
+  currently blocks true duplicates, so this is safe, but it will show an
+  error rather than silently succeeding).
+
+**What you need to do:**
+1. Open the order and look at the error message shown on the order.
+2. If it mentions a missing/unregistered item — the system usually
+   auto-registers it and retries by itself. Wait a few minutes and refresh.
+3. If it's still stuck, use the **"Recheck Inventory"** button on the order.
+   This re-runs the stock check from scratch.
+4. If it keeps failing, escalate to the technical team with the order
+   number — don't manually change the status.
+
+**Important:** never manually mark this order as if it were successfully
+posted. Let the system resolve it or escalate. Also — an order sitting in
+"1Click Error" never gets left in limbo indefinitely; it always ends up in
+this clearly-flagged state so someone can look at it, rather than silently
+stuck with no explanation.
+
+---
+
+## Use Case 11 — Two orders competing for the same low-stock item
+
+**What it means:**
+If very few units of an item are left in the US warehouse, and two orders
+for that item come in around the same time, there's a theoretical risk that
+both could be told "yes, it's in stock" when only one really has enough.
+
+**Where this stands today:** this exact scenario has been tested but the
+results were **inconclusive** — a clean, fully controlled test hasn't been
+completed yet. **Until this is confirmed safe, treat low-stock items with
+extra care**: if you know an item has very limited stock (1–2 units) and
+you're aware of another order for the same item being processed around the
+same time, flag it to the technical team rather than assuming the system
+will sort it out correctly on its own.
+
+**What you need to do if you ever see this happen** (an order shows
+"Submitted to 1Click" for an item you know was nearly out of stock, or an
+order fails with a generic, unhelpful error after a stock-limited item):
+report it to the technical team with the order number, rather than retrying
+blindly. This is a known open item being tracked for a proper fix.
+
+---
+
+## Use Case 12 — Cancelling an order that's already been sent to 1Click
+
+**What it means:**
+A customer wants to cancel after the order has already been posted to
+1Click.
+
+**What you need to do:**
+Follow the normal manual cancellation process with CS as you do today —
+this still requires a person to coordinate the cancellation with 1Click
+directly. There is currently an automatic alert that can fire when this
+situation is detected, so the right people are notified quickly, but the
+actual cancellation itself is still a manual step.
+
+---
+
+## Use Case 13 — An order sits too long without shipping (SLA follow-up)
+
+**What happens automatically:**
+Once an order is posted to 1Click, the system tracks how long it's been
+sitting without a real dispatch/tracking number. If it's been more than 72
+hours with no movement, a follow-up task is automatically created for
+Factory/Ops to chase it down — you don't need to remember to check this
+yourself.
+
+The same kind of automatic follow-up also applies to:
+- An order waiting on a Factory-to-US-warehouse shipment with no tracking
+  number entered after 48 hours.
+- A shipment marked "Shipped" toward the US warehouse but not yet marked
+  "Received" after 24 business hours.
+
+**What you need to do:**
+Nothing to set up — these checks run automatically and post an alert (email
+task, and in some cases a Slack message) the moment something is stuck.
+Just act on the task/alert when you see one; it will close itself
+automatically once the order catches up (tracking number added, dispatched,
+or received).
 
 ---
 
@@ -231,3 +363,6 @@ that item's setup.
   the order number rather than trying to fix it manually — some of these
   steps talk to 1Click's live system, and manual edits can create a
   mismatch between our records and 1Click's.
+- **Low-stock items competing between two orders (Use Case 11)** are still
+  a known open item — flag anything unusual there rather than assuming it's
+  fine.
