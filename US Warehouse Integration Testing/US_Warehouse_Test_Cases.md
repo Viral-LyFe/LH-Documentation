@@ -1566,13 +1566,51 @@ agree once the page is actually refreshed. No investigation needed here.
    at this order in the UI has no way to tell "this failed because 1Click
    already has it" from any other generic 406.
 
-**Result:** ☐ Pass ☐ Fail — **still inconclusive.** The original
-"conclusive" result above was incorrect and has been retracted. This test
-needs a genuinely fresh pair of orders (not reused ones) run concurrently,
-with the full Integration Request timeline checked (not just the latest
-entry) before drawing any conclusion, and ideally cross-checked directly
-against the 1Click portal the same way the user did here — not just our
-own API responses.
+**Re-run 2026-09-10 — genuinely fresh pair, conclusive result.** Learning
+from the 2026-09-08 mistake above, this run used:
+- Two brand-new Lyfe Orders never touched before (`LYF-MN-2026-0123`,
+  `LYF-MN-2026-0124`), not reused from any earlier attempt.
+- A real SKU (`LH-TEST-SKU-1`) confirmed at exactly **5 units** available in
+  1Click immediately before the test.
+- Each order requesting **qty 5** — so the two orders together demand 10
+  units against only 5 real ones, guaranteeing a genuine conflict if both
+  get accepted.
+- Real, independent OS-level processes (not threads, not sequential calls)
+  routing both orders at the same moment.
+- The **full, unfiltered** Integration Request timeline checked for both
+  orders afterward, plus the real live stock level rechecked immediately
+  after — not just trusting the latest log entry, per the lesson from the
+  2026-09-08 mistake.
+
+**Result — 1Click oversold both orders:**
+- Both orders were accepted by 1Click. `LYF-MN-2026-0123` → real 1Click
+  order `1665038`. `LYF-MN-2026-0124` → real 1Click order `1665039`. Both
+  landed correctly in `Submitted to 1Click` with no error.
+- The Integration Request timeline shows both orders' requests genuinely
+  interleaved (timestamps alternating between the two orders across
+  several back-and-forth calls), confirming this was a real concurrent
+  race, not one order finishing before the other started.
+- Real live stock checked immediately afterward: `available: 0`, but
+  `onhand: 5` — 1Click has committed 10 units of order demand against only
+  5 physical units actually sitting in the warehouse. Nothing has shipped
+  yet, but two customers are now each expecting an order that, combined,
+  cannot both be fulfilled from real stock.
+
+**What this proves:** 1Click's Create Order endpoint has **no atomic stock
+reservation** — it will accept as many orders as arrive for an item,
+regardless of how many units actually exist, as long as each individual
+order's stock check (run moments before) still showed availability at that
+instant. Our own system has **no local guard** against this either — each
+order only checks 1Click's live inventory for itself, with no lock or
+reservation shared between two orders being routed at the same time.
+
+**Result:** ☐ Pass **☑ Fail — confirmed real gap, not a testing mistake
+this time.** This is a genuine oversell risk once order volume increases
+(the exact "2,000 orders a day" scale this integration is being built
+for) — worth raising with 1Click directly (do they have a reservation/hold
+mechanism we're not using?) and/or adding our own local safeguard (e.g. a
+short-lived reservation lock per SKU between the stock check and the
+Create Order call). Tracked in `Pending_Work.md`.
 
 ---
 
@@ -1777,7 +1815,7 @@ blank. No `bench migrate` needed (pure Python change, no schema change).
 | 21 — Stuck Shipment Alerts | `LYF-MN-2026-0077` / `ASN-2026-00008` | ☑ Pass (both alerts) |
 | 22 — Two-Shipment Split (removed per founder decision) | `LYF-MN-2026-0079` | ☑ Pass |
 | 23 — Cancel After Submission | `LYF-MN-2026-0080` | ☑ Pass |
-| 24 — Same-Item Double Order Race | `LYF-MN-2026-0037` / `-0038` (invalidated re-run, see body) | ☐ Still inconclusive — needs genuinely fresh orders + full Integration Request timeline check before concluding |
+| 24 — Same-Item Double Order Race | `LYF-MN-2026-0123` / `-0124` (2026-09-10, conclusive) | ☑ Fail — real oversell confirmed, 1Click accepted both orders for a 5-unit item requesting 10 combined units |
 | 25 — Manual Tracking Not Auto-Corrected | `LYF-MN-2026-0079` | ☑ Pass |
 | 26 — Unfamiliar Carrier Auto-Creation | N/A (carrier-only test) | ☑ Pass |
 | 27 — Received ≠ 1Click Confirmation | `LYF-MN-2026-0080` | ☑ Pass |

@@ -14,32 +14,39 @@ Source documents this pulls from:
 
 ## A. Re-test needed (real gaps or inconclusive results — do these first)
 
-### 1. Test Case 24 — Two Orders for the Same Low-Stock Item at the Same Time
-**Status:** ☐ Still inconclusive — **a "Pass" claimed here earlier today
-was wrong and has been retracted.** Caught by the user checking the 1Click
-portal directly: `LYF-MN-2026-0038` (claimed "correctly rejected as an
-oversell") had actually already been successfully created on 1Click
-(`1661692`) by an earlier, abandoned test attempt — the later "clean"
-re-run was resubmitting a PO 1Click already had, not testing a fresh race.
-1Click's rejection was a duplicate-PO rejection, not an oversell
-rejection. Full correction written into `US_Warehouse_Test_Cases.md`, Test
-Case 24.
+### ~~1. Test Case 24 — Two Orders for the Same Low-Stock Item at the Same Time~~ ✅ Conclusively tested 2026-09-10
+**Status:** ☑ Fail — **real oversell bug confirmed**, not a testing
+mistake this time. Re-run properly per the "what to do" note below: two
+genuinely fresh orders (`LYF-MN-2026-0123`, `LYF-MN-2026-0124`), a real SKU
+(`LH-TEST-SKU-1`) confirmed at exactly 5 units available, each order
+requesting qty 5 (10 combined vs. 5 real), routed as real concurrent OS
+processes, full unfiltered Integration Request timeline checked for both.
 
-**One real, separate issue this surfaced (still open):**
+**Result:** 1Click accepted **both** orders (`1665038`, `1665039`), both
+landed in `Submitted to 1Click` with no error. Real live stock immediately
+after: `available: 0`, `onhand: 5` — 1Click committed 10 units of demand
+against 5 physical units. 1Click's Create Order endpoint has no atomic
+stock reservation, and our own system has no local guard against this
+either. Full write-up in `US_Warehouse_Test_Cases.md`, Test Case 24.
+
+**Action needed:**
+- Raise with 1Click directly: do they offer any reservation/hold mechanism
+  on Create Order that we're not currently using?
+- Consider a local safeguard on our side — a short-lived reservation lock
+  per SKU between the stock check and the Create Order call — especially
+  given this integration is being built for ~2,000 orders/day.
+
+**One real, separate issue this surfaced during the earlier (invalidated)
+2026-09-08 attempt, still open:**
 - When 1Click rejects a duplicate PO submission, our error message is a
   bare, unhelpful `"406 Client Error: for url: ..."` with no real reason
   shown to the user — a genuine gap, not just a test-methodology mistake.
 
-(A second suspected issue — our `get_inventory()` reading `available: 10`
-not matching the 1Click portal's `100` — turned out to be a stale/cached
-portal page on the user's end. A manual refresh confirmed the portal
-agrees with our API. No real discrepancy; nothing to fix here.)
-
-**What to do:** Re-run with two genuinely fresh Lyfe Order records (never
-reused), check the FULL Integration Request timeline (not just the latest
-entry) before concluding anything, and cross-check the real result
-directly on the 1Click portal — not just our own API responses — the same
-way the user caught this correction.
+(A second suspected issue from that earlier attempt — our `get_inventory()`
+reading `available: 10` not matching the 1Click portal's `100` — turned out
+to be a stale/cached portal page on the user's end. A manual refresh
+confirmed the portal agrees with our API. No real discrepancy; nothing to
+fix here.)
 
 ### ~~2. Test Case 10 — One Bad Tracking Update Doesn't Corrupt Others~~ ✅ Done 2026-09-08
 **Status:** ☑ Pass — bug found AND fixed. Healthy order half fully proven
@@ -219,7 +226,8 @@ correctly**. Worth a direct spot-check for each of these:
 | `LYF-MN-2026-0034` | TC-BOM-14 — Via US Warehouse, confirmed working | `3.5FT-TB-200-SB`, `MHRB-200-AC` |
 | `LYF-MN-2026-0035` (`LH2971`) | TC-BOM-13 — Direct to Customer, 2-leg confirmation | `3.5FT-TB-200-SB`, `MHRB-200-AC` |
 | `LYF-MN-2026-0036` | TC-BOM-12 — stock-check-time auto-register re-verification | `TC12-VERIFY-MTW4CY` (1Click Item ID `230024`) |
-| `LYF-MN-2026-0037` / `LYF-MN-2026-0038` | Test Case 24 — attempted concurrent test, **invalidated** (see correction) | `3.5FT-TB-200-SB` — both had real 1Click orders (`1661693`, `1661692`); 1Click's later resync cleared their order history, so these POs are free for a fresh re-test |
+| `LYF-MN-2026-0037` / `LYF-MN-2026-0038` | Test Case 24 — first attempt, **invalidated** (see correction) | `3.5FT-TB-200-SB` — both had real 1Click orders (`1661693`, `1661692`); superseded by the conclusive 2026-09-10 re-run below |
+| `LYF-MN-2026-0123` / `LYF-MN-2026-0124` | Test Case 24 — conclusive re-run 2026-09-10, real oversell confirmed | `LH-TEST-SKU-1` (5 units available, both orders requested qty 5 — 10 combined); real 1Click orders `1665038`, `1665039` both accepted |
 | `LYF-MN-2026-0039` | Test Case 10 — first broken-response bug demonstration, reverted after confirming | `TC10-BROKEN-TEST-001` (test tracking number, not a real SKU) |
 | `LYF-MN-2026-0040` | Test Case 10 — second reproduction: real data destroyed by garbled response, reverted | Real tracking number `383571424926` (real FedEx order `LYF-SH-2026-1841`'s tracking, reused) |
 | `LYF-MN-2026-0041` | Test Case 10 — post-fix verification (all 3 scenarios confirmed correct), reverted | Same real tracking number `383571424926` |
