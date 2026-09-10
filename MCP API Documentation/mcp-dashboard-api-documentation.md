@@ -17,6 +17,35 @@
 
 ---
 
+## How to call these tools
+
+Every tool below is called through the **same one endpoint** — there is no per-tool
+URL. See `mcp-full-api-documentation.md`'s "How to call these tools" section for the
+full request/response reference (headers, JSON-RPC body shape, response envelope,
+error format). Quick summary:
+
+```
+POST https://<your-site>/api/method/lh.mcp.handle_mcp
+Content-Type: application/json
+Authorization: token <api_key>:<api_secret>
+
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "get_founder_summary",
+    "arguments": { "global_filters": "{\"from_date\": \"2026-01-01\"}" }
+  }
+}
+```
+
+Replace `params.name` with any tool name from the sections below, and
+`params.arguments` with that tool's parameters (as a JSON object keyed by parameter
+name — omit `arguments` entirely, or pass `{}`, for a tool with no parameters).
+
+---
+
 ## Server-wide behavior (applies to every tool below — read once)
 
 - **Read-only.** No tool in any of these three files performs a write — confirmed by inspection: `founder_dashboard.py` and `quotation_analysis_dashboard.py` (the underlying Desk-page Python modules) contain zero `.insert(`/`.save(`/`.submit(`/`db.set_value(`/`frappe.enqueue(` calls anywhere in their files. The Customer Intelligence Dashboard's underlying module does contain two writes (`set_component_gap_state`, `confirm_customer_type`) — both are excluded from MCP entirely (see that dashboard's section below).

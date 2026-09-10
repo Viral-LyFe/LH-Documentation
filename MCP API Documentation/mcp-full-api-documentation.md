@@ -2,7 +2,6 @@
 
 > Complete reference for every MCP tool exposed by this connector, as implemented in
 > `apps/lh/lh/lyfe_hardware/mcp_tools/` and registered via `apps/lh/lh/mcp.py`.
-> Endpoint: `/api/method/lh.mcp.handle_mcp`.
 >
 > **Companion document:** `mcp-dashboard-api-documentation.md` covers the 53 Founder
 > Dashboard / Customer Intelligence Dashboard / Quotation Analysis Dashboard tools in
@@ -13,6 +12,94 @@
 > Last verified against source: 2026-09-10. **If you add, remove, rename, or change the
 > permission behavior of any MCP tool, update this file (and the dashboard doc, if
 > applicable) in the same change — see the rule in `apps/lh/CLAUDE.md`.**
+
+---
+
+## How to call these tools — exact endpoint, method, and request shape
+
+**There is one single HTTP endpoint for every tool in this document.** A tool "name"
+(e.g. `get_founder_summary`) is never its own URL path — it's a value inside the JSON
+body of a request to this one endpoint.
+
+```
+POST https://<your-site>/api/method/lh.mcp.handle_mcp
+```
+
+- **Method:** `POST` only. A `GET` to this path returns `405 Method Not Allowed` —
+  confirmed in `apps/frappe-mcp/frappe_mcp/server/server.py`'s `handle()`
+  (`if request.method != 'POST': response.status_code = 405`).
+- **Headers:**
+  ```
+  Content-Type: application/json
+  Authorization: token <api_key>:<api_secret>
+  ```
+  (or `Authorization: Bearer <oauth_access_token>` if authenticating via the OAuth2
+  flow instead of an API key/secret — see `mcp-api-reference.md`'s OAuth Client
+  section). This is a plain Frappe `frappe.whitelist()` endpoint under the hood, so it
+  uses Frappe's normal REST authentication — **not** HTTP Basic Auth. In Postman,
+  either add the header manually, or use the **"API Key"** auth type (not "Basic
+  Auth") with the header name `Authorization` and value `token <api_key>:<api_secret>`.
+- **Body:** JSON-RPC 2.0. To call a tool, `method` is always the literal string
+  `"tools/call"`; the tool's actual name goes inside `params.name`, and its arguments
+  go inside `params.arguments`:
+
+  ```json
+  {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "get_founder_summary",
+      "arguments": {
+        "global_filters": "{\"from_date\": \"2026-01-01\", \"to_date\": \"2026-06-30\"}"
+      }
+    }
+  }
+  ```
+
+  For a tool with no parameters (e.g. `get_founder_tile_money_at_risk`), omit
+  `arguments` entirely or pass `{}`.
+
+- **To list every available tool** (names, descriptions, input schemas) instead of
+  calling one, send `"method": "tools/list"` with `"params": {}` instead of
+  `"tools/call"`. See the full API doc's server-wide note on tool discovery being
+  unfiltered by role — this lists every one of the 151 tools to any authenticated
+  caller regardless of what they're actually permitted to call.
+
+- **Response** is a bare JSON-RPC 2.0 response object — **not** wrapped in Frappe's
+  usual `{"message": ...}` envelope (this endpoint writes `response.data` directly,
+  bypassing that path). A successful `tools/call` looks like:
+  ```json
+  {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+      "content": [{"type": "text", "text": "{...tool's JSON result, serialized as a string...}"}],
+      "structuredContent": { "...the tool's actual return value, as real JSON..." },
+      "isError": false
+    }
+  }
+  ```
+  `structuredContent` is only populated when the tool's return value is a `dict`
+  (confirmed in `apps/frappe-mcp/frappe_mcp/server/tools/handlers.py::_get_result`) —
+  for a `list`-returning tool (e.g. `list_lyfe_order`, `get_quotation_detail`),
+  `structuredContent` is absent and the actual data must be parsed from
+  `content[0].text` (a JSON-encoded string) instead.
+
+  A permission denial or internal error surfaces as `"isError": true`, with
+  `content[0].text` set to `"Error calling tool '<name>': <sanitized message>"` — the
+  sanitized message is the one described in the server-wide section below (a
+  permission denial keeps its original static text; any other error is replaced with
+  the fixed generic message).
+
+**This is completely separate from Frappe's ordinary REST API** (`/api/resource/<doctype>/<name>`,
+`/api/method/<dotted.path>` for other whitelisted functions). Calling
+`/api/resource/Lyfe Order/<name>` directly does **not** go through any MCP tool,
+`audited_tool()` wrapper, or `DASHBOARD_ROLES` gate — it hits Frappe's own DocPerm
+engine directly, same as any other Desk API call. If you're getting a Guest/permission
+error on `/api/resource/...`, that's a plain Frappe REST authentication issue (wrong or
+missing `Authorization` header, or an account with no API key/secret generated) — it
+has nothing to do with the MCP tool gates documented in this file.
 
 ---
 
