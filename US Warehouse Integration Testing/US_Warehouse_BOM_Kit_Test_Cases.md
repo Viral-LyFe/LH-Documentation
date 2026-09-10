@@ -1228,6 +1228,70 @@ visible status, never attempted a second Create Order call.
 
 ---
 
+### TC-BOM-17 — Two Race-Condition Gaps Found via Code Review, Fixed and Verified Live
+
+**What we're checking:** a structured code-review pass flagged two
+concurrency gaps as worth double-checking against the real code rather than
+assuming they were already covered. Both were confirmed real, then fixed.
+
+**Gap 1 — `add_item_master` had no lock against two orders registering the
+same brand-new SKU at once.** When an order has a SKU 1Click has never
+seen, the system auto-registers it before posting the order (all 3 call
+sites: `lyfe_order_routing.py`'s stock-check stage, `oneclick_api.py`'s
+Create Order retry path, `lyfe_order.py`'s `_submit_combined_mixed_order`).
+Nothing stopped two orders for the same never-before-seen SKU, processed
+close together, from both calling 1Click's `addItemMaster` for the same
+SKU at once — no local lock, no idempotency check, and no handling of a
+1Click "already registered" rejection message (unlike the existing,
+deliberate `-18019901` pattern in the 17Track integration).
+
+**Fix:** added a short-lived Redis lock (`frappe.cache().set(sku_key,
+nx=True, ex=30)`) inside `add_item_master()` itself — covers all 3 call
+sites automatically, no changes needed at any of them. A second caller
+that loses the lock race waits (polls) for the first to finish rather than
+firing its own duplicate call to 1Click; by the time the lock clears,
+1Click already recognizes the SKU. Also added the same "already exists"
+message-text handling the 17Track integration uses for `-18019901`, in
+case 1Click's own rejection wording for a genuine duplicate slips through.
+
+**Verified live** with two real concurrent OS processes racing to register
+a fresh SKU (`LH-CONCURRENCY-TEST-1`): only **one** real call actually
+reached 1Click (confirmed via the Integration Request log — a single
+`items.cfc` entry, real `itemID: 230082`); the other process correctly
+waited on the lock and returned success without making a second call.
+
+**Gap 2 — Force US and a Mixed order's Factory Leg Destination could both
+land on the same order if triggered within milliseconds of each other.**
+`apply_route_plan_override`'s guard (blocks Force US if
+`factory_leg_destination` is already set) only checked the in-memory
+document loaded at the start of the function — if
+`set_factory_leg_destination()` committed concurrently after that load but
+before this function's own save, the stale in-memory check would miss it.
+
+**Fix:** added a fresh `frappe.db.get_value()` re-check immediately before
+the write in both functions (mirror guards — Force US re-checks
+`factory_leg_destination`, `set_factory_leg_destination` re-checks
+`route_plan`), closing the gap with one cheap extra read per call. Neither
+function is a hot path (both are manual, human-triggered actions), so the
+extra read has no meaningful cost.
+
+**Verified live**: simulated the race by committing
+`factory_leg_destination` directly to the database (bypassing any
+in-memory object) right after a fresh order was loaded, then called
+`apply_route_plan_override` — confirmed the new fresh re-check correctly
+blocked it with the same error message the original (non-racing) guard
+uses, where the old stale in-memory-only check would have missed it.
+
+**Automated test coverage:** `test_add_item_master_concurrency.py` (2
+tests — lock blocks a concurrent acquire, lock releases and can be
+reacquired) and `test_force_us_leg_destination_race.py` (2 tests — both
+directions of the race correctly blocked). Full existing suite (68 tests
+across 11 modules) re-run — no regressions.
+
+**Result:** ☑ Pass (both gaps fixed).
+
+---
+
 ## Summary table (to fill in once test cases are executed)
 
 | Test Case | Order/BOM Used | Result |
@@ -1248,6 +1312,7 @@ visible status, never attempted a second Create Order call.
 | TC-BOM-14 — US-Leg Tracking Field Visibility for Mixed "Via US Warehouse" | Live verification (`LYF-MN-2026-0034`, 5-scenario field visibility check) | ☑ Pass |
 | TC-BOM-15 — 1Click Create Order: Auto-Register Missing SKU, No Auto-Resubmit | Live verification (`LYF-MN-2026-0028` auto-register + no-resubmit; duplicate-submission bug fixed) | ☑ Pass |
 | TC-BOM-16 — US Warehouse Delivered No Longer Auto-Posts; Manual Post to 1Click Button | Automated: `test_us_warehouse_delivered_manual_post.py` + live verification (`LYF-MN-2026-0072`, real order `1664353`) | ☑ Pass |
+| TC-BOM-17 — add_item_master + Force US/Leg Destination Race Conditions Fixed | Automated: `test_add_item_master_concurrency.py`, `test_force_us_leg_destination_race.py` + live verification (`LH-CONCURRENCY-TEST-1`, real 1Click `itemID: 230082`) | ☑ Pass |
 
 ---
 
