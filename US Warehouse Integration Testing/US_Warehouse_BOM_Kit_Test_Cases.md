@@ -175,6 +175,22 @@ example) 3 child components: 2 in US stock, 1 not.
 - Order holds for human review — nothing auto-booked to 1Click yet, same
   as Test Case 5's existing expected behavior.
 
+**Order with BOM KIT**
+<img width="1537" height="762" alt="image" src="https://github.com/user-attachments/assets/a9d31be2-4bb0-4c0b-84fb-71991b325603" />
+
+**Few part available in US warehouse and few from factory**
+<img width="1478" height="836" alt="image" src="https://github.com/user-attachments/assets/d2d864f9-dbc4-4d05-9ba5-8e2bd97c7798" />
+
+**Confirm factory lag direction**
+<img width="1502" height="472" alt="image" src="https://github.com/user-attachments/assets/f005931e-d22c-465f-b2d1-5b3cd24aaaf2" />
+
+**Confirm Split**
+<img width="1517" height="435" alt="image" src="https://github.com/user-attachments/assets/2033ffdd-e241-4c8b-ae61-d4c9959e2612" />
+
+**Factory lag selected Via US warehouse and Confirm Split**
+<img width="1497" height="461" alt="image" src="https://github.com/user-attachments/assets/14d5d5e9-9fa3-4b54-8f61-cefaea5ff75c" />
+
+
 **Result:** ☑ Pass — `test_kit_mixed_stock_routes_mixed`
 (`TestBomKitSingleKitMixedStock`). Confirmed the kit triggers Mixed on its
 own with a single order row — no second row needed — and both components'
