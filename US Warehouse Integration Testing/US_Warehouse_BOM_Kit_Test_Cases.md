@@ -132,6 +132,16 @@ with 2–3 `child_items`, all components in US stock.
 - Order proceeds straight to 1Click submission, same as any other US_FULL
   order.
 
+**Order with BOM Kit**
+<img width="1692" height="792" alt="image" src="https://github.com/user-attachments/assets/67dd0718-4cd8-4d9c-a406-dd44e2faf90c" />
+
+**Found all item available in US warehouse and assign**
+<img width="1512" height="810" alt="image" src="https://github.com/user-attachments/assets/ab34a4d6-d789-49c4-bcc6-0c72498d711c" />
+
+**Order Posted to 1Click Automatted**
+<img width="1526" height="866" alt="image" src="https://github.com/user-attachments/assets/4b2becf4-a1ed-4224-b937-fc5cba7a6d07" />
+
+
 **Result:** ☑ Pass — `test_kit_fully_in_stock_routes_us_full`
 (`TestBomKitSingleKitAllInStock`). Confirmed exactly as expected, including
 quantity multiplication (BOM's 2x/1x child quantities × order row's own
