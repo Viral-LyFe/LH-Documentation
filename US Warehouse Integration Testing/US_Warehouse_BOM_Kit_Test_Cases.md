@@ -267,6 +267,13 @@ in US stock. Kit B: 0% in US stock.
 <img width="1585" height="756" alt="image" src="https://github.com/user-attachments/assets/4f79ee28-417c-4879-8a18-7b1aed2c5ab3" />
 
 
+**Set factory lag direction**
+<img width="1570" height="392" alt="image" src="https://github.com/user-attachments/assets/9afbe22d-4acd-42a1-a15b-eff00f7cb879" />
+
+**Confirm Split**
+<img width="1502" height="512" alt="image" src="https://github.com/user-attachments/assets/21f4c73b-3005-4830-8c2b-0d917bc34025" />
+
+
 **Result:** ☑ Pass — `test_one_kit_stocked_one_not_routes_mixed_no_crossover`
 (`TestBomKitTwoKitsOneFullyStockedOneNot`). Confirmed Kit A's components
 stayed entirely in the US table and Kit B's stayed entirely in the Factory
