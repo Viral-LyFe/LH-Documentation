@@ -515,6 +515,16 @@ implementation plan — an item present in both `us_warehouse_shipment_items`
 never two separate lines. Confirmed via both a direct function call and the
 new automated test suite.
 
+**factory to Us warehouse lag is created**
+<img width="1530" height="607" alt="image" src="https://github.com/user-attachments/assets/55dd62d8-57e9-4ff8-9c11-44fb1b1c3ea2" />
+
+
+**Factory Lag has same value which should be delivered from factory**
+<img width="1502" height="837" alt="image" src="https://github.com/user-attachments/assets/f6c16b4e-aed1-4a68-a0dd-4687dfcdcfef" />
+
+<img width="1556" height="722" alt="image" src="https://github.com/user-attachments/assets/c2b11e3e-376f-4d4d-bbfc-49b87f6ee5ab" />
+
+
 **Result:** ☑ Pass — Transfer Order correctness, the resume payload fix,
 and the MIFO-required safety block are all confirmed working live.
 
