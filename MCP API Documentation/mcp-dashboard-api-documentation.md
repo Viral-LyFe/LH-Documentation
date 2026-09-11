@@ -1,17 +1,19 @@
 # MCP API Documentation — Dashboard Tools
 
-> Covers every MCP tool for the four dashboards below, organized dashboard-by-dashboard.
-> Companion to `mcp-full-api-documentation.md`, which lists all 151 MCP tools (these 62
+> Covers every MCP tool for the five dashboards below, organized dashboard-by-dashboard.
+> Companion to `mcp-full-api-documentation.md`, which lists all 165 MCP tools (these 76
 > included, in summary form) plus server-wide behavior common to every tool.
 >
 > - `apps/lh/lh/lyfe_hardware/page/founder_dashboard/`
 > - `apps/lh/lh/lyfe_hardware/page/customer_intelligence_dashboard/`
 > - `apps/lh/lh/lyfe_hardware/page/quotation_analysis_dashboard/`
 > - `apps/lh/lh/lh_project/page/pm_operations_dashboard/`
+> - `apps/lh/lh/lyfe_hardware/page/order_analysis/` (shared backend for that page and
+>   `order_analysis_tw/`)
 >
 > Tool source: `apps/lh/lh/lyfe_hardware/mcp_tools/founder_dashboard.py`,
 > `customer_intelligence.py`, `quotation_analysis.py`,
-> `apps/lh/lh/lyfe_hardware/mcp_tools/pm_operations_dashboard.py`.
+> `pm_operations_dashboard.py`, `order_analysis.py`.
 >
 > Last verified against source: 2026-09-11. **If you add, remove, rename, or change the
 > permission behavior of any tool in this document, update it in the same change — see
@@ -759,14 +761,179 @@ name — omit `arguments` entirely, or pass `{}`, for a tool with no parameters)
 
 ---
 
+# 5. Order Analysis Dashboard
+
+**File:** `lh/lyfe_hardware/mcp_tools/order_analysis.py` — 14 tools, `get_order_analysis_*` prefix. All 14 delegate to `lh.lyfe_hardware.page.order_analysis.order_analysis` via `frappe.call()`.
+
+**Underlying Desk pages:** this is the one dashboard in this document backed by **two** Desk pages sharing one Python module — `lh/lyfe_hardware/page/order_analysis/` (`order_analysis.json`, `roles: []` — open to any Desk user) and `lh/lyfe_hardware/page/order_analysis_tw/` (`order_analysis_tw.json`, restricted to Factory/Customer Service/Super Admin/Engineer/System Manager). This MCP surface mirrors the narrower `order_analysis_tw` role list, not the open `order_analysis` one — see §5.0.
+
+## 5.0 Dashboard-level Security (applies to all 14 tools)
+
+- **Allowed roles:** `Factory`, `Customer Service`, `Super Admin`, `Engineer`, `System Manager` (mirrors `order_analysis_tw.json`'s Page `roles` list, via `DASHBOARD_ROLES["order_analysis"]` — deliberately the narrower of this dashboard's two Desk pages' role lists, since `order_analysis_tw` is the page people actually navigate to).
+- **Gate mechanics:** every tool calls `require_dashboard_role("order_analysis")` as its first line, before any `frappe.call()`.
+- **Backend has no `frappe.has_permission()` check of its own.** `order_analysis.py`'s whitelisted functions run raw `frappe.db.sql()` with no doctype-level permission check at all — the MCP tool file's `require_dashboard_role()` call is the only role enforcement on this surface for MCP callers.
+- **Field-level stripping: `customer`.** Several tools return `customer` (Lyfe Order permlevel 2) per row — same real-world field as every other dashboard tool file that surfaces it (`status_overview.py`, `comparison_dashboard.py`). Stripped for a caller who holds one of the allowed roles above but lacks Lyfe Order's `customer` permlevel access, mirroring `status_overview.py`'s `_strip_sensitive_dashboard_fields()` pattern exactly. No `cost_of_goods`/COGS field appears anywhere in this file's output (confirmed by inspection) — nothing to strip there.
+- **One write endpoint is permanently excluded from MCP:** `backfill_item_group` — a bulk maintenance action (mass `frappe.db.set_value()` + `commit()` across `ShipStation Order Item` rows, backfilling `item_group` from the linked Item). No tool wraps it; this connector is read-only project-wide.
+- **`get_order_analysis_tat_by_category` ignores its own date parameters.** Documented per-tool below (§5.9) — it always uses a fixed trailing-3-month window regardless of what's passed, by design (smaller category buckets need a stable sample size).
+
+## 5.1 `get_order_analysis_dashboard`
+
+**API Details** — delegates to `order_analysis.get_dashboard_data`.
+
+**Functional Details** — the dashboard overview: active/not-yet-delivered/out-from-factory/on-hold order counts, photo re-upload and revision counts, and three KPI percentages — Delivery Health (`on_time_delivery_rate`, factory-dispatch SLA compliance, not customer-promise compliance — see the full API doc's note), photo-rejection rate, and revision rate.
+
+**Technical Details** — `(from_date: str | None, to_date: str | None, based_on: str | None) -> dict`. `from_date`/`to_date` default to first/last day of the current month. `based_on="Live Data"` drops the date filter for most cards; On Hold counts and the Delivery Health KPI are always a live snapshot regardless of this parameter (documented in the underlying function — gating them on the date filter would make Delivery Health zero by construction whenever "Live Data" excludes terminal-state orders).
+
+**Security** — Factory/Customer Service/Super Admin/Engineer/System Manager (§5.0). `customer` is not present in this tool's aggregate-count response — no stripping applies here in practice.
+
+## 5.2 `get_order_analysis_card_orders`
+
+**API Details** — delegates to `order_analysis.get_card_orders`.
+
+**Functional Details** — the row-level order list backing one dashboard card — the drill-down for whichever card a caller clicked. Covers roughly 39 distinct card keys spanning urgent/VIP dispatch risk, customs holds, tracking alerts, gate-pass delays, and SLA breaches.
+
+**Technical Details** — `(card_key: str, from_date: str | None, to_date: str | None, based_on: str | None, sub_status: str | None) -> list`. `card_key` must be one of `CARD_QUERIES`' keys in the underlying module (e.g. `total_active`, `on_hold`, `breach_promised_dispatch`, `tracking_alert_possible_lost`, `slow_gate_pass_custom`, `breach_dispatch_standard` — see the tool's own docstring for the full list) — not independently validated against an enum beyond whatever the underlying SQL branch does with an unrecognized key. `sub_status` is only meaningful for the small subset of card keys that support a further breakdown.
+
+**Security** — Factory/Customer Service/Super Admin/Engineer/System Manager (§5.0). **`customer` field-stripping applies** per row.
+
+## 5.3 `get_order_analysis_pipeline`
+
+**API Details** — delegates to `order_analysis.get_pipeline_data`.
+
+**Functional Details** — order counts and average days spent per pipeline stage (CS Queue through Shipped), each with a configured day-count threshold and whether it's measured in calendar or business days.
+
+**Technical Details** — `() -> list`. No parameters — always a live current-state snapshot, by design (documented in the underlying function: date filtering pipeline-stage counts would misrepresent "how many orders are in this stage right now"). Each row: `{stage, count, avg_days, states, threshold, day_type}`; the terminal "Shipped" row additionally carries `informational: true` and `threshold: None`.
+
+**Security** — Factory/Customer Service/Super Admin/Engineer/System Manager (§5.0). No `customer` field in this aggregate response.
+
+## 5.4 `get_order_analysis_pipeline_orders`
+
+**API Details** — delegates to `order_analysis.get_pipeline_orders`.
+
+**Functional Details** — the row-level order list for one or more pipeline workflow states — the drill-down for a `get_order_analysis_pipeline` stage. Always a live snapshot.
+
+**Technical Details** — `(states: str, order_status: str | None) -> list`. `states` is a JSON array of `workflow_state` values, e.g. `'["Factory Assignment", "Ready for Dispatch"]'`. Throws if `states` resolves to an empty list (the underlying function requires at least one filter beyond its base Cancelled/On Hold/Merged/Return Successfully exclusion).
+
+**Security** — Factory/Customer Service/Super Admin/Engineer/System Manager (§5.0). **`customer` field-stripping applies** per row.
+
+## 5.5 `get_order_analysis_category_sla`
+
+**API Details** — delegates to `order_analysis.get_category_sla_data`.
+
+**Functional Details** — the category (item group) SLA grid: for each category, total active orders and how many are on-track / approaching / overdue against that category's configured SLA min/max thresholds (`Item Group.custom_sla_min_days`/`custom_sla_max_days`, falling back to a default 7/14-day window when unset).
+
+**Technical Details** — `(from_date: str | None, to_date: str | None, based_on: str | None) -> list`. Uses a wider "effective start date" fallback chain (`factory_first_action` → `approved_date` → `factory_assignment_date`) than the Standard/Custom SLA cards elsewhere on this dashboard, so every active order with any of those three dates set is covered, not just factory-acknowledged ones.
+
+**Security** — Factory/Customer Service/Super Admin/Engineer/System Manager (§5.0). No `customer` field in this aggregate response.
+
+## 5.6 `get_order_analysis_category_sla_orders`
+
+**API Details** — delegates to `order_analysis.get_category_sla_orders`.
+
+**Functional Details** — the row-level order list for one category's SLA drill-down, filtered by on-track/approaching/overdue status.
+
+**Technical Details** — `(item_group: str, status: str = "overdue", from_date: str | None, to_date: str | None, based_on: str | None) -> list`. `item_group="Other"` matches orders with no mapped item group. `status` must be `"on_track"`, `"approaching"`, or `"overdue"` — any other value is treated the same as `"overdue"` by the underlying function's `.get(status, ...)` fallback, not rejected.
+
+**Security** — Factory/Customer Service/Super Admin/Engineer/System Manager (§5.0). **`customer` field-stripping applies** per row.
+
+## 5.7 `get_order_analysis_category_trend`
+
+**API Details** — delegates to `order_analysis.get_category_trend`.
+
+**Functional Details** — order volume per item-group category, broken down by week or month — the data behind the category trend chart.
+
+**Technical Details** — `(period: str = "monthly", from_date: str | None, to_date: str | None, based_on: str | None, lookback_months: int | None) -> list`. `period` is `"monthly"` or `"weekly"`. `lookback_months` (3, 6, or 12) overrides `from_date`/`to_date`/`based_on` when provided. `based_on="Live Data"` (with no `lookback_months`) defaults to the trailing 6 months. Each row: `{period_key, period_label, item_group, order_count}`.
+
+**Security** — Factory/Customer Service/Super Admin/Engineer/System Manager (§5.0). No `customer` field in this aggregate response.
+
+## 5.8 `get_order_analysis_order_type_split`
+
+**API Details** — delegates to `order_analysis.get_order_type_split`.
+
+**Functional Details** — Standard vs. Custom order count and total revenue for a date range.
+
+**Technical Details** — `(from_date: str | None, to_date: str | None, based_on: str | None) -> dict`, shaped `{"standard_count", "custom_count", "standard_amount", "custom_amount"}`.
+
+**Security** — Factory/Customer Service/Super Admin/Engineer/System Manager (§5.0). No `customer` field in this aggregate response.
+
+## 5.9 `get_order_analysis_revenue_by_category`
+
+**API Details** — delegates to `order_analysis.get_revenue_by_category`.
+
+**Functional Details** — the top N item-group categories by total revenue for a date range.
+
+**Technical Details** — `(from_date: str | None, to_date: str | None, based_on: str | None, top_n: int = 10) -> list`, largest-revenue-first.
+
+**Security** — Factory/Customer Service/Super Admin/Engineer/System Manager (§5.0). No `customer` field in this aggregate response.
+
+## 5.10 `get_order_analysis_order_source_breakdown`
+
+**API Details** — delegates to `order_analysis.get_order_source_breakdown`.
+
+**Functional Details** — order counts grouped by `order_source` (e.g. Shopify, Etsy) for a date range. Uses the same date/live-mode logic as `get_order_analysis_dashboard`.
+
+**Technical Details** — `(from_date: str | None, to_date: str | None, based_on: str | None) -> list`.
+
+**Security** — Factory/Customer Service/Super Admin/Engineer/System Manager (§5.0). No `customer` field in this aggregate response.
+
+## 5.11 `get_order_analysis_tat_by_category`
+
+**API Details** — delegates to `order_analysis.get_tat_by_category`.
+
+**Functional Details** — the 5 Average Turnaround Time metrics (CS Review, Factory Dispatch, Photo Approval, End-to-End, Factory Upload) broken down by item-group category, each using a fallback chain through progressively earlier/looser milestone pairs since most of the narrowest fields are populated on well under 5% of orders. "Products" (the ERPNext default root category) and the unmapped "Other" bucket are excluded so only genuine product categories appear.
+
+**Technical Details** — `(from_date: str | None, to_date: str | None, based_on: str | None) -> list`. **All three parameters are accepted for call-signature consistency with this file's other tools but intentionally ignored** — this tool always uses a fixed trailing-3-calendar-months-from-today window, by explicit design documented in the underlying function's docstring (smaller category buckets need a wider, consistent sample to produce a stable average rather than reacting to whatever ad-hoc period the rest of the dashboard happens to show). Each row also excludes any milestone-pair duration that computes negative (a known historical data-quality issue on a small number of orders, not filtered elsewhere).
+
+**Security** — Factory/Customer Service/Super Admin/Engineer/System Manager (§5.0). No `customer` field in this aggregate response.
+
+## 5.12 `get_order_analysis_reshipment_sla`
+
+**API Details** — delegates to `order_analysis.get_reshipment_sla_data`.
+
+**Functional Details** — the Reshipment SLA dashboard data: on-track/approaching/overdue counts for in-progress `Lyfe Order Reshipment` records still with the factory, plus an on-time dispatch rate for reshipments that have reached a dispatched state — split by Standard/Custom order type. Also includes a data-capture diagnostic count (`reship_missing_factory_assignment`).
+
+**Technical Details** — `(from_date: str | None, to_date: str | None, based_on: str | None) -> dict`. The parent Lyfe Order's workflow state is deliberately **not** used to gate visibility (a reshipment's parent order is normally already Completed — that's typically why the reshipment exists). `based_on="Live Data"` drops the date filter entirely, so all currently in-progress/dispatched reshipments show regardless of creation date.
+
+**Security** — Factory/Customer Service/Super Admin/Engineer/System Manager (§5.0). No `customer` field in this aggregate response (reshipment rows carry `lo.customer` only in the row-level drill-down tool below, not here).
+
+## 5.13 `get_order_analysis_reshipment_sla_orders`
+
+**API Details** — delegates to `order_analysis.get_reshipment_sla_orders`.
+
+**Functional Details** — the row-level in-progress reshipment list for one Reshipment SLA card. `reshipment_id` (the `Lyfe Order Reshipment` docname) is included so a caller can link each row to its Reshipment document.
+
+**Technical Details** — `(order_type: str, sub_status: str, from_date: str | None, to_date: str | None, based_on: str | None) -> list`. `order_type` must be `"Standard"` or `"Custom"`; `sub_status` must be `"on_track"`, `"approaching"`, or `"overdue"` — both throw `frappe.ValidationError` on any other value (unlike the category-SLA drill-down's silent fallback, this one validates explicitly). Limited to 500 rows, oldest-first by days elapsed.
+
+**Security** — Factory/Customer Service/Super Admin/Engineer/System Manager (§5.0). **`customer` field-stripping applies** per row.
+
+## 5.14 `get_order_analysis_sla_task_links`
+
+**API Details** — delegates to `order_analysis.get_sla_task_links`.
+
+**Functional Details** — a mapping of `{docname: {"task": ..., "status": ...}}` for every given docname that has an active `SLA Task Link` — used by other tools' row-level results to show a PM task badge alongside each order.
+
+**Technical Details** — `(erp_docnames: str) -> dict`. `erp_docnames` is a JSON array of Lyfe Order (or other ERP doc) names, e.g. `'["LYF-SH-2026-1875"]'`. Returns `{}` for an empty input.
+
+**Security** — Factory/Customer Service/Super Admin/Engineer/System Manager (§5.0). No `customer` field in this response (keyed by docname → task/status only).
+
+---
+
 ## Cross-dashboard verification summary (2026-09-10)
 
 **Scope note:** the verification pass below covers Founder, Customer Intelligence, and
-Quotation Analysis only — it predates PM Operations Dashboard's addition to this
-document (2026-09-11, §4). PM Operations Dashboard's role gate was confirmed by direct
-code inspection (role set matches `pm_operations_dashboard.json`'s Page `roles` list and
-`DASHBOARD_ROLES["pm_operations_dashboard"]` exactly — see §4.0), not by the same
-live bypass/parameter-manipulation/field-stripping test battery as the three below.
+Quotation Analysis only — it predates PM Operations Dashboard's (2026-09-11, §4) and
+Order Analysis Dashboard's (2026-09-11, §5) addition to this document. Both were
+confirmed by direct code inspection instead — PM Operations Dashboard's role gate
+matches `pm_operations_dashboard.json`'s Page `roles` list and
+`DASHBOARD_ROLES["pm_operations_dashboard"]` exactly (§4.0); Order Analysis
+Dashboard's tools were built new in this change (not a pre-existing gap fixed), with
+its role gate, `frappe.call()` delegation, and `customer` field-stripping verified
+live against the actual site — a real call as Administrator returned genuine
+pipeline data, a call as a role-holding-nothing test user was correctly denied with
+`frappe.PermissionError`, and both calls produced the expected `MCP Audit Log` rows
+(Success/row_count=12 and Permission Denied/row_count=0 respectively). Neither
+dashboard was run through the same live bypass/parameter-manipulation/field-stripping
+test battery as the three below.
 
 - **Direct-backend-API bypass testing:** for all three dashboards, the underlying whitelisted Python functions were called directly (not through MCP) as 8 different roles. 24/24 cells matched the intended policy exactly, and matched what MCP itself returns for the same role — confirming MCP and the backend enforce the identical authorization decision.
 - **Parameter manipulation testing:** owner/date-range/customer/company/warehouse manipulation, malformed JSON, and SQL-injection-style filter values were tested against Quotation Analysis and Customer Intelligence tools. No combination bypassed a role gate or widened a denied/limited caller's visible dataset; query builders use parameterized placeholders throughout (no raw string interpolation of filter values found).

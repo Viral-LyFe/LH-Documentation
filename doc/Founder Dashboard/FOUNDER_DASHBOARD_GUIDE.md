@@ -53,14 +53,17 @@ Revenue = Σ (order total − any Shopify refund)
 
 ### Gross Margin (Last full month)
 
-**What it is:** What share of revenue is left over as profit after direct costs — manufacturing, shipping, custom fees — are subtracted.
+**What it is:** What share of revenue is left over as profit after direct costs — manufacturing, shipping, custom fees, reshipment costs — are subtracted.
 
 **How it's built:**
 ```
 Direct cost = Manufacturing cost + Custom/additional charges + Shipping (India + US leg)
+Direct cost includes any Reshipment cost (reshipment COGS + reshipment shipping)
 Profit      = Revenue − Direct cost
 Margin %    = Profit ÷ Revenue
 ```
+
+⚠️ **Corrected (2026-09-11):** Reshipment cost (COGS + shipping) was previously tracked only on the internal Status Overview page and was **not** subtracted here — margin was overstated on any order with a reshipment. It is now folded into the same "Custom/additional charges" cost bucket.
 
 **Why last month, not this month:** This tile deliberately looks at **last month**, not this month so far. Shipping cost is only entered once an order actually ships, so early in a new month almost every order is still missing that cost — which would make margin look artificially high. Waiting for a month to fully close avoids that false read.
 
