@@ -258,6 +258,15 @@ in US stock. Kit B: 0% in US stock.
 - `Factory Warehouse Shipment Item` contains 100% of Kit B's components.
 - No component from Kit A leaks into the Factory table or vice versa.
 
+
+**Order with one BOM Kit**
+<img width="1537" height="732" alt="image" src="https://github.com/user-attachments/assets/21ed62c3-94cd-42db-a174-b42a478b8a4d" />
+
+
+**Partially available in US**
+<img width="1585" height="756" alt="image" src="https://github.com/user-attachments/assets/4f79ee28-417c-4879-8a18-7b1aed2c5ab3" />
+
+
 **Result:** ☑ Pass — `test_one_kit_stocked_one_not_routes_mixed_no_crossover`
 (`TestBomKitTwoKitsOneFullyStockedOneNot`). Confirmed Kit A's components
 stayed entirely in the US table and Kit B's stayed entirely in the Factory
