@@ -3,11 +3,11 @@
 > Complete reference for every MCP tool exposed by this connector, as implemented in
 > `apps/lh/lh/lyfe_hardware/mcp_tools/` and registered via `apps/lh/lh/mcp.py`.
 >
-> **Companion document:** `mcp-dashboard-api-documentation.md` covers the 53 Founder
-> Dashboard / Customer Intelligence Dashboard / Quotation Analysis Dashboard tools in
-> the same 4-section format, organized dashboard-by-dashboard with more detail than the
-> summary entries here. This document lists them too (for completeness of "every MCP
-> API in one place") but the dashboard doc is the canonical source for those three.
+> **Companion document:** `mcp-dashboard-api-documentation.md` covers the 62 Founder
+> Dashboard / Customer Intelligence Dashboard / Quotation Analysis Dashboard / PM
+> Operations Dashboard tools, organized dashboard-by-dashboard with more detail than
+> the summary entries here. This document lists them too (for completeness of "every
+> MCP API in one place") but the dashboard doc is the canonical source for those four.
 >
 > Last verified against source: 2026-09-10. **If you add, remove, rename, or change the
 > permission behavior of any MCP tool, update this file (and the dashboard doc, if
@@ -277,6 +277,8 @@ Every tool is documented with the same four sections:
 
 **4. Security** — `require_founder_ai_or_super_admin()` — Super Admin or Founder-AI only.
 
+**5. REST access** — `@frappe.whitelist()`-decorated (added 2026-09-11), also callable via `/api/method/lh.lyfe_hardware.mcp_tools.receivables.get_unpaid_orders` under a normal logged-in session, same permission gate as MCP.
+
 ---
 
 ## Part 5 — Stock tool
@@ -292,6 +294,8 @@ Every tool is documented with the same four sections:
 **3. Technical Details** — `(item_code: str) -> dict`, shaped `{"item_code": ..., "total_qty": ..., "by_warehouse": [{"warehouse": ..., "qty": ...}, ...]}`. Throws if `item_code` doesn't exist. Reads `Bin.actual_qty` only — deliberately does **not** include `Bin.valuation_rate`/`stock_value` (cost-adjacent fields, same sensitivity class as the permlevel-gated `Lyfe Order.cost_of_goods`, but carrying no permlevel restriction of their own on `Bin`) — excluded from this tool's output by design rather than left to leak inventory valuation.
 
 **4. Security** — `require_founder_ai_or_super_admin()` — Super Admin or Founder-AI only. This tool was originally left open to any enabled user (reasoning at the time: stock quantity alone is less sensitive than financial data); on review that was judged inconsistent with gating every other Founder-AI-domain tool uniformly, and the gate was tightened to match.
+
+**5. REST access** — `@frappe.whitelist()`-decorated (added 2026-09-11), also callable via `/api/method/lh.lyfe_hardware.mcp_tools.stock.get_stock_level` under a normal logged-in session, same permission gate as MCP.
 
 ---
 

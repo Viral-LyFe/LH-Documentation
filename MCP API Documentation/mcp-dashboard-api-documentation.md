@@ -1,17 +1,19 @@
 # MCP API Documentation — Dashboard Tools
 
-> Covers every MCP tool for the three dashboards below, organized dashboard-by-dashboard.
-> Companion to `mcp-full-api-documentation.md`, which lists all 151 MCP tools (these 53
+> Covers every MCP tool for the four dashboards below, organized dashboard-by-dashboard.
+> Companion to `mcp-full-api-documentation.md`, which lists all 151 MCP tools (these 62
 > included, in summary form) plus server-wide behavior common to every tool.
 >
 > - `apps/lh/lh/lyfe_hardware/page/founder_dashboard/`
 > - `apps/lh/lh/lyfe_hardware/page/customer_intelligence_dashboard/`
 > - `apps/lh/lh/lyfe_hardware/page/quotation_analysis_dashboard/`
+> - `apps/lh/lh/lh_project/page/pm_operations_dashboard/`
 >
 > Tool source: `apps/lh/lh/lyfe_hardware/mcp_tools/founder_dashboard.py`,
-> `customer_intelligence.py`, `quotation_analysis.py`.
+> `customer_intelligence.py`, `quotation_analysis.py`,
+> `apps/lh/lh/lyfe_hardware/mcp_tools/pm_operations_dashboard.py`.
 >
-> Last verified against source: 2026-09-10. **If you add, remove, rename, or change the
+> Last verified against source: 2026-09-11. **If you add, remove, rename, or change the
 > permission behavior of any tool in this document, update it in the same change — see
 > the rule in `apps/lh/CLAUDE.md`.**
 
@@ -649,7 +651,122 @@ name — omit `arguments` entirely, or pass `{}`, for a tool with no parameters)
 
 ---
 
+# 4. PM Operations Dashboard
+
+**File:** `lh/lyfe_hardware/mcp_tools/pm_operations_dashboard.py` — 9 tools, `get_pm_*` prefix.
+**Underlying Desk page:** `lh/lh_project/page/pm_operations_dashboard/pm_operations_dashboard.py` (lh_project module, not lyfe_hardware — this is the one dashboard in this document that lives outside the `lyfe_hardware` module).
+
+## 4.0 Dashboard-level Security
+
+- **Allowed roles (8 of 9 tools):** `System Manager`, `Projects Manager`, `Founder`, `Customer Service`, `Factory` (mirrors `pm_operations_dashboard.json`'s Page `roles` list exactly, via `DASHBOARD_ROLES["pm_operations_dashboard"]`).
+- **One tool is gated narrower than the rest:** `get_pm_user_efficiency` — see §4.1.
+- **Gate mechanics:** every tool calls `require_dashboard_role("pm_operations_dashboard")` (or, for the one exception, `require_roles()` directly) as its first line, before any `frappe.call()`.
+- **Backend has no `frappe.has_permission()` check of its own.** Unlike Founder/Quotation Analysis, `pm_operations_dashboard.py`'s whitelisted functions run raw `frappe.db.sql()` with no doctype-level permission check at all — the MCP tool file's `require_dashboard_role()` call is the only role enforcement on this surface for MCP callers. (The Desk page itself is still gated by its Page `.json` `roles` list, enforced by the Desk framework separately.)
+- **Project-membership scoping is inherited, not duplicated.** `get_user_efficiency_data`, `get_project_health_scores`, and others call `lh.lh_project.permissions.accessible_projects_subquery()` internally — a caller only sees rows for projects they're a member of (or all projects, if that subquery returns empty/unrestricted for their role). This scoping happens inside the underlying Desk function itself, so it applies identically whether called via MCP or directly.
+- **Per-request result caching.** Every tool except `get_pm_sla_risk`'s raw variant and `get_pm_action_center_task_list` caches its computed result in Redis for 120–180 seconds, keyed by `(tool name, all parameters, requesting user)` — so cached results are never shared across users, but two calls with identical parameters from the same user within the TTL window return the same cached payload rather than re-querying.
+- **No write endpoints exist on this Desk page** — nothing excluded from MCP for write-safety reasons.
+- **No per-field stripping beyond the two-tier role gate.** `get_pm_user_efficiency` returns named individual staff (`user` = a Frappe User) with per-person task/SLA/efficiency figures — the entire tool is gated to a narrower role set rather than gated broadly with per-field masking, unlike Customer Intelligence Dashboard's approach.
+
+## 4.1 `get_pm_user_efficiency`
+
+**API Details** — delegates to `pm_operations_dashboard.get_user_efficiency_data`.
+
+**Functional Details** — a compact, ranked user-efficiency leaderboard: per person, open task count, overdue task count, SLA-linked task count, tasks closed in the date range, a computed `efficiency_score`, and an `overloaded`/`balanced` status flag. Named, individual staff-performance data — not an operational aggregate like this file's other 8 tools.
+
+**Technical Details** — `(project: str | None, department: str | None, priority: str | None, date_from: str | None, date_to: str | None) -> dict`. `date_from`/`date_to` default to first-of-current-month → today if omitted (see `_resolve_dashboard_dates`). Returns `{"rows": [{user, open_tasks, overdue_tasks, sla_tasks, closed_in_range, efficiency_score, status}, ...] (top 12), "summary": {top_closer, top_efficiency, leader_score}}`. `efficiency_score = closed_in_range*5 − open_tasks*0.5 − overdue_tasks*2 − sla_tasks*1.5`; `status = "overloaded"` if `open_tasks > 12` or `overdue_tasks > 3`, else `"balanced"`.
+
+**Security** — **Narrower than the rest of this file.** Gated by `require_roles({"Super Admin", "HR User", "HR Manager"}, "the User Efficiency leaderboard")`, not `require_dashboard_role("pm_operations_dashboard")` — Customer Service and Factory can open the Desk dashboard and call this file's other 8 tools, but cannot call this one via MCP, since it is the one tool here returning named individual-performance rankings rather than operational aggregate counts.
+
+## 4.2 `get_pm_action_center`
+
+**API Details** — delegates to `pm_operations_dashboard.get_action_center_data`.
+
+**Functional Details** — six top-priority operational counts for the Action Center panel: overdue SLA tasks, blocked (dependency-waiting) tasks, escalation candidates, urgent overdue items, unassigned tasks, and inactive tasks (no activity for `days_inactive`+ days).
+
+**Technical Details** — `(project: str | None, department: str | None, priority: str | None, days_inactive: int = 3, date_from: str | None, date_to: str | None) -> dict`. Returns `{"cards": [{key, label, count, severity, route}, ...]}` — one card per metric, `key` ∈ `sla_overdue, blocked, escalation, urgent, unassigned, inactive`; `severity` ∈ `critical, danger, warn`; `route` carries the filter values `get_pm_action_center_task_list` (§4.3) needs to drill into that same card's task list.
+
+**Security** — System Manager/Projects Manager/Founder/Customer Service/Factory (§4.0).
+
+## 4.3 `get_pm_action_center_task_list`
+
+**API Details** — delegates to `pm_operations_dashboard.get_action_center_task_list`.
+
+**Functional Details** — the row-level task list backing one Action Center card — the drill-down for whichever `key` a caller clicked/requested.
+
+**Technical Details** — `(key: str, project: str | None, department: str | None, priority: str | None, days_inactive: int = 3, date_from: str | None, date_to: str | None) -> list`. `key` must be one of the category keys `get_pm_action_center` returns (`sla_overdue`, `blocked`, `escalation`, `urgent`, `unassigned`, `inactive`) — not independently validated against an enum beyond whatever the underlying SQL branch does with an unrecognized value.
+
+**Security** — System Manager/Projects Manager/Founder/Customer Service/Factory (§4.0).
+
+## 4.4 `get_pm_sla_risk`
+
+**API Details** — delegates to `pm_operations_dashboard.get_sla_risk_data`.
+
+**Functional Details** — active SLA violation counts, escalation risk, a daily breach trend series, and a derived trend direction (`improving`/`stable`/`increasing`, from comparing the most recent up-to-7-day window against the prior equal-length window).
+
+**Technical Details** — `(project: str | None, department: str | None, priority: str | None) -> dict`. No date range parameters — this tool is always a current-state snapshot plus its own internal trend window. Returns `{"counts": {...}, "violations": [...], "trend": [{day, breach_count}, ...], "trend_summary": {direction, percent, current, previous}, "by_project": [...]}`.
+
+**Security** — System Manager/Projects Manager/Founder/Customer Service/Factory (§4.0).
+
+## 4.5 `get_pm_project_health_scores`
+
+**API Details** — delegates to `pm_operations_dashboard.get_project_health_scores`.
+
+**Functional Details** — a summary health-score card per project: task counts (open/closed/overdue/SLA-linked/blocked), average task age, and a single 0–100 health `score` with a derived severity status — the score is `100` minus weighted penalties for overdue %, SLA %, blocked-task count, and average aging.
+
+**Technical Details** — `(project: str | None, department: str | None, priority: str | None, date_from: str | None, date_to: str | None) -> list`. Top 15 projects, ordered worst-first (`overdue_tasks DESC, sla_tasks DESC, open_tasks DESC`). Each row: `project, project_name, department, total_tasks, open_tasks, closed_tasks, overdue_tasks, sla_tasks, blocked_tasks, avg_age_days, completion_pct, overdue_pct, sla_pct, score, status`.
+
+**Security** — System Manager/Projects Manager/Founder/Customer Service/Factory (§4.0).
+
+## 4.6 `get_pm_overdue_summary`
+
+**API Details** — delegates to `pm_operations_dashboard.get_overdue_summary`.
+
+**Functional Details** — overdue tasks bucketed by severity, plus the worst-offender projects by overdue count.
+
+**Technical Details** — `(project: str | None, department: str | None, priority: str | None, date_from: str | None, date_to: str | None) -> dict`. Returns `{"buckets": [...], "by_project": [...]}`.
+
+**Security** — System Manager/Projects Manager/Founder/Customer Service/Factory (§4.0).
+
+## 4.7 `get_pm_department_goals`
+
+**API Details** — delegates to `pm_operations_dashboard.get_department_goals_data`.
+
+**Functional Details** — per-project/department goal tracking: tasks created, tasks closed, completion %, overdue %, SLA %, for the date range.
+
+**Technical Details** — `(project: str | None, department: str | None, priority: str | None, date_from: str | None, date_to: str | None) -> list`. Returns `{"rows": [...]}`.
+
+**Security** — System Manager/Projects Manager/Founder/Customer Service/Factory (§4.0).
+
+## 4.8 `get_pm_average_metrics`
+
+**API Details** — delegates to `pm_operations_dashboard.get_average_metrics`.
+
+**Functional Details** — average task Response Time (`task.creation` → first non-migration closed-stage exit) and Close Time (`task.creation` → actual/terminal-stage close), each with a trend comparison against the immediately preceding equal-length period.
+
+**Technical Details** — `(project: str | None, department: str | None, priority: str | None, date_from: str | None, date_to: str | None) -> dict`. Returns `{response_hours, response_samples, close_hours, close_samples, response_trend, close_trend}` (trend fields carry direction + percent vs. the prior period, `None`/`0` when there are no comparable prior-period samples).
+
+**Security** — System Manager/Projects Manager/Founder/Customer Service/Factory (§4.0).
+
+## 4.9 `get_pm_senior_review_summary`
+
+**API Details** — delegates to `pm_operations_dashboard.get_senior_review_summary`.
+
+**Functional Details** — three manager-facing tiles for the Senior Drawing Review feature: request rate per engineer, outcome mix (Approved as-is vs. Changed vs. Returned), and drawing-fault rate on self-approved work.
+
+**Technical Details** — `(date_from: str | None, date_to: str | None) -> dict`. Unlike this file's other 8 tools, does **not** accept `project`/`department`/`priority` scoping — this feature has no such dimension on its underlying doctype (Quotation-based, not Task-based); the underlying function accepts them via `**kwargs` for call-signature compatibility with the page's shared filter helper, but ignores them. Returns `{"request_rate": [...], "outcome_mix": {...}, "drawing_fault_rate": {total_orders, rejected_orders, fault_rate_pct}, "period": {date_from, date_to}}`.
+
+**Security** — System Manager/Projects Manager/Founder/Customer Service/Factory (§4.0).
+
+---
+
 ## Cross-dashboard verification summary (2026-09-10)
+
+**Scope note:** the verification pass below covers Founder, Customer Intelligence, and
+Quotation Analysis only — it predates PM Operations Dashboard's addition to this
+document (2026-09-11, §4). PM Operations Dashboard's role gate was confirmed by direct
+code inspection (role set matches `pm_operations_dashboard.json`'s Page `roles` list and
+`DASHBOARD_ROLES["pm_operations_dashboard"]` exactly — see §4.0), not by the same
+live bypass/parameter-manipulation/field-stripping test battery as the three below.
 
 - **Direct-backend-API bypass testing:** for all three dashboards, the underlying whitelisted Python functions were called directly (not through MCP) as 8 different roles. 24/24 cells matched the intended policy exactly, and matched what MCP itself returns for the same role — confirming MCP and the backend enforce the identical authorization decision.
 - **Parameter manipulation testing:** owner/date-range/customer/company/warehouse manipulation, malformed JSON, and SQL-injection-style filter values were tested against Quotation Analysis and Customer Intelligence tools. No combination bypassed a role gate or widened a denied/limited caller's visible dataset; query builders use parameterized placeholders throughout (no raw string interpolation of filter values found).
