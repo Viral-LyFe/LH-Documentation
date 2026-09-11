@@ -190,6 +190,7 @@ example) 3 child components: 2 in US stock, 1 not.
 **Factory lag selected Via US warehouse and Confirm Split**
 <img width="1497" height="461" alt="image" src="https://github.com/user-attachments/assets/14d5d5e9-9fa3-4b54-8f61-cefaea5ff75c" />
 
+**Order lag is created**
 
 **Result:** ☑ Pass — `test_kit_mixed_stock_routes_mixed`
 (`TestBomKitSingleKitMixedStock`). Confirmed the kit triggers Mixed on its
