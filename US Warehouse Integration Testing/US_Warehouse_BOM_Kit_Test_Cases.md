@@ -224,6 +224,11 @@ no shared SKUs between the two BOMs.
   `bom_reference`/`source_order_item` attribution across multiple BOMs on
   one order, which nothing has exercised yet.
 
+**All component from both Bom kit was available in US warehouse**
+**Auto Submitted to one click**
+<img width="1571" height="907" alt="image" src="https://github.com/user-attachments/assets/bd741517-e68f-4642-b2f5-c456c6b1c5e3" />
+
+
 **Result:** ☑ Pass — `test_two_kits_fully_stocked_routes_us_full`
 (`TestBomKitTwoKitsBothFullyStocked`). Confirmed no cross-contamination —
 each of the 4 components correctly traces back to its own originating
