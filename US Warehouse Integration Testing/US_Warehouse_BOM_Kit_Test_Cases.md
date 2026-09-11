@@ -400,6 +400,11 @@ directly against `_explode_order_row_to_components` with a real `Lyfe BOM`
 containing a genuinely blank-SKU child row — the no-SKU component now
 correctly appears instead of vanishing.
 
+**When any Item does not have erp item or SKU that will be assign to Factory**
+<img width="1507" height="662" alt="image" src="https://github.com/user-attachments/assets/446425ee-a9d4-4e5b-be77-fd823528e5df" />
+
+
+
 **Result:** ☑ Pass — real gap found (2026-09-04), fixed and
 regression-tested (2026-09-08).
 
