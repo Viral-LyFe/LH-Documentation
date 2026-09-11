@@ -191,6 +191,8 @@ example) 3 child components: 2 in US stock, 1 not.
 <img width="1497" height="461" alt="image" src="https://github.com/user-attachments/assets/14d5d5e9-9fa3-4b54-8f61-cefaea5ff75c" />
 
 **Order lag is created**
+<img width="1630" height="496" alt="image" src="https://github.com/user-attachments/assets/720e19c4-6136-4549-add8-5b0af1390caf" />
+
 
 **Result:** ☑ Pass — `test_kit_mixed_stock_routes_mixed`
 (`TestBomKitSingleKitMixedStock`). Confirmed the kit triggers Mixed on its
