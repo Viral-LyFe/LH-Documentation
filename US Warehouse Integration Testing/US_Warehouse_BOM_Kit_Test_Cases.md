@@ -308,6 +308,12 @@ between US/Factory. Row 2 — plain item, `item_bom` blank, in US stock.
   plain SKU row behaves like a Standard single item, coexisting on one
   order.
 
+
+**Partially order item split in two table and some user will confirm**
+<img width="1540" height="891" alt="image" src="https://github.com/user-attachments/assets/de6fe0fe-b6da-4c70-864a-ad4425425cc2" />
+
+
+
 **Result:** ☑ Pass — `test_kit_plus_plain_item_combine_correctly`
 (`TestBomKitPlusPlainItem`). Confirmed the plain row's own SKU appears as
 its own component (not BOM-exploded, `bom_reference` correctly empty),
