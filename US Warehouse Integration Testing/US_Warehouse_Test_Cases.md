@@ -1275,7 +1275,7 @@ zero manual steps.
 
 ## Test Case 21 — Alerts Fire When a Shipment Gets Stuck
 
-**Order ID:** `LYF-MN-2026-0077` (Leg 1 alert) / `ASN-2026-00008` (US Receipt alert)
+**Order ID:** `LYF-MN-2026-0077` (India tracking-not-yet-entered alert) / `ASN-2026-00008` (US Receipt alert)
 
 **What we're checking:** if an order routed through the US warehouse gets
 "stuck" at any stage for too long, the right team should get an alert.
@@ -1286,7 +1286,7 @@ built on:
 
 | Alert | SLA Rule | Threshold | Watches |
 |---|---|---|---|
-| India ops — no leg-1 label after 48h | `SLAR-0018` | 48 hours | Orders held in "Awaiting India Components" with no India→US tracking number yet |
+| India ops — no India→US tracking number entered after 48h | `SLAR-0018` | 48 hours | Orders held in "Awaiting India Components" with no India→US tracking number yet |
 | US ops — no receipt after 24h | `SLAR-0019` | 24 **business hours** (not calendar) | A Transfer Order sitting "Shipped" but not yet "Received" |
 
 Both auto-close themselves the moment the missing data shows up (tracking
@@ -1313,7 +1313,7 @@ entered, or Transfer Order marked Received) — no manual cleanup needed.
 **Result:** ☑ Pass (both alerts)
 **Notes:** Verified live, full pipeline, real orders.
 
-**Leg 1 alert (`LYF-MN-2026-0077`):** created via "Route via US Warehouse
+**India tracking-not-yet-entered alert (`LYF-MN-2026-0077`):** created via "Route via US Warehouse
 Instead," landed correctly in the genuine hold state
 (`fulfillment_route_tag = "Awaiting India Components"`, real Transfer
 Order `ASN-2026-00008` created, no tracking number). Back-dated 49 hours,
