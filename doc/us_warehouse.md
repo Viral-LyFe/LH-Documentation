@@ -225,6 +225,12 @@ once **every one of its legs** independently shows Delivered. A Mixed
 "Direct to Customer" order with 2 real packages will not close out just
 because one of them arrived — both have to.
 
+Order Legs are what actually decides "Completed" for any order that has
+them. An order with no Order Legs at all (this can only happen for
+orders that existed before this feature was introduced) falls back to
+the older rule instead — its single Tracking Number reaching "Delivered"
+is enough on its own.
+
 ---
 
 ## 7. Transfer Order — Tracking Factory to US Warehouse
@@ -441,6 +447,12 @@ there is no separate "SKU identity" apart from the ERP Item's own code.
 | **1Click Error** | Something went wrong posting to or checking with 1Click — check the error field |
 | **Shipped** | On the way to the customer (at least one leg in transit) |
 | **Completed** | Every leg for this order has independently shown Delivered |
+
+**Note:** "Pending India Dispatch" and "Awaiting India Components" are
+older names that still exist internally (used for background tracking
+only) but no longer appear as an order's visible status — if you see
+either mentioned elsewhere, it refers to that internal state, not
+something you'll see in the Status field itself.
 
 ---
 
