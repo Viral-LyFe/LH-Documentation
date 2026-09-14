@@ -59,13 +59,19 @@ Any BOM/kit component split between US stock and Factory triggers this
 route. A human confirms the split (see §5) and chooses one of two
 outcomes:
 
-- **Via US Warehouse** — Factory ships its portion to the US warehouse
-  first; once it arrives, everything is combined and shipped to the
-  customer as **one single package**.
+- **Via US Warehouse** (the default, preferred choice) — Factory ships
+  its portion to the US warehouse first; once it arrives, everything is
+  combined and shipped to the customer as **one single package**. Use
+  this whenever there's no specific reason to do otherwise.
 - **Direct to Customer** — Factory ships its portion straight to the
   customer as its own separate package, while the US-covered items ship
-  separately from 1Click. **The customer receives two packages** — this
-  is a deliberate, accepted choice, not a limitation.
+  separately from 1Click, at the same time. **The customer receives two
+  packages.** This is a deliberate choice for a specific situation: when
+  waiting for Factory's portion to first travel to the US warehouse
+  would add real, avoidable delay, and getting the customer their US-
+  stocked items sooner is worth splitting the shipment for. It is not
+  the default and should not be picked just because it's available — use
+  it only when that tradeoff genuinely applies.
 
 ---
 
@@ -160,10 +166,14 @@ Nothing is submitted to 1Click yet.
 Before confirming the split, someone must choose how Factory's portion
 will travel:
 
-- **"Via US Warehouse"** — Factory ships to the US warehouse first,
-  everything combines into one shipment.
+- **"Via US Warehouse"** (the default choice) — Factory ships to the US
+  warehouse first, everything combines into one shipment. Pick this
+  unless there's a specific reason not to.
 - **"Direct to Customer"** — Factory ships straight to the customer as
-  its own separate package.
+  its own separate package, at the same time the US-covered items ship
+  from 1Click. Pick this only when getting the US-stocked items to the
+  customer sooner is worth the tradeoff of a second package — not as a
+  default or a shortcut.
 
 ### Step 3 — Confirm Split
 
