@@ -108,6 +108,15 @@ the **Routing Outcome**. Routes A, C, and D post to 1Click (or ship
 directly) automatically — no one needs to click anything. Route B always
 stops and waits for a human to confirm the split (see §5).
 
+**Known limitation:** if two orders for the same low-stock item are
+processed at nearly the same time, 1Click's stock check does not
+guarantee that only one of them gets accepted — both can be told "yes,
+it's in stock" and both get submitted, even though only one physical
+unit actually exists. This has been confirmed through real testing and
+is tracked as an open item. If you notice two orders for the same item
+being processed close together, especially when stock is low, it's
+worth a manual check rather than assuming the system caught it.
+
 ---
 
 ## 4. Manual Override — Force US / Force India
