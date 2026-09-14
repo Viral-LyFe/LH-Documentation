@@ -1,9 +1,6 @@
 # US / India Fulfillment Routing — Functional Guide
 
 **Organization:** Lyfe Hardware
-**Last Updated:** 2026-09-14 (full rewrite — this document previously
-described an older "Leg 1 / Leg 2" model that no longer matches the real
-system; see the note at the bottom for what changed)
 
 ---
 
@@ -58,9 +55,9 @@ automatically. A manager/CS can also force a specific route when needed.
 ### Route B — Mixed (Some Items US, Some From Factory)
 **Some components are in the US Warehouse, but others are not.**
 
-This is not tubing-specific any more — any BOM/kit component split
-between US stock and Factory triggers this route. A human confirms the
-split (see §5) and chooses one of two outcomes:
+Any BOM/kit component split between US stock and Factory triggers this
+route. A human confirms the split (see §5) and chooses one of two
+outcomes:
 
 - **Via US Warehouse** — Factory ships its portion to the US warehouse
   first; once it arrives, everything is combined and shipped to the
@@ -196,7 +193,7 @@ from "one of two packages arrived."
 | Leg Type | Exists For | Tracking Comes From |
 |---|---|---|
 | **US Warehouse → Customer** | Routes A, D, and both Mixed outcomes | Automatically, from 1Click's own hourly tracking sync |
-| **Factory → Customer** | Route C, and Mixed "Direct to Customer" | Whoever enters the plain **Tracking Number**/**Carrier** fields on the order — this now automatically mirrors onto this leg |
+| **Factory → Customer** | Route C, and Mixed "Direct to Customer" | Whoever enters the plain **Tracking Number**/**Carrier** fields on the order — this automatically mirrors onto this leg |
 | **Factory → US Warehouse** | Mixed "Via US Warehouse" (and Route D) | Whoever enters **Tracking Number (US)** / **Carrier (US)** on the order, or directly on the Transfer Order — both automatically mirror onto this leg |
 
 **Where to see them:** open the order's **Warehouse Split tab** — the
@@ -245,29 +242,20 @@ as a small, accepted timing gap.
 
 ## 8. "US Warehouse Delivered" — Manual Post to 1Click
 
-**Changed 2026-09-09** — this is a deliberate change from how the system
-used to behave, so it's worth calling out clearly.
+Once Factory's shipment to the US warehouse is confirmed delivered, the
+order stops at status **"US Warehouse Delivered"** and waits. A
+dedicated **"Post to 1Click"** button appears on the order — only
+visible in this exact status — for CS to review and click when ready.
 
-**Old behavior:** the moment the Factory-to-US shipment was detected as
-delivered (via tracking), the system used to automatically continue
-straight through to posting the order to 1Click, with no human step in
-between.
+This gives CS a deliberate checkpoint to confirm quantities and the
+shipping address before the order actually goes out, rather than posting
+automatically the instant a tracking number looks delivered.
 
-**Current behavior:** the order now stops at status **"US Warehouse
-Delivered"** and waits. A dedicated **"Post to 1Click"** button appears
-on the order — only visible in this exact status — for CS to review and
-click when ready.
-
-**Why:** the real-world Factory process is that a person updates the
-tracking number manually, not a "Received" checkbox — this button gives
-CS a deliberate checkpoint before the order actually goes out, instead of
-the system racing ahead the instant a tracking number looks delivered.
-
-**Note — a second, older button exists too:** there's a separate,
-pre-existing **"Post US Portion to 1Click"** button (in the Warehouse
-Split area) — that one is for the older "Direct to Customer" scenario
-and only posts the US-covered portion. The two buttons are for different
-scenarios and are not interchangeable.
+**Note — a second, separate button exists too:** there's also a
+**"Post US Portion to 1Click"** button (in the Warehouse Split area) —
+that one is for the "Direct to Customer" scenario and only posts the
+US-covered portion. The two buttons are for different scenarios and are
+not interchangeable.
 
 ---
 
@@ -456,29 +444,3 @@ there is no separate "SKU identity" apart from the ERP Item's own code.
 
 *For technical implementation details, refer to `apps/lh/CLAUDE.md` and
 the US Warehouse Integration Testing documents.*
-
----
-
-## What Changed From the Previous Version of This Document
-
-This document previously described an older "Leg 1 / Leg 2" model
-(`leg1_tracking`/`leg2_tracking` fields, no Order Leg doctype, no Confirm
-Split step, no Factory Leg Destination choice, no "US Warehouse
-Delivered" pause). That model was accurate for its time but has since
-been fully superseded:
-
-- **Order Leg** (a real doctype, one row per physical shipment) replaced
-  the old single Leg 1/Leg 2 field pair.
-- **Confirm Split + Factory Leg Destination** ("Via US Warehouse" vs.
-  "Direct to Customer") replaced the old assumption that a Mixed order
-  always combines into one shipment automatically.
-- **"US Warehouse Delivered" now pauses for a manual "Post to 1Click"
-  click** — it used to auto-continue straight through.
-- Tracking sync for each Order Leg (from 1Click's hourly sync, from the
-  Transfer Order, and from the plain order-level tracking fields) was
-  fixed and verified live as of 2026-09-14.
-
-This rewrite reflects the system as it is today; the old BRD
-cross-check, "What Was Built," and standalone SKU/Tracking sections that
-used to follow this document have been folded into the sections above
-rather than kept as separate, increasingly stale addenda.
