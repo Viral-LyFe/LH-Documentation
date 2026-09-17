@@ -124,27 +124,50 @@ avg_order_value = revenue / order_count
 
 ### 2.4 Category (Item Group) Breakdown (`get_category_breakdown`)
 
-Two separate queries, joined in Python:
+Three queries, joined in Python:
 
 - **Revenue** — pure line-item: `Σ(quantity × unit_price)` grouped by `item_group`,
   fee rows excluded. This is the only tile that splits **revenue** correctly across a
   multi-category order.
-- **Expenses** (COGS, custom, additional, shipping, shipping_us, tax, refunds) — order
-  level, attributed to **one** item_group per order via `_CATEGORY_SUBQ`
-  (`MIN(item_group)` of that order's real product rows). A multi-category order's
-  entire expense total lands on whichever group MIN() picks — not split.
+- **Expenses** (COGS, additional, tax, refunds) — order level, attributed to **one**
+  item_group per order via `_CATEGORY_SUBQ` (`MIN(item_group)` of that order's real
+  product rows). A multi-category order's entire COGS/additional/tax total lands on
+  whichever group MIN() picks — not split.
+- **Shipping/Customs allocation** (changed — was previously folded into "Expenses"
+  above, attributed via the same single-dominant-category rule as COGS): for each
+  order, `custom_charges + custom_duty_changes_us_tram + reshipment_cost +
+  shipping_charges + shipping_charges_us` is now **allocated across that order's own
+  line items** by each line's share of the order's allocatable revenue (same fee-row
+  exclusion as the revenue query — Custom Fee / Advance Payment / Other Charges /
+  any item_name containing "Payment" contribute nothing and receive nothing), then
+  summed per item_group:
+
+```
+order_allocatable_revenue = Σ(quantity × unit_price) for that order's non-fee lines
+line_share  = line_revenue / order_allocatable_revenue
+allocated_ship_customs(item_group) = Σ over all lines in that group across all orders of
+                                      (order's shipping+customs total × line_share)
+```
 
 Then per category:
 
 ```
 revenue        = line_revenue − shopify_refund_amount(attributed)
-total_expenses, gross_profit, profit_margin = _calc(...)   (§1.3)
+adjusted_profit (gross_profit) = revenue − mfg_cost − allocated_ship_customs − additional_charges − tax
+                                  (via _calc(), §1.3 — allocated_ship_customs passed as the "custom" arg,
+                                  shipping/shipping_us args left at 0 since they're no longer split post-allocation)
 
 revenue_share  = revenue / total_revenue_across_all_categories × 100
 avg_order_value = revenue / order_count
-shipping_pct   = (shipping + shipping_us) / revenue × 100
+shipping_pct   = allocated_ship_customs / revenue × 100
 cog_pct        = mfg_cost / revenue × 100
 ```
+
+The `shipping` field in the result now holds the allocated Shipping+Customs total
+(previously `shipping_charges + shipping_charges_us` only); `other_costs` now holds
+`additional_charges` only (previously `custom_charges + additional_charges` — customs
+duty moved into the allocated `shipping` bucket). `founder_dashboard.py` and the JS
+consumer read these same two keys, so no downstream shape change.
 
 Sorted by `gross_profit` descending.
 

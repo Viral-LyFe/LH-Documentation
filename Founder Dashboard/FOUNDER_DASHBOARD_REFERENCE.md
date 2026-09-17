@@ -169,7 +169,7 @@ Best Sellers and Slow Movers side by side (`fd-g2`), then Trending Categories as
 **Technical:**
 - Function: `_best_sellers_section(period_filters, channel, order_type, category)`.
 - Raw SQL over `ShipStation Order Item` (`order_items` child field only, `adjustment=0`), grouped by `sku`.
-- Margin % per SKU is **pro-rated**: since COGS/shipping are only tracked at order level, each SKU's line revenue is divided by that order's *total* line revenue to derive its cost share — the same simplification `pnl_dashboard.get_category_breakdown()` makes at the item_group level, one level finer here.
+- Margin % per SKU is **pro-rated**: since COGS/shipping are only tracked at order level, each SKU's line revenue is divided by that order's *total* line revenue to derive its cost share — the same revenue-share allocation `pnl_dashboard.get_category_breakdown()` now uses for Shipping/Customs charges (§2.4 of `PNL_DASHBOARD_FORMULAS.md`), one level finer here (per SKU rather than per item_group).
 - Fee/payment rows ("Custom Fee", "Additional Payment for LH#...") are excluded from the SKU results themselves via `_exclude_fee_rows_sql()` (shared with `pnl_dashboard.py`, since ShipStation's own `adjustment` field does **not** flag these rows — confirmed live, every sampled fee row had `adjustment=0`) — but deliberately **kept in the proration denominator**, since a fee still represents real dollars the customer paid and dropping it would overstate each real line's cost share.
 - No dedicated drill-down endpoint (the panel itself shows the ranked list directly).
 
