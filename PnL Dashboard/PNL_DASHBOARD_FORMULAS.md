@@ -124,36 +124,57 @@ avg_order_value = revenue / order_count
 
 ### 2.4 Category (Item Group) Breakdown (`get_category_breakdown`)
 
-Three queries, joined in Python:
+Four queries, joined in Python:
 
 - **Revenue** — pure line-item: `Σ(quantity × unit_price)` grouped by `item_group`,
   fee rows excluded. This is the only tile that splits **revenue** correctly across a
   multi-category order.
-- **Expenses** (COGS, additional, tax, refunds) — order level, attributed to **one**
-  item_group per order via `_CATEGORY_SUBQ` (`MIN(item_group)` of that order's real
-  product rows). A multi-category order's entire COGS/additional/tax total lands on
-  whichever group MIN() picks — not split.
-- **Shipping/Customs allocation** (changed — was previously folded into "Expenses"
-  above, attributed via the same single-dominant-category rule as COGS): for each
+- **COGS** — hybrid, per-line first (changed 2026-09-17): for each order, lines
+  that already have a real per-unit `ShipStation Order Item.cogs` value (resolved
+  via `lh.lyfe_hardware.utils.cogs.get_item_cogs_per_unit` from
+  `Item.cost_of_goods_sold` / BOM roll-up) contribute `Σ(cogs × quantity)` directly
+  to their own item_group — exact, not allocated. Any **shortfall** —
+  `order.cost_of_goods − Σ(priced lines' cogs × quantity)` — is attributed the old
+  way, to the order's single dominant item_group via `_CATEGORY_SUBQ`
+  (`MIN(item_group)` of that order's real product rows), same as before. This is
+  strictly additive accuracy: an order whose lines are fully priced now splits
+  exactly by SKU; an order with no priced lines behaves exactly as it did before
+  this change (100% dominant-group fallback). **Deliberately not revenue-share
+  allocated like the others below even for the fallback portion** — COGS depends
+  on which specific SKUs were sold, not on how much revenue they generated;
+  assuming every item_group in an order carries the same margin would beg the
+  exact question this breakdown exists to answer. Per-line `cogs` coverage is
+  currently much higher on Active orders than Completed ones (the
+  `backfill_active_order_cogs` patch explicitly excludes Completed orders) — the
+  fallback share will shrink automatically as more lines get backfilled, with no
+  further code change needed here.
+- **Shipping/Customs/Tax/Additional Charges/Refund allocation** (changed 2026-09-17 —
+  tax/additional_charges/refund were previously folded into the same single-dominant-
+  category COGS query above; shipping/customs were allocated separately): for each
   order, `custom_charges + custom_duty_changes_us_tram + reshipment_cost +
-  shipping_charges + shipping_charges_us` is now **allocated across that order's own
-  line items** by each line's share of the order's allocatable revenue (same fee-row
-  exclusion as the revenue query — Custom Fee / Advance Payment / Other Charges /
-  any item_name containing "Payment" contribute nothing and receive nothing), then
-  summed per item_group:
+  shipping_charges + shipping_charges_us`, plus `additional_charges`, `ss_tax_amount`,
+  and `shopify_refund_amount` **each individually**, are now **allocated across that
+  order's own line items** by each line's share of the order's allocatable revenue
+  (same fee-row exclusion as the revenue query — Custom Fee / Advance Payment / Other
+  Charges / any item_name containing "Payment" contribute nothing and receive
+  nothing), then summed per item_group. Unlike COGS, tax and additional_charges/
+  shipping are generally proportional to sale price or logistics weight, so a
+  revenue-share split is a reasonable model of reality here, not just a stopgap:
 
 ```
 order_allocatable_revenue = Σ(quantity × unit_price) for that order's non-fee lines
 line_share  = line_revenue / order_allocatable_revenue
-allocated_ship_customs(item_group) = Σ over all lines in that group across all orders of
-                                      (order's shipping+customs total × line_share)
+allocated_ship_customs(item_group)  = Σ over all lines in that group across all orders of (order's shipping+customs total × line_share)
+allocated_additional(item_group)    = Σ (order's additional_charges × line_share)
+allocated_tax(item_group)           = Σ (order's ss_tax_amount × line_share)
+allocated_refund(item_group)        = Σ (order's shopify_refund_amount × line_share)
 ```
 
 Then per category:
 
 ```
-revenue        = line_revenue − shopify_refund_amount(attributed)
-adjusted_profit (gross_profit) = revenue − mfg_cost − allocated_ship_customs − additional_charges − tax
+revenue        = line_revenue − allocated_refund
+adjusted_profit (gross_profit) = revenue − mfg_cost − allocated_ship_customs − allocated_additional − allocated_tax
                                   (via _calc(), §1.3 — allocated_ship_customs passed as the "custom" arg,
                                   shipping/shipping_us args left at 0 since they're no longer split post-allocation)
 
@@ -163,11 +184,13 @@ shipping_pct   = allocated_ship_customs / revenue × 100
 cog_pct        = mfg_cost / revenue × 100
 ```
 
-The `shipping` field in the result now holds the allocated Shipping+Customs total
-(previously `shipping_charges + shipping_charges_us` only); `other_costs` now holds
-`additional_charges` only (previously `custom_charges + additional_charges` — customs
-duty moved into the allocated `shipping` bucket). `founder_dashboard.py` and the JS
-consumer read these same two keys, so no downstream shape change.
+The `shipping` field in the result holds the allocated Shipping+Customs total
+(previously `shipping_charges + shipping_charges_us` only); `other_costs` holds the
+allocated `additional_charges` only (previously the dominant-group `custom_charges +
+additional_charges` — customs duty moved into the allocated `shipping` bucket in the
+prior change, and additional_charges is now revenue-share allocated rather than
+dominant-group attributed). `founder_dashboard.py` and the JS consumer read these
+same two keys, so no downstream shape change.
 
 Sorted by `gross_profit` descending.
 
