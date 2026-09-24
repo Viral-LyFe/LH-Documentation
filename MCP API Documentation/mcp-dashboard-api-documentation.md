@@ -1,7 +1,7 @@
 # MCP API Documentation — Dashboard Tools
 
 > Covers every MCP tool for the five dashboards below, organized dashboard-by-dashboard.
-> Companion to `mcp-full-api-documentation.md`, which lists all 158 MCP tools (these 76
+> Companion to `mcp-full-api-documentation.md`, which lists all 160 MCP tools (these 76
 > included, in summary form) plus server-wide behavior common to every tool.
 >
 > - `apps/lh/lh/lyfe_hardware/page/founder_dashboard/`

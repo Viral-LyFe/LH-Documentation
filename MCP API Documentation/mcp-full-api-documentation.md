@@ -64,7 +64,7 @@ POST https://<your-site>/api/method/lh.mcp.handle_mcp
 - **To list every available tool** (names, descriptions, input schemas) instead of
   calling one, send `"method": "tools/list"` with `"params": {}` instead of
   `"tools/call"`. See the full API doc's server-wide note on tool discovery being
-  unfiltered by role — this lists every one of the 158 tools to any authenticated
+  unfiltered by role — this lists every one of the 160 tools to any authenticated
   caller regardless of what they're actually permitted to call.
 
 - **Response** is a bare JSON-RPC 2.0 response object — **not** wrapped in Frappe's
@@ -139,8 +139,9 @@ Every tool is documented with the same four sections:
 - [Part 10 — PM Operations Dashboard tools](#part-10--pm-operations-dashboard-tools) — 9 tools
 - [Part 11 — Founder / Customer Intelligence / Quotation Analysis Dashboard tools](#part-11--founder--customer-intelligence--quotation-analysis-dashboard-tools) — 53 tools (see companion doc for full detail)
 - [Part 12 — Order Analysis Dashboard tools](#part-12--order-analysis-dashboard-tools) — 14 tools
+- [Part 13 — Search tools](#part-13--search-tools) — 2 tools
 
-**Total: 158 tools** (165 minus the 7 removed Comparison Dashboard tools, 2026-09-14), confirmed by reading `mcp._tool_registry` on a live site.
+**Total: 160 tools** (158 + 2 new search tools, 2026-09-24), confirmed by reading `mcp._tool_registry` on a live site.
 
 ---
 
@@ -586,3 +587,29 @@ One write endpoint on the underlying Desk page — `backfill_item_group` (bulk `
 **3. Technical Details** — `(erp_docnames: str) -> dict`. `erp_docnames` is a JSON array of Lyfe Order (or other ERP doc) names, e.g. `'["LYF-SH-2026-1875"]'`. Returns `{}` for an empty input.
 
 **4. Security** — Factory/Customer Service/Super Admin/Engineer/System Manager. No `customer` field in this response.
+
+## Part 13 — Search tools
+
+**File:** `lh/lyfe_hardware/mcp_tools/search.py`, added 2026-09-24. Registered via `mcp_tools/__init__.py`'s import list, same as every other hand-written tool file.
+
+**Shared Security note:** neither tool calls `require_dashboard_role()`/`require_founder_ai_or_super_admin()` — access is enforced entirely by ERPNext's own permission engine (DocPerm, User Permissions, `permission_query_conditions`, "If Owner") applied per doctype/field/row, the same model Part 1's doctype tools use, not the dashboard-family model.
+
+### `search_records`
+
+**1. API Details** — no delegation; queries directly via `frappe.get_list()` (never `get_all`/raw SQL, so ERPNext's full permission stack applies).
+
+**2. Functional Details** — searches the 26-doctype allowlist (`_ALLOWLISTED_DOCTYPES` in `doctypes.py`) by `name`, each doctype's `title_field`, and its configured `search_fields`. Each result names the exact `get_<doctype>` tool to open it with.
+
+**3. Technical Details** — `(query: str, doctypes: list[str] | None = None, limit_per_doctype: int = 5) -> dict`. `query` must be 2–100 characters (`frappe.throw` otherwise). `doctypes` restricts the search to a subset of the allowlist — never expands beyond it. `limit_per_doctype` is clamped to `[1, 10]`; total results across all doctypes are capped at 50. Returns `{query, count, results: [{doctype, name, title, modified, open_with}]}`.
+
+**4. Security** — Single and child doctypes are always skipped (never searched directly). A doctype the caller cannot read at all (`frappe.has_permission(dt, "read")` false) is silently skipped, not an error. Fields are filtered through `doctypes.py`'s `_masked_fieldnames()` — the same permlevel-masking helper `get_<doctype>`/`list_<doctype>` tools use — so a masked field (e.g. `cost_of_goods`, `customer` on Lyfe Order) is never included in the search query and never appears in a result; this mirrors the inference protection `_require_no_masked_filter_or_sort()` gives `list_<doctype>` calls (searching a value against a hidden field would otherwise leak it via which rows match). Unlike `_strip_masked_keys()`, `_masked_fieldnames()` has no built-in Super Admin exemption on its own (it only reflects each doctype's actual DocPerm grants) — `search.py` applies `_is_super_admin_or_administrator()` explicitly before calling it, so Super Admin/Administrator always get every field, not dependent on DocPerm data.
+
+### `get_my_access`
+
+**1. API Details** — no delegation; reads `frappe.get_roles()`/`DASHBOARD_ROLES`/the allowlist directly.
+
+**2. Functional Details** — returns what the calling user can use through this MCP connector: which allowlisted doctypes they can read, which dashboards their roles unlock, and whether they hold Founder-AI-tier or User-Efficiency-leaderboard access. Meant to let the calling assistant route a question to a tool the caller can actually use, instead of guessing and hitting a `PermissionError`.
+
+**3. Technical Details** — `() -> dict`. Returns `{user, readable_doctypes, dashboards, founder_ai_tools, user_efficiency_leaderboard}`. `readable_doctypes` = allowlist filtered by `frappe.has_permission(dt, "read")` (excludes Singles). `dashboards` = every `DASHBOARD_ROLES` key the caller's roles intersect (all of them for Super Admin/Administrator). `founder_ai_tools`/`user_efficiency_leaderboard` mirror `require_founder_ai_or_super_admin()`'s role set and `get_pm_user_efficiency`'s narrower `{Super Admin, HR User, HR Manager}` gate, respectively.
+
+**4. Security** — no data access at all; purely reflects the caller's own roles/permissions back to them. Nothing here can leak another user's data — every field returned describes the calling user only.
