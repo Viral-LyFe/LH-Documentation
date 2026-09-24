@@ -64,7 +64,7 @@ POST https://<your-site>/api/method/lh.mcp.handle_mcp
 - **To list every available tool** (names, descriptions, input schemas) instead of
   calling one, send `"method": "tools/list"` with `"params": {}` instead of
   `"tools/call"`. See the full API doc's server-wide note on tool discovery being
-  unfiltered by role — this lists every one of the 151 tools to any authenticated
+  unfiltered by role — this lists every one of the 158 tools to any authenticated
   caller regardless of what they're actually permitted to call.
 
 - **Response** is a bare JSON-RPC 2.0 response object — **not** wrapped in Frappe's
@@ -134,13 +134,13 @@ Every tool is documented with the same four sections:
 - [Part 5 — Stock tool](#part-5--stock-tool) — 1 tool
 - [Part 6 — Stuck orders tool](#part-6--stuck-orders-tool) — 1 tool
 - [Part 7 — Status Overview tools](#part-7--status-overview-tools) — 3 tools
-- [Part 8 — Comparison Dashboard tools](#part-8--comparison-dashboard-tools) — 15 tools
+- [Part 8 — Comparison Dashboard tools](#part-8--comparison-dashboard-tools) — 8 tools (trimmed from 15, 2026-09-14)
 - [Part 9 — Item Data Completeness Dashboard tools](#part-9--item-data-completeness-dashboard-tools) — 9 tools
 - [Part 10 — PM Operations Dashboard tools](#part-10--pm-operations-dashboard-tools) — 9 tools
 - [Part 11 — Founder / Customer Intelligence / Quotation Analysis Dashboard tools](#part-11--founder--customer-intelligence--quotation-analysis-dashboard-tools) — 53 tools (see companion doc for full detail)
 - [Part 12 — Order Analysis Dashboard tools](#part-12--order-analysis-dashboard-tools) — 14 tools
 
-**Total: 165 tools**, confirmed by reading `mcp._tool_registry` on a live site (2026-09-11).
+**Total: 158 tools** (165 minus the 7 removed Comparison Dashboard tools, 2026-09-14), confirmed by reading `mcp._tool_registry` on a live site.
 
 ---
 
@@ -329,7 +329,7 @@ Every tool is documented with the same four sections:
 
 **3. Technical Details** — `(filters: str | None = None) -> dict`. `filters` JSON string: `from_date`, `to_date`, `order_status`, `order_source`, `order_priority`, `show_completed`.
 
-**4. Security** — **No role gate at all** (this tool has no `require_*` call) — matches the underlying page's own `roles: []`, i.e. any enabled Frappe user (past the base `_require_enabled_user()` check every tool has). However: the underlying dashboard's raw SQL selects `cost_of_goods` (Lyfe Order permlevel 4) and `customer` (permlevel 2) into every row with no permission awareness of its own. This tool adds its own field-stripping (`_strip_sensitive_dashboard_fields`) on top: `cost_of_goods` is removed from the response for any caller who lacks Lyfe Order's `cost_of_goods` permlevel access, and `customer` is removed for any caller who lacks the `customer` permlevel — checked independently of the page-level "anyone can see this" access, which governs the rows themselves but not these two specific fields. Administrator is exempt from this stripping.
+**4. Security** — **No role gate at all** (this tool has no `require_*` call) — matches the underlying page's own `roles: []`, i.e. any enabled Frappe user (past the base `_require_enabled_user()` check every tool has). The underlying dashboard's raw SQL selects `cost_of_goods` (Lyfe Order permlevel 4) and `customer` (permlevel 2) into every row with no permission awareness of its own at the query level. As of 2026-09-24, field-stripping (`_strip_sensitive_dashboard_fields`) moved into the backend itself (`lyfe_orders_status_overview.py`) — `get_orders`/`get_reshipments`/`get_active_reshipments` all strip before returning, so the Desk-side whitelisted methods and this MCP tool share one control instead of the MCP layer being the only thing enforcing it. `cost_of_goods` is removed from the response for any caller who lacks Lyfe Order's `cost_of_goods` permlevel access, and `customer` is removed for any caller who lacks the `customer` permlevel — checked independently of the page-level "anyone can see this" access, which governs the rows themselves but not these two specific fields. Administrator is exempt from this stripping.
 
 ### `get_orders_reshipments`
 
@@ -355,11 +355,13 @@ Every tool is documented with the same four sections:
 
 ---
 
-## Part 8 — Comparison Dashboard tools
+## Part 8 — Comparison Dashboard tools — REMOVED (2026-09-14)
 
-**File:** `lh/lyfe_hardware/mcp_tools/comparison_dashboard.py`. All 15 tools delegate to `lh.lyfe_hardware.page.comparison_dashboard.comparison_dashboard` via `frappe.call()`.
+**File:** `lh/lyfe_hardware/mcp_tools/comparison_dashboard.py`. All 5 tools delegate to `lh.lyfe_hardware.page.comparison_dashboard.comparison_dashboard` via `frappe.call()`.
 
 **Shared Security note:** every tool in this file calls `require_dashboard_role("comparison_dashboard")` first — allowed roles: **Factory, Super Admin, System Manager, Customer Service** (mirrors `comparison_dashboard.json`'s Page role list; the underlying Python module runs raw SQL with no permission check of its own, so this MCP-layer gate is the only thing standing between an unauthorized caller and this dashboard's data via this connector).
+
+**Trimmed 2026-09-14 (15 → 8 tools):** 7 tools were removed — `get_comparison_top_customers`, `get_comparison_status_breakdown`, `get_comparison_ontime_by_customer`, `get_comparison_orders_by_country`, `get_comparison_orders_by_state`, `get_comparison_order_source_breakdown`, `get_comparison_order_type` — because they duplicated Founder Dashboard's / Customer Intelligence Dashboard's own coverage of the same data (customer volume/on-time ranking, order status, geography, order source, order type). Keeping two independently-written formulas answering the same-sounding question (e.g. "on-time delivery rate") risked an MCP caller getting a different number depending on which tool got called. The 8 tools kept below have no equivalent on either of those two dashboards.
 
 | Tool | Signature | Functional summary |
 |---|---|---|
@@ -367,19 +369,12 @@ Every tool is documented with the same four sections:
 | `get_comparison_monthly` | `(customer: str \| None) -> dict` | This-month vs last-month, same metrics. |
 | `get_comparison_weekly_trend` | `(weeks: int = 8, customer: str \| None) -> list` | Weekly order trend for the last N weeks. |
 | `get_comparison_monthly_trend` | `(months: int = 12, customer: str \| None) -> list` | Monthly order trend for the last N months. |
-| `get_comparison_top_customers` | `(from_date, to_date, limit: int = 10) -> list` | Top customers by order volume/value for a range. |
-| `get_comparison_status_breakdown` | `(from_date, to_date, customer) -> list` | Order count by status (excludes Merged/Split). |
 | `get_comparison_open_orders_aging` | `(customer) -> list` | Open (undelivered) orders bucketed by age. |
 | `get_comparison_lead_time_trend` | `(weeks: int = 8, customer) -> list` | Avg days order-creation-to-delivery, per week. |
-| `get_comparison_ontime_by_customer` | `(from_date, to_date, limit: int = 10, min_orders: int = 3) -> list` | On-time delivery % per customer. |
-| `get_comparison_orders_by_country` | `(from_date, to_date, customer) -> list` | Order volume by shipping country. |
-| `get_comparison_orders_by_state` | `(from_date, to_date, customer, limit: int = 15) -> list` | Order volume by US shipping state, top N. |
-| `get_comparison_order_source_breakdown` | `(from_date, to_date, customer) -> list` | Order volume + on-time % by order source. |
-| `get_comparison_order_type` | `(from_date, to_date, customer) -> dict` | Standard vs Custom: count, on-time %, avg lead time. |
 | `get_comparison_factory_stage_timing` | `(from_date, to_date, customer) -> list` | Avg days spent between each factory pipeline milestone. |
 | `get_comparison_hold_analysis` | `(from_date, to_date, customer) -> dict` | Orders on hold: count, %, avg hold days, held+delayed overlap. |
 
-**Technical Details (all 15):** every tool is a thin `frappe.call(f"{_MODULE}.<underlying_function>", **kwargs)` passthrough — no aggregation logic duplicated in the MCP layer. All date/customer params are optional; omitting `customer` returns company-wide data, omitting date range uses that underlying function's own default window.
+**Technical Details (all 8):** every tool is a thin `frappe.call(f"{_MODULE}.<underlying_function>", **kwargs)` passthrough — no aggregation logic duplicated in the MCP layer. All date/customer params are optional; omitting `customer` returns company-wide data, omitting date range uses that underlying function's own default window.
 
 ---
 
@@ -409,7 +404,7 @@ Every tool is documented with the same four sections:
 
 **File:** `lh/lyfe_hardware/mcp_tools/pm_operations_dashboard.py`. All 9 tools delegate to `lh.lh_project.page.pm_operations_dashboard.pm_operations_dashboard`.
 
-**Shared Security note:** 8 of the 9 tools call `require_dashboard_role("pm_operations_dashboard")` — allowed roles: **System Manager, Projects Manager, Founder, Customer Service, Factory** (mirrors `pm_operations_dashboard.json`).
+**Shared Security note:** 8 of the 9 tools call `require_dashboard_role("pm_operations_dashboard")` — allowed roles: **System Manager, Projects Manager, Founder, Customer Service, Factory** (mirrors `pm_operations_dashboard.json`). As of 2026-09-24, the underlying Python module (`pm_operations_dashboard.py`) also calls the matching `require_dashboard_role`/`require_roles` gate itself at the top of every whitelisted function — previously a direct (non-MCP) call to these functions had no server-side role check of its own, relying only on this MCP layer and the Desk Page's `roles` list (found empty in the DB, so `Page.is_permitted()` returned True for everyone).
 
 | Tool | Signature | Functional summary |
 |---|---|---|
@@ -438,7 +433,7 @@ Every tool is documented with the same four sections:
 | Customer Intelligence Dashboard | `get_cid_*` | 11 | System Manager, Super Admin, Customer Service |
 | Quotation Analysis Dashboard | `get_quotation_*` | 17 | System Manager, Sales Manager, Sales User |
 
-All three dashboards' base gate (`require_dashboard_role()`) is backed by the single `DASHBOARD_ROLES` dict in `mcp_audit.py`, which is also read directly by each dashboard's own backend `_check_permission()` — the same policy is enforced whether a caller reaches the data via MCP or by calling the whitelisted Desk-side Python function directly. See the companion document for the full per-tool breakdown, including the Customer Intelligence Dashboard's additional per-field sensitivity stripping (email, COGS, quotation pricing, order history, business-sensitive $ figures).
+All five dashboards' base gate (`require_dashboard_role()`) is backed by the single `DASHBOARD_ROLES` dict in `mcp_audit.py`, which is also read directly by each dashboard's own backend `_check_permission()` (Founder/Quotation/CID since 2026-09-10; PM Operations and Order Analysis since 2026-09-24) — the same policy is enforced whether a caller reaches the data via MCP or by calling the whitelisted Desk-side Python function directly. See the companion document for the full per-tool breakdown, including the Customer Intelligence Dashboard's additional per-field sensitivity stripping (email, COGS, quotation pricing, order history, business-sensitive $ figures).
 
 ---
 
@@ -448,7 +443,7 @@ All three dashboards' base gate (`require_dashboard_role()`) is backed by the si
 
 **Underlying Desk pages — two pages, one backend:** `order_analysis.json` (`roles: []`, open to any Desk user) and `order_analysis_tw.json` (Factory, Customer Service, Super Admin, Engineer, System Manager). This MCP surface mirrors the narrower `order_analysis_tw` role list, not the open `order_analysis` one — see Security below.
 
-**Shared Security note:** every tool in this file calls `require_dashboard_role("order_analysis")` first — allowed roles: **Factory, Customer Service, Super Admin, Engineer, System Manager** (mirrors `order_analysis_tw.json`'s Page role list via `DASHBOARD_ROLES["order_analysis"]`; the underlying Python module runs raw SQL with no permission check of its own, so this MCP-layer gate is the only thing standing between an unauthorized caller and this dashboard's data via this connector). Several tools additionally strip `customer` (Lyfe Order permlevel 2) from row-level results for a caller who lacks that permlevel — noted per tool below; no `cost_of_goods`/COGS field appears anywhere in this file's output.
+**Shared Security note:** every tool in this file calls `require_dashboard_role("order_analysis")` first — allowed roles: **Factory, Customer Service, Super Admin, Engineer, System Manager** (mirrors `order_analysis_tw.json`'s Page role list via `DASHBOARD_ROLES["order_analysis"]`). As of 2026-09-24, the underlying Python module (`order_analysis.py`) also calls `require_dashboard_role("order_analysis")` itself at the top of every whitelisted function — closing the previous gap where a direct (non-MCP) call to these functions had no server-side role check at all. Several tools additionally strip `customer` (Lyfe Order permlevel 2) from row-level results for a caller who lacks that permlevel — noted per tool below; no `cost_of_goods`/COGS field appears anywhere in this file's output.
 
 One write endpoint on the underlying Desk page — `backfill_item_group` (bulk `frappe.db.set_value()` + `commit()` across `ShipStation Order Item` rows) — is permanently excluded from MCP; this connector is read-only project-wide.
 
@@ -456,7 +451,7 @@ One write endpoint on the underlying Desk page — `backfill_item_group` (bulk `
 
 **1. API Details** — delegates to `order_analysis.get_dashboard_data`.
 
-**2. Functional Details** — the dashboard overview: active/not-yet-delivered/out-from-factory/on-hold order counts, photo re-upload and revision counts, and three KPI percentages — Delivery Health (`on_time_delivery_rate`, factory-dispatch SLA compliance, **not** customer-promise compliance — a different metric from Comparison Dashboard's On-Time/Delayed cards even though both measure "on time"), photo-rejection rate, and revision rate.
+**2. Functional Details** — the dashboard overview: active/not-yet-delivered/out-from-factory/on-hold order counts, photo re-upload and revision counts, and three KPI percentages — Delivery Health (`on_time_delivery_rate`, factory-dispatch SLA compliance, **not** customer-promise compliance). Note: Comparison Dashboard's On-Time/Delayed cards (Part 8) measure customer-promise compliance instead — a related but different metric that happens to share the phrase "on time"; don't treat the two as interchangeable.
 
 **3. Technical Details** — `(from_date: str | None = None, to_date: str | None = None, based_on: str | None = None) -> dict`. `from_date`/`to_date` default to first/last day of the current month. `based_on="Live Data"` drops the date filter for most cards; On Hold counts and the Delivery Health KPI are always a live snapshot regardless of this parameter.
 

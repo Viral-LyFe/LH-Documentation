@@ -583,11 +583,15 @@ check on top of all of this.
   `{System Manager, Super Admin, Customer Service}`. This matches the Page doctype's own `roles`
   list (`customer_intelligence_dashboard.json`), so a direct whitelisted-method call can't reach
   anything the page itself wouldn't show.
-- **Profit visibility (client-side)** — `PROFIT_VISIBLE_ROLES = ["Super Admin", "System Manager"]`
-  in `customer_intelligence_dashboard.js`; `canSeeProfit()` gates whether the profit/margin column
-  and cells render at all. This is a UI-only gate on top of the page-level access above, not a
-  server-side field-level restriction — the underlying endpoints still return the margin data to
-  any role that can call them; Customer Service's client simply doesn't render that column.
+- **Profit visibility (server-side, fixed 2026-09-24)** — `get_customer_list` (`cid/customers.py`)
+  now strips `margin`/`margin_pct`/`cogs_resolved` to `None` unless the caller holds a role in
+  `COGS_ROLES` (`mcp_audit.py` — `{Super Admin, System Manager, Factory}`), the same source of
+  truth the MCP tool layer's `_COGS_ROLES` already read from. Previously this stripping only
+  happened client-side (`PROFIT_VISIBLE_ROLES`/`canSeeProfit()` in
+  `customer_intelligence_dashboard.js`) and in the MCP tool wrapper — a Customer Service user
+  calling `get_customer_list` directly (bypassing the JS UI) got real margin data. The JS
+  `canSeeProfit()` gate still exists for rendering, now backed by an actual server-side restriction
+  instead of being the only gate.
 - `confirm_customer_type` (the one write action) additionally requires real
   `frappe.has_permission("Customer", "write")`, confirmed necessary because Sales Manager has
   read-only access to Customer in this app.
