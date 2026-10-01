@@ -20,7 +20,7 @@ Every number on the page comes straight from the same records the team already w
 
 ---
 
-## The five sections, in plain terms
+## The six sections, in plain terms
 
 ### 1. Are we making money?
 Four boxes at the top:
@@ -39,8 +39,15 @@ Below those, a **Month-on-Month** panel (added 2026-09-03) trends revenue and ma
 
 ### 3. Where am I bleeding?
 - **Money at Risk** — a dollar total of orders currently stuck, on hold, possibly lost in transit, or waiting on a customer service decision. Always live, not a monthly total.
-- **Stockout Risk** — items about to run out, and whether that's actually about to hold up real orders.
+
+### Stock Forecasting (own section, below "Where am I bleeding?")
+- **Stockout Risk** — every item with under 30 days of stock left at its current pace of use, what open orders have already promised, the date it runs out and how much to reorder. Click "View forecast detail" for the full list and a restock-list download.
 - **Material Usage** — what's actually being used in production over the last 30 days.
+- **Tube Stock (feet)** — one line per tube material and diameter (not per cut length): feet on hand including pre-cut pieces, feet used per day, days left.
+- **Acrylic Rod Stock (inches)** — one line per diameter and stick length: sticks and inches on hand, use per day, days left. Long sticks are usually the real risk.
+- **Stock Data Quality** — a checklist of data problems that make these numbers wrong; the team should keep it at zero.
+
+Colours: Critical is under 7 days, High under 15, Medium under 30. Lead times and purchase orders are not used, so a delivery on its way only shows once it is booked in.
 
 ### 4. Is the team keeping up?
 - **Board Health** — each internal team's workload (Customer Service, Factory, Engineering, etc.) shown side by side, not blended into one number.

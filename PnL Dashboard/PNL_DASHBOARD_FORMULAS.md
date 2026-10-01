@@ -215,6 +215,11 @@ Row-by-row version of `_calc()` — same formula, one row per order (top 500 by 
 `custom` column = `custom_charges + additional_charges` combined; `shipping` column =
 `shipping + shipping_us` combined.
 
+The `item_group` ("Category") column in `get_orders_detail` shows the order's **top-level
+parent Item Group** (via `_root_item_group_map`), not the leaf group. The order's group is
+still the single `MIN(item_group)` pick from `_CATEGORY_SUBQ`; only its display is rolled
+up, and the column filter dropdown and Excel export use the same parent value.
+
 ### 2.8 Standard vs Custom (`get_order_type_breakdown`)
 
 Groups by `order_type` (defaults missing values to `"Standard"`), runs `_calc()` per

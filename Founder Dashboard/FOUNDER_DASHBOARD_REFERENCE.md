@@ -19,6 +19,7 @@
 4. [Is the team keeping up?](#iv-is-the-team-keeping-up)
 5. [What's coming?](#v-whats-coming)
 6. [Who's connected right now? (Super Admin only)](#vi-whos-connected-right-now-super-admin-only)
+6b. [Stock Forecasting](#vii-stock-forecasting)
 7. [How the filters at the top work](#how-the-filters-at-the-top-work)
 8. [If a number ever looks wrong](#if-a-number-ever-looks-wrong)
 
@@ -281,40 +282,9 @@ Three panels (`fd-g3`) turning operational alerts into dollar figures — "9 ale
 
 ---
 
-### Stockout Risk (Live)
+### Stockout Risk and Material Usage — moved (2026-10-01)
 
-**What it is:** Items projected to run out of stock soon, based on trailing 30-day sale velocity — and, for the riskiest, whether they're actually blocking real open orders right now.
-
-**How it's built (plain):**
-```
-Days of cover = current stock ÷ average daily usage (trailing 30 days)
-```
-
-**Note:** Each critical item shows a note like "blocks $2,400" if open orders (not yet shipped) currently need it — distinguishing an item that's technically low but idle from one that's actually about to hold up real customer orders.
-
-**Technical:**
-- Function: `_stockout_risk_section_v2()`.
-- Base data: `founder_briefing.data.get_projected_stockouts_api()` (same function/thresholds the Daily Founder Briefing uses — this card can never disagree with that briefing).
-- `blocked_amount`/`blocked_orders` added via a join against open (`status NOT IN Cancelled/Merged/Split/Shipped/Completed`) `Lyfe Order`s currently containing that SKU.
-- Drill-down: `get_stockout_risk_drilldown()` — full unfiltered list (the card itself shows only the top 10).
-
----
-
-### Material Usage · 30d
-
-**What it is:** What's actually being pulled off the shelf and used in production, trailing 30 days.
-
-**How it's built (plain):**
-```
-Net qty = material issued to production − material returned
-```
-
-**Note:** Comes from the same paperwork the factory floor already fills out (Material Issue for Order) — nothing new was set up to track this.
-
-**Technical:**
-- Function: `_material_usage_section(period_days=30)` — `Material Issue Order Item` JOIN `Material Issue for Order` (submitted only, `docstatus=1`).
-- Rejected alternative sources during design (documented in code): the `Material` doctype (unused 9-row lookup, zero real transaction references), Lyfe BOM (no material-type field), Stock Ledger Entry (too broad — includes non-order stock adjustments, not issuance specifically tied to an order).
-- Drill-down: `get_material_usage_drilldown(period_days=30)` — full list (card shows top/bottom 10 only).
+Both cards now live in their own **Stock Forecasting** section (§VII below), together with the new Tube, Acrylic and Data Quality cards. "Where am I bleeding?" keeps only **Money at Risk**.
 
 ---
 
@@ -422,6 +392,54 @@ Stuck order = an order that has breached a factory-stage deadline and hasn't bee
 - Counts distinct **users**, not tokens — one person can hold more than one live token (e.g. a stale browser tab plus a fresh one).
 - MCP Connector Audit Issue 19 follow-up (2026-08-13).
 - Drill-down: `get_mcp_access_drilldown()` — one row per user, most recent login.
+
+---
+
+## VII. Stock Forecasting
+
+*Section "Stock Forecasting" in Founder Dashboard Tile Config (`stockout_risk`, `material_usage`, `tube_stock`, `acrylic_stock`, `data_quality`, each `col_span` 6). Added 2026-10-01; full background in `apps/lh/docs/stock-forecasting/` (research report, implementation plan, tube and acrylic analysis).*
+
+**What it answers:** what will run out, when, and how much to restock — from what the factory really issued, what is on the shelf and what open orders still need.
+
+### Common rules (all cards)
+- **On hand** = `SUM(Bin.actual_qty)` per item, excluding `FAC-Rejected Material Warehouse` (`EXCLUDED_STOCK_WAREHOUSES` in `founder_briefing/data.py`).
+- **Use** = Material Issue stock entries only (the MIFO issues), trailing 30 days ÷ 30. Transfers, receipts and reconciliations are not consumption. Cancelled entries are ignored.
+- **Days of stock** = on hand ÷ use per day. **Risk:** Critical < 7, High < 15, Medium < 30 days, else Low (`Founder Briefing Settings.stock_risk_*_days`).
+- Purchase Orders and lead times are deliberately **not** used (incoming stock is booked as Material Receipt; PO data is unreliable).
+
+### Stockout Risk (Live)
+Every item with under 30 days of cover (not only those under 7). Footer: Critical / High / Medium counts; top 10 rows with days of cover and "blocks $X". Item Group filter only.
+- `committed_qty` = qty on open Lyfe Orders (not Cancelled/Merged/Split/Shipped/Completed/Return Successfully) that have **no submitted Material Issue yet**: order lines taken as themselves plus quantities implied by **Lyfe BOM** (or the order's own `bom_items` list). `available_qty` = on hand − committed. Lyfe BOM quantities for components whose BOM has proved unreliable (actual issues outside 0.7–1.3× the BOM over ≥ 20 recent orders) are shown in `bom_committed_qty` but not counted.
+- Also per row: `stockout_date`, `suggested_qty` (restores 30 days of cover, or the Item's `custom_target_cover_days`), `confidence` (weeks with movement in the last 13: ≥ 8 High, ≥ 4 Medium, else Low).
+- **Blocked $** = quantity × unit price of that item's lines on open orders with no Material Issue yet (line-level; no whole-order totals).
+- Items with Stock Policy "Make to Order" / "Do Not Stock", and tube / acrylic items (below), are excluded.
+- Drill-down "View forecast detail": full list with all columns above, a Where-used link per row (Lyfe BOMs that use the item and open orders carrying the parent) and a **Download restock list (CSV)** button.
+- Source: `_stockout_risk_section_v2()` → `_stockout_rows()` → `founder_briefing.data.get_projected_stockouts_api()` enriched by `stock_forecast.snapshot.enrich_rows()`. With `Stock Forecast Settings.use_snapshot_tile` on, rows come from the latest `Stock Forecast Snapshot` (falls back to live when older than a day).
+
+### Material Usage · 30d
+Unchanged (MIFO net issuance, Issues − Returns, trailing 30 days). Now sits in this section.
+
+### Tube Stock (feet)
+One row per tube **store item** (material × diameter; `Item.custom_is_store_item_for_tube = 1`), cut lengths and finishes rolled up.
+- Feet on hand = rod Bin feet + pre-cut pieces × length. Pre-cut `…FT-TB-…`/`…FT-SLROD-…` SKUs hold a **piece count even when their UoM says Foot**; length comes from the SKU code (`7P5` = 7.5). A pre-cut SKU is attached to the rod item it was most often cut from (MIFO tube rows: `finished_item` → `item_code`); unmapped families stay in the generic Stockout list.
+- Feet per day = rod issued + mapped pre-cut pieces issued × length, less MIFO Returns, over 30 days. Rods = feet ÷ 100 (assumed lot size).
+- Drill-down: usage by finish and by cut length. Function: `founder_briefing.data.get_tube_stock()` / `get_tube_usage_breakdown()`.
+- Caveat: pre-cut production is booked as a Material Receipt without a rod issue, so rod stock can be overstated; a monthly physical count (Stock Reconciliation) corrects it.
+
+### Acrylic Rod Stock (inches)
+One row per diameter × stick-length class (≤ 12, 13–24, 25–48, > 48 inches), for `ACR-…L` / `RAC-…L` rod SKUs (caps stay in the generic list).
+- Stock = sticks on hand × stick length (from the SKU code). Demand = **whole sticks issued** (waste included — an unusable offcut is never booked back) less MIFO Returns, counted in the class of the stick drawn. A longer stick can serve a shorter cut, so same-class cover is conservative for short classes.
+- Drill-down: pieces and inches per diameter and cut length (from `acrylic_cuts_json`). Function: `get_acrylic_stock()` / `get_acrylic_usage_breakdown()`.
+
+### Stock Data Quality
+Counts that make the forecasts wrong or incomplete: Lyfe BOM components that match no Item, open order lines with no Item, components where the Lyfe BOM disagrees with actual issues, acrylic rods with UoM Inch, acrylic SKUs with `P` decimals, pending Material Requests (info), dead stock and excess stock (info), forecast bias beyond ±30 %, and snapshot freshness. Source: `stock_forecast/quality.py`.
+
+### Background jobs and settings
+- `Stock Forecast Settings` (single): `demand_window_days` (30), `target_cover_days` (30), `use_snapshot_tile` (off), `enable_risk_alerts` (off), `last_run`.
+- Nightly 01:15 (long queue): `stock_forecast.snapshot` writes `Stock Forecast Snapshot` (one row per item with use; 400-day retention); then, if enabled, `stock_forecast.alerts` posts a grouped Slack message for items that moved into a worse level (Critical/High), plus a weekly reminder while Critical.
+- Weekly Monday 02:30: `policy.run_abc` (volume-based ABC on Item `custom_abc_class`, skipped when `custom_policy_locked`) and `accuracy.run` (WAPE and bias of the 7-day forecast vs actual, `Stock Forecast Accuracy`).
+- Item fields: `custom_stock_policy` (Stock / Make to Order / Do Not Stock), `custom_target_cover_days`, `custom_abc_class`, `custom_class_updated_on`, `custom_policy_locked`. `Custom BOM Items.scrap_pct` adds wastage to Lyfe BOM quantities.
+- Daily Founder Briefing (Slack) also carries a **Tube & Acrylic Stock** block.
 
 ---
 
@@ -584,7 +602,11 @@ If a number ever looks wrong, the fix almost always belongs in one of these upst
 | `get_cs_drilldown(period_days=30)` | `_check_permission` | *(v1 only)* Returns/RTOs behind the CS tile. |
 | `get_cash_in_drilldown(global_filters)` | `_check_permission` | Payment entries behind Cash In. |
 | `get_material_usage_drilldown(period_days=30)` | `_check_permission` | Full most/least-issued item list. |
-| `get_stockout_risk_drilldown()` | `_check_permission` | Full projected-stockout list. |
+| `get_stockout_risk_drilldown()` | `_check_permission` | Full list of items under 30 days of cover, with committed/available/stock-out date/suggested qty/confidence/BOM columns. |
+| `get_tube_stock_drilldown()` | `_check_permission` | Tube usage (30 d) per rod item by finish and cut length. |
+| `get_acrylic_stock_drilldown()` | `_check_permission` | Acrylic usage (30 d) per diameter and cut length. |
+| `get_where_used(item_code)` | `_check_permission` | Lyfe BOMs that use a component, with open orders carrying the parent. |
+| `get_tile_tube_stock()` / `get_tile_acrylic_stock()` / `get_tile_data_quality()` | `_check_permission` | The three new Stock Forecasting tiles (independent per-tile endpoints, no filters). |
 | `get_mcp_access_drilldown()` | `_check_super_admin_permission` | Individual currently-authenticated users. |
 | `get_founder_dashboard_summary()` | `_check_permission` | v1 combined endpoint — dead from the current JS, kept for compatibility. |
 
@@ -694,3 +716,5 @@ Before this, tile grouping/width/order lived in one large hardcoded template lit
 ---
 
 *Founder Dashboard — Complete Reference · Keep in sync with `founder_dashboard.py`/`founder_dashboard.js` whenever a tile, endpoint, or Settings field is added, renamed, or removed.*
+
+**Stock Forecasting (2026-10-01):** only ~5 months of stock history (no seasonal forecast); lead times and POs intentionally unused; unused remainders booked as a plain Material Receipt cannot be told apart from purchases (use a Material Issue for Order of type Return); pre-cut tube production is not booked against the rod; `use_snapshot_tile` and `enable_risk_alerts` ship off. Data fixes the team owes are listed on the Stock Data Quality card.
