@@ -691,3 +691,9 @@ Groups, confirmed a real customer with exactly one of the two categories was cor
 with the right `bought`/`missing`/`opportunity_amount`, confirmed the Don't-Pursue suppression
 holds across an unchanged re-run and correctly clears when the kit rule is edited. Test data
 cleaned up after verification — no residue left in the live database.
+
+## Batch-linked orders (added 2026-10-01)
+
+Customer margin (`customer_intelligence/metrics.py get_margin`) and the founder category profit matrix (`cid/founder.py`) use `lh/lyfe_hardware/costing/landed_cost.py`: orders in a Bulk Transfer Batch take their cost share from the batch (`batch_landed_cost`) and ignore their own shipping, customs and additional charges; other orders are unchanged. Rebuild the Customer Intelligence Cache after deploying so cached margins pick this up.
+
+Access note (2026-10-02): `get_founder_summary` and `get_customer_profile` now remove cost fields (cogs, cogs_resolved, margin, margin_pct / metrics.margin) for callers without a COGS role (Super Admin, System Manager, Factory), so Customer Service gets the same view on the Desk path as through MCP. `lh.api.get_lyfe_orders` likewise returns cost_of_goods, shipping_charges, custom_charges and additional_charges only to those roles.

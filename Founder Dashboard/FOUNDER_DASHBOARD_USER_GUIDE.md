@@ -43,9 +43,10 @@ Below those, a **Month-on-Month** panel (added 2026-09-03) trends revenue and ma
 ### Stock Forecasting (own section, below "Where am I bleeding?")
 - **Stockout Risk** — every item with under 30 days of stock left at its current pace of use, what open orders have already promised, the date it runs out and how much to reorder. Click "View forecast detail" for the full list and a restock-list download.
 - **Material Usage** — what's actually being used in production over the last 30 days.
-- **Tube Stock (feet)** — one line per tube material and diameter (not per cut length): feet on hand including pre-cut pieces, feet used per day, days left.
-- **Acrylic Rod Stock (inches)** — one line per diameter and stick length: sticks and inches on hand, use per day, days left. Long sticks are usually the real risk.
-- **Stock Data Quality** — a checklist of data problems that make these numbers wrong; the team should keep it at zero.
+- **Tube Stock (feet)** — one line per tube material and diameter (not per cut length): feet on hand including pre-cut pieces, feet used per day, days left, how much to keep (about 30 days of use) and how much to order.
+- **Acrylic Rod Stock (inches)** — one line per diameter and stick length — the 5 most-used are shown, with "show all" to see the rest: sticks and inches on hand, use per day, days left. Long sticks are usually the real risk.
+- **Category-wise Stock Forecast** — a bar per product group showing how many items are Critical, High, Medium or Low. Click a group (or a colour) to see its sub-categories, click one to see the items. Switch to "Blocked $" to see how much open-order value is held up. Tube and acrylic rod rows link to their own tiles.
+- **Stock Data Quality** — a checklist of data problems that make these numbers wrong; the team should keep it at zero. Click any line to see exactly which records are affected and where to fix them. An administrator can hide this card from everyone except the Administrator user in Stock Forecast Settings.
 
 Colours: Critical is under 7 days, High under 15, Medium under 30. Lead times and purchase orders are not used, so a delivery on its way only shows once it is booked in.
 

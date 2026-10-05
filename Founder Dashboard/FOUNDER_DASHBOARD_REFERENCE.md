@@ -193,6 +193,7 @@ Inventory value = stock on hand × cost per unit
 - Sold-units query: same `ShipStation Order Item` join Best Sellers uses.
 - Inventory value: `tabBin.actual_qty × tabBin.valuation_rate` (ERPNext's own per-item/warehouse stock-value rollup — not a new calculation).
 - Only SKUs with `inventory_value > 0` are returned, sorted descending.
+- **UI (2026-10-02):** the card shows the top 5 rows; "show details (all N) →" / "hide details ▴" (`data-expand-slow`, state `slowMoversExpanded`) shows/hides the rest of the server's 10 rows, floating over the tiles below. The server response is unchanged.
 
 ---
 
@@ -397,7 +398,7 @@ Stuck order = an order that has breached a factory-stage deadline and hasn't bee
 
 ## VII. Stock Forecasting
 
-*Section "Stock Forecasting" in Founder Dashboard Tile Config (`stockout_risk`, `material_usage`, `tube_stock`, `acrylic_stock`, `data_quality`, each `col_span` 6). Added 2026-10-01; full background in `apps/lh/docs/stock-forecasting/` (research report, implementation plan, tube and acrylic analysis).*
+*Section "Stock Forecasting" in Founder Dashboard Tile Config (`stockout_risk`, `material_usage`, `tube_stock`, `acrylic_stock`, `data_quality` each `col_span` 6; `category_forecast` `col_span` 12). Added 2026-10-01 (Category-wise Stock Forecast: 2026-10-02); full background in `apps/lh/docs/stock-forecasting/` (research report, implementation plan, tube and acrylic analysis).*
 
 **What it answers:** what will run out, when, and how much to restock — from what the factory really issued, what is on the shelf and what open orders still need.
 
@@ -413,7 +414,7 @@ Every item with under 30 days of cover (not only those under 7). Footer: Critica
 - Also per row: `stockout_date`, `suggested_qty` (restores 30 days of cover, or the Item's `custom_target_cover_days`), `confidence` (weeks with movement in the last 13: ≥ 8 High, ≥ 4 Medium, else Low).
 - **Blocked $** = quantity × unit price of that item's lines on open orders with no Material Issue yet (line-level; no whole-order totals).
 - Items with Stock Policy "Make to Order" / "Do Not Stock", and tube / acrylic items (below), are excluded.
-- Drill-down "View forecast detail": full list with all columns above, a Where-used link per row (Lyfe BOMs that use the item and open orders carrying the parent) and a **Download restock list (CSV)** button.
+- Drill-down "View forecast detail" (layout reworked 2026-10-02): a compact no-wrap table (Item, Category, Risk, On hand, Available, Days left, Stock-out, Order qty) with a search box and a risk-level filter; click a row (▸) to open the secondary fields under it (uses per day, committed, confidence, BOM committed, Where used, recommended action). Quantities show up to 2 decimals. Full list with all columns above, a Where-used link per row (Lyfe BOMs that use the item and open orders carrying the parent) and a **Download restock list (CSV)** button.
 - Source: `_stockout_risk_section_v2()` → `_stockout_rows()` → `founder_briefing.data.get_projected_stockouts_api()` enriched by `stock_forecast.snapshot.enrich_rows()`. With `Stock Forecast Settings.use_snapshot_tile` on, rows come from the latest `Stock Forecast Snapshot` (falls back to live when older than a day).
 
 ### Material Usage · 30d
@@ -421,21 +422,34 @@ Unchanged (MIFO net issuance, Issues − Returns, trailing 30 days). Now sits in
 
 ### Tube Stock (feet)
 One row per tube **store item** (material × diameter; `Item.custom_is_store_item_for_tube = 1`), cut lengths and finishes rolled up.
-- Feet on hand = rod Bin feet + pre-cut pieces × length. Pre-cut `…FT-TB-…`/`…FT-SLROD-…` SKUs hold a **piece count even when their UoM says Foot**; length comes from the SKU code (`7P5` = 7.5). A pre-cut SKU is attached to the rod item it was most often cut from (MIFO tube rows: `finished_item` → `item_code`); unmapped families stay in the generic Stockout list.
+- Feet on hand = rod Bin feet + pre-cut pieces × length. Pre-cut `…FT-TB-…`/`…FT-SLROD-…` SKUs hold a **piece count even when their UoM says Foot**; length comes from the SKU code (`7P5` = 7.5). A pre-cut SKU is attached to the rod item it was most often cut from (MIFO tube rows: `finished_item` → `item_code`); pre-cut tube SKUs whose family has no rod mapping yet are shown as **one row per family** (e.g. `TB-100-SN-18 (cut pieces)`, all cut lengths added together, `pipe_linked = false`, no rod count) — they no longer appear in Stockout Risk or the Category-wise forecast (`_tube_unlinked_cuts()`; non-tube SKUs such as `3FT-100-SN` are unaffected).
 - Feet per day = rod issued + mapped pre-cut pieces issued × length, less MIFO Returns, over 30 days. Rods = feet ÷ 100 (assumed lot size).
-- Drill-down: usage by finish and by cut length. Function: `founder_briefing.data.get_tube_stock()` / `get_tube_usage_breakdown()`.
+- **UI:** the card shows the 5 most urgent pipes (server order = fewest days of stock first); "show details (all N) →" / "hide details ▴" (`data-expand-tube`, state `tubeExpanded`) expands the card over the tiles below or resets it, and the "View use, keep and order per pipe →" link stays in both views.
+- **Stock to keep / order (2026-10-02):** per pipe, `used_ft` (30-day total), `keep_ft` = feet per day × target cover days (Stock Forecast Settings `target_cover_days`, default 30; the Item's `custom_target_cover_days` overrides), `order_ft` = keep − on hand (never below 0) and `order_rods` = order ÷ 100 rounded up. With 30 days of cover and a 30-day window, keep equals the last 30 days' use.
+- Drill-down (`get_tube_stock_drilldown`): the same one-row-per-pipe table (use, per day, on hand, days left, keep, order in feet and rods, risk). The old finish / cut-length split was dropped from the dashboard — cut length does not drive buying; `get_tube_usage_breakdown()` still exists but nothing on the dashboard or MCP calls it. Function: `founder_briefing.data.get_tube_stock()`.
 - Caveat: pre-cut production is booked as a Material Receipt without a rod issue, so rod stock can be overstated; a monthly physical count (Stock Reconciliation) corrects it.
 
 ### Acrylic Rod Stock (inches)
 One row per diameter × stick-length class (≤ 12, 13–24, 25–48, > 48 inches), for `ACR-…L` / `RAC-…L` rod SKUs (caps stay in the generic list).
 - Stock = sticks on hand × stick length (from the SKU code). Demand = **whole sticks issued** (waste included — an unusable offcut is never booked back) less MIFO Returns, counted in the class of the stick drawn. A longer stick can serve a shorter cut, so same-class cover is conservative for short classes.
+- **Card shows the top 5 classes by consumption** (inches/day, sorted client-side in `renderAcrylicStock`); "show details (all N) →" (`data-expand-acrylic`, state `acrylicExpanded`) lists every class in a taller card that floats over the tiles below (see "Expanded tiles" in §15a); "hide details ▴" resets it. Top-5 and expanded views both keep the "View usage by cut length →" link. The server response is unchanged (all rows).
 - Drill-down: pieces and inches per diameter and cut length (from `acrylic_cuts_json`). Function: `get_acrylic_stock()` / `get_acrylic_usage_breakdown()`.
 
 ### Stock Data Quality
-Counts that make the forecasts wrong or incomplete: Lyfe BOM components that match no Item, open order lines with no Item, components where the Lyfe BOM disagrees with actual issues, acrylic rods with UoM Inch, acrylic SKUs with `P` decimals, pending Material Requests (info), dead stock and excess stock (info), forecast bias beyond ±30 %, and snapshot freshness. Source: `stock_forecast/quality.py`.
+Counts that make the forecasts wrong or incomplete: Lyfe BOM components that match no Item, open order lines with no Item, components where the Lyfe BOM disagrees with actual issues, acrylic rods with UoM Inch, acrylic SKUs with `P` decimals, pending Material Requests (info), dead stock and excess stock (info), forecast bias beyond ±30 %, and snapshot freshness. Source: `stock_forecast/quality.py`. **Click a line** (2026-10-02) to open a dialog with *Where to fix* (plain-words instruction + a link to the DocType list) and the affected records (up to 200, each linking to its form): Lyfe BOM + unmatched component SKU, Lyfe Orders with a line missing its ERP Item, components with an unreliable BOM, acrylic rod Items with UoM Inch / `P` decimals, pending Material Requests, dead / excess Items, the forecast-accuracy week, or Stock Forecast Settings for a stale snapshot. Endpoint `get_data_quality_detail(key)`; each check in the tile response now carries `key`, `fix`, `doctype`.
+
+### Category-wise Stock Forecast (chart, reworked 2026-10-02)
+A full-width card of stacked bars, **one per Item Group**, with drill-down to the items. It replaces the earlier table version of this same tile; the Stockout Risk card is untouched. **Nothing is recalculated**: it takes the same item-level forecast rows as Stockout Risk (same on-hand, Material-Issue usage, exclusions, snapshot-or-live source) and counts them.
+- **Levels:** (1) the groups directly under the tree root "All Item Groups"; click a group or a coloured segment → (2) that group's **own Item Groups** (the group the item is filed in, so the tree depth never matters) with breadcrumb "All › Group" and Back; click one → (3) a popup with the item list (Item links to the Item). A group whose items sit directly on it skips level 2. Items with no group are bucketed "Other".
+- **Bars:** Critical / High / Medium / Low item counts. The toggle **Items at risk | Blocked $** switches what the bar shows; the other metric is the number at the end of the row. **Blocked $** = quantity × unit price of the item's own lines on open Lyfe Orders held up by an item that is Critical/High/Medium (same rule as the Stockout Risk card, but for every item, not only the top 10). A parent's blocked-order count is the distinct union of its children.
+- **Dataset:** every item with usage in the last 30 days (including Low), not only items under 30 days of cover; idle items, Make-to-Order / Do-Not-Stock, tube and acrylic rod items are excluded as in Stockout Risk. The tile shows the top 6 groups with "show all N →" (floating expand, see §15a). A pinned row **All critical items** opens the popup preset to Critical. Extra rows **Tube (feet)** and **Acrylic rod (inches)** show those tiles' risk counts and open their detail dialogs, so the chart does not silently omit them. Footer: dead and excess stock counts (same as Stock Data Quality).
+- **Popup:** the item dialog (search, risk filter preset from the clicked segment, expandable details, CSV) with Blocked $ and Orders columns; defined as its own `DRILLDOWN_CONFIG.category_forecast`, so the Stockout Risk dialog is unchanged.
+- **Filters / permissions:** same single tile filter (`item_group`, includes child groups) as Stockout Risk; same `_check_permission()`. Slack and MCP `get_stockout_forecast` keep their 7-day window by design (the Critical items are identical); the chart and Stockout Risk use the 30-day window.
+- **Source:** `_category_forecast_section()` (level 1), `_category_children()` (level 2), `_group_rollup()` (pure roll-up), `_blocked_by_item()`, `_rolled_up_rows()`; endpoints `get_tile_category_forecast(item_group)`, `get_category_forecast_children(group)`, and `get_stockout_risk_drilldown(item_group, include_all, exact)` (new optional args; defaults unchanged). MCP: `get_founder_tile_category_forecast`. Tests: `lh/tests/test_category_forecast.py`. Research and plan: `docs/category-stock-forecast/`.
 
 ### Background jobs and settings
-- `Stock Forecast Settings` (single): `demand_window_days` (30), `target_cover_days` (30), `use_snapshot_tile` (off), `enable_risk_alerts` (off), `last_run`.
+- `Stock Forecast Settings` (single): `demand_window_days` (30), `target_cover_days` (30), `use_snapshot_tile` (off), `enable_risk_alerts` (off), `data_quality_public_view` (on), `last_run`.
+- **Stock Data Quality visibility (2026-10-02):** `data_quality_public_view` ("Stock Data Quality ( public view available)") on = every user who can open the dashboard sees the tile; off = only the `Administrator` user. Enforced server-side by `_data_quality_allowed()`: `get_tile_config()` reports the tile as not visible, the combined summary skips it, and `get_tile_data_quality()` / `get_data_quality_detail()` raise `PermissionError` (so the MCP tool `get_founder_tile_data_quality` is refused too). Unsaved settings count as on (patch `default_data_quality_public_view` writes the default).
 - Nightly 01:15 (long queue): `stock_forecast.snapshot` writes `Stock Forecast Snapshot` (one row per item with use; 400-day retention); then, if enabled, `stock_forecast.alerts` posts a grouped Slack message for items that moved into a worse level (Critical/High), plus a weekly reminder while Critical.
 - Weekly Monday 02:30: `policy.run_abc` (volume-based ABC on Item `custom_abc_class`, skipped when `custom_policy_locked`) and `accuracy.run` (WAPE and bias of the 7-day forecast vs actual, `Stock Forecast Accuracy`).
 - Item fields: `custom_stock_policy` (Stock / Make to Order / Do Not Stock), `custom_target_cover_days`, `custom_abc_class`, `custom_class_updated_on`, `custom_policy_locked`. `Custom BOM Items.scrap_pct` adds wastage to Lyfe BOM quantities.
@@ -559,6 +573,7 @@ Every tile is independently refreshable (§14a). Only tiles with a genuinely mea
 | Slow Movers | Yes | Channel, Order Type, Category | Same as Best Sellers. |
 | Category Performance (Trending Categories) | Yes | Channel, Order Type, Category | Same as Sales. |
 | Money at Risk | No | — | Always-live risk snapshot by design — a period filter would contradict the tile's purpose (docstring explicit). |
+| Category-wise Stock Forecast | Yes | Category (`item_group`) | Same single filter and same dataset rules as Stockout Risk, so the two cannot disagree. |
 | Stockout Risk | Yes | Category (`item_group`) | **No** Warehouse split — `get_projected_stockouts()` sums `current_qty` **across** warehouses in its own aggregation; splitting by warehouse needs restructuring that math, not a WHERE clause. Explicitly out of scope this rollout. |
 | Material Usage | Yes | Trailing window (7/14/30/60 days) | Its only filterable dimension (`period_days`) isn't the shared Period-preset shape — a dedicated day-count select, reusing the same generic popover. |
 | Board Health | Yes | Department, Priority | **No** Project filter — the tile's whole point is comparing every board side by side; a Project filter would collapse it back to one board, defeating the tile's purpose (documented in the backend). |
@@ -602,11 +617,14 @@ If a number ever looks wrong, the fix almost always belongs in one of these upst
 | `get_cs_drilldown(period_days=30)` | `_check_permission` | *(v1 only)* Returns/RTOs behind the CS tile. |
 | `get_cash_in_drilldown(global_filters)` | `_check_permission` | Payment entries behind Cash In. |
 | `get_material_usage_drilldown(period_days=30)` | `_check_permission` | Full most/least-issued item list. |
-| `get_stockout_risk_drilldown()` | `_check_permission` | Full list of items under 30 days of cover, with committed/available/stock-out date/suggested qty/confidence/BOM columns. |
+| `get_stockout_risk_drilldown(item_group=None, include_all=0, exact=0)` | `_check_permission` | Full list of items under 30 days of cover (optionally one category, incl. child groups; `include_all=1` = every item with usage plus blocked $, `exact=1` = the group's own items only — the chart popup), with committed/available/stock-out date/suggested qty/confidence/BOM columns. |
 | `get_tube_stock_drilldown()` | `_check_permission` | Tube usage (30 d) per rod item by finish and cut length. |
 | `get_acrylic_stock_drilldown()` | `_check_permission` | Acrylic usage (30 d) per diameter and cut length. |
 | `get_where_used(item_code)` | `_check_permission` | Lyfe BOMs that use a component, with open orders carrying the parent. |
 | `get_tile_tube_stock()` / `get_tile_acrylic_stock()` / `get_tile_data_quality()` | `_check_permission` | The three new Stock Forecasting tiles (independent per-tile endpoints, no filters). |
+| `get_category_forecast_children(group)` | `_check_permission` | Level 2 of the Category-wise Stock Forecast chart (own Item Groups of one top-level group). |
+| `get_data_quality_detail(key)` | `_check_permission` | Records behind one Stock Data Quality line, with where to fix them. |
+| `get_tile_category_forecast(item_group=None)` | `_check_permission` | Category-wise Stock Forecast chart, level 1 (see §VII); `item_group` is its only filter. |
 | `get_mcp_access_drilldown()` | `_check_super_admin_permission` | Individual currently-authenticated users. |
 | `get_founder_dashboard_summary()` | `_check_permission` | v1 combined endpoint — dead from the current JS, kept for compatibility. |
 
@@ -682,6 +700,8 @@ Core state and functions, all module-scoped inside the same `on_page_load` closu
 
 **Every tile's DOM slot has a stable `id="fd-tile-<key>"`** (a `<span>`, `display: block` in CSS since §15b — a real grid item carrying its own `fd-span-N` width class) — this is what makes `renderOneTile()`/`refreshTile()` able to target and replace exactly one tile's inner content without touching `#fd-body`, any sibling, or the span's own class/position (`$slot.html(...)` only replaces inner content, confirmed — the wrapper span and its layout are untouched by a refresh).
 
+**Expanded tiles (2026-10-02):** Slow Movers, Tube Stock and Acrylic Rod Stock show their top 5 rows and a "show details" toggle. `setTileExpanded(tileKey, expanded)` pins the slot to its collapsed height (inline `min-height`, `position: relative`) and the card gets `.fd-tile-expanded` (absolute, z-index 30, shadow), so it grows taller and floats over the tiles below without moving the grid; "hide details" clears both. The toggles use their own class `.fd-tile-expand-toggle` — do **not** reuse `.fd-cc-expand-toggle`: Customer Concentration / Trending Categories bind global handlers to that class and hijack any other element carrying it.
+
 **Known accepted tradeoff:** splitting tiles into independent endpoints means two request-scoped duplicate computations that existed inside the single combined endpoint can no longer be de-duplicated in-process: `order_analysis.get_dashboard_data()` (called by both `money_at_risk` and `pm_task_risk`) and `_get_factory_stuck_orders()` (called by both `production` and `money_at_risk`) each now genuinely run twice across two separate HTTP requests instead of twice within one Python process. No `frappe.cache()` was introduced to recover this — zero caching precedent existed anywhere in this file before this rollout, and there's no profiling data showing this is an actual measured cost. Revisit only if it's shown to matter.
 
 ## 15b. Config-driven layout (Founder Dashboard — True Modularity, added 2026-08-27)
@@ -718,3 +738,18 @@ Before this, tile grouping/width/order lived in one large hardcoded template lit
 *Founder Dashboard — Complete Reference · Keep in sync with `founder_dashboard.py`/`founder_dashboard.js` whenever a tile, endpoint, or Settings field is added, renamed, or removed.*
 
 **Stock Forecasting (2026-10-01):** only ~5 months of stock history (no seasonal forecast); lead times and POs intentionally unused; unused remainders booked as a plain Material Receipt cannot be told apart from purchases (use a Material Issue for Order of type Return); pre-cut tube production is not booked against the rod; `use_snapshot_tile` and `enable_risk_alerts` ship off. Data fixes the team owes are listed on the Stock Data Quality card.
+
+## Batch-linked orders (added 2026-10-02)
+
+An order in a Bulk Transfer Batch (`Lyfe Order.bulk_transfer_batch` set) takes its shipping/customs cost from the batch instead of its own fields. Applied identically in every cost query on this page — there is no shared helper; the logic is inlined as SQL:
+
+| Cost field | Batch order | Non-batch order |
+|---|---|---|
+| `custom_charges` | `0` (+ reshipment cost, still added) | `custom_charges + custom_duty_changes_us_tram` (+ reshipment) |
+| `additional_charges` | `0` | `additional_charges` |
+| `shipping_charges` | `0` | `shipping_charges` |
+| `shipping_charges_us` | `batch_landed_cost` (the order's share of the batch bill) | `shipping_charges_us` |
+
+- **Where:** `_custom_revenue_tile()` and `_geography_section()` in `founder_dashboard.py` carry the inline SQL. Sales, Margin, Margin drill-down and Category queries get it through `pnl_dashboard.py` (same expression; see `PNL_DASHBOARD_FORMULAS.md` §4).
+- **Not used here:** `lh/lyfe_hardware/costing/` (`allocation.py`, `landed_cost.py`) allocates batch charges onto orders when the Bulk Transfer Batch is saved; the dashboard never calls it, it only reads the resulting `batch_landed_cost`.
+- Batch charges not yet entered give `batch_landed_cost = 0`, so those orders' margin rises/falls automatically once the bill is entered. Non-batch orders are unchanged.

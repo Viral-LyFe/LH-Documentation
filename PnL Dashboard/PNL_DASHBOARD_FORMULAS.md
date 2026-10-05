@@ -372,3 +372,12 @@ revenue_share = order_type's revenue / category's total revenue × 100
 - **Tax** is subtracted in `_calc()`-based tiles but explicitly **not** subtracted in
   Source Margin (§2.10) — that's a deliberate simpler "contribution margin" view, not
   an oversight.
+
+## 4. Batch-linked orders (added 2026-10-01)
+
+Orders that belong to a Bulk Transfer Batch (`Lyfe Order.bulk_transfer_batch` is set) take their shipping, customs and other costs from the batch instead of the order's own fields:
+
+- The batch's four charges (Factory -> US shipping, US -> Customer shipping, Customs, Other; blank = 0) are split across its orders by weight and stored on `Lyfe Order.batch_landed_cost`.
+- For these orders the P&L adds `batch_landed_cost` into the `shipping_charges_us` bucket and counts `shipping_charges`, `custom_charges`, `custom_duty_changes_us_tram` and `additional_charges` as 0, so nothing is counted twice. Reshipment cost is unchanged.
+- Orders not in a batch behave exactly as before.
+- The SQL comes from `lh/lyfe_hardware/costing/landed_cost.py` (`sql_shipping`, `sql_shipping_us`, `sql_custom`, `sql_additional`); do not read the raw columns in new queries.
