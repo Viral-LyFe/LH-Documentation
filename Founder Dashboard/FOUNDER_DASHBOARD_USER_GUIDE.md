@@ -40,7 +40,8 @@ Below those, a **Month-on-Month** panel (added 2026-09-03) trends revenue and ma
 ### 3. Where am I bleeding?
 - **Money at Risk** — a dollar total of orders currently stuck, on hold, possibly lost in transit, or waiting on a customer service decision. Always live, not a monthly total.
 
-### Stock Forecasting (own section, below "Where am I bleeding?")
+### Stock Forecasting (own page: Stock Forecast)
+This section now has its own page, **Stock Forecast** (open it from the **Stock** bar at the top of this dashboard, from Home → Stock Forecast, or at `/app/stock-forecast`). Factory users can open it too. The page starts with a summary strip (how many items are Critical or High, which item has the least cover, how much order value is blocked — click a card to jump to Stockout Risk — and a link to the PO Planner), then Stockout Risk with a **Plan PO** link on each row, then the category chart, then Tube, Acrylic and Material Usage. The **N data issues** button at the top opens the Stock Data Quality checklist. Use the single **Refresh** button at the top right to reload everything. The cards are described below.
 - **Stockout Risk** — every item with under 30 days of stock left at its current pace of use, what open orders have already promised, the date it runs out and how much to reorder. Click "View forecast detail" for the full list and a restock-list download.
 - **Material Usage** — what's actually being used in production over the last 30 days.
 - **Tube Stock (feet)** — one line per tube material and diameter (not per cut length): feet on hand including pre-cut pieces, feet used per day, days left, how much to keep (about 30 days of use) and how much to order.
