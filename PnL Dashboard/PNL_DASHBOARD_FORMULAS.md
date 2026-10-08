@@ -48,7 +48,7 @@ Where each expense component comes from (all summed across the filtered orders):
 | Component | Field(s) | Notes |
 |---|---|---|
 | `mfg_cost` | `cost_of_goods` | Per-order COGS rollup (see CLAUDE.md's COGS section) |
-| `custom_charges` | `custom_charges + custom_duty_changes_us_tram + Σ(reshipment_cogs + shipment_cost)` | Reshipment cost is pulled from **non-cancelled** `Lyfe Order Reshipment` child rows and folded in here — it is not a separate line anywhere |
+| `custom_charges` | `custom_charges + custom_duty_changes_us_tram + Σ(reshipment_cogs + shipment_cost + customer_shipment_cost)` | Reshipment cost is pulled from **non-cancelled** `Lyfe Order Reshipment` child rows and folded in here — it is not a separate line anywhere. For a "Via US Warehouse" reshipment, `shipment_cost` is its Bulk Transfer Batch share (Factory→US, written by the batch allocation) and `customer_shipment_cost` is the hand-entered US→Customer cost (added 2026-10-08) |
 | `additional_charges` | `additional_charges` | As stored |
 | `shipping_charges` / `shipping_charges_us` | as stored | Domestic + US-leg shipping, kept as two columns internally but usually shown combined |
 | `payment_processing_fee` | as stored | Only used in `get_summary`/order-detail aggregation, not in every endpoint |
