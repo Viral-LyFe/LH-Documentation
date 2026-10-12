@@ -1,38 +1,44 @@
-# Reshipment — End User Guide
+# Reshipment and Return — End User Guide
 
 | | |
 |---|---|
-| **Feature** | Lyfe Order Reshipment (including reshipments raised from a Return and reshipments sent through the US Warehouse) |
+| **Features** | **Lyfe Order Return** (goods coming back from the customer: refund, restock fee, replacement) and **Lyfe Order Reshipment** (a second shipment to the customer, including the Return link and the Via-US-Warehouse route) |
 | **Who it is for** | Customer Service, Factory, Shipping Forwarder, Finance, Super Admin, System Manager |
-| **Document version** | 1.0 |
+| **Document version** | 2.0 |
 | **Last updated** | 2026-10-12 |
-| **Screenshots** | Every `📷 [SCREENSHOT RS-xx]` line is a placeholder. Take the screenshot, save it as the same ID (for example `RS-01.png`) and insert it there. |
+| **Screenshots** | Every `📷 [SCREENSHOT RS-xx]` (Reshipment) or `📷 [SCREENSHOT RT-xx]` (Return) line is a placeholder. Take the screenshot, save it as the same ID (for example `RT-01.png`) and insert it there. |
 
 ---
 
 ## Contents
 
-1. [What is a Reshipment?](#1-what-is-a-reshipment)
+1. [What are a Reshipment and a Return?](#1-what-are-a-reshipment-and-a-return)
 2. [Who can do what](#2-who-can-do-what)
-3. [All the details of the feature](#3-all-the-details-of-the-feature)
-   - 3.1 Naming
-   - 3.2 The form — every section and field
-   - 3.3 The workflow (statuses)
-   - 3.4 What the system does for you automatically
-   - 3.5 How a Reshipment affects the original Lyfe Order
-   - 3.6 Reshipment and Return
-   - 3.7 Costs
-   - 3.8 Rules and error messages
-4. [How to use the feature — step by step](#4-how-to-use-the-feature--step-by-step)
-5. [Use cases — step by step](#5-use-cases--step-by-step)
-6. [Where to see reshipments (lists, dashboards, reports)](#6-where-to-see-reshipments)
-7. [FAQ and troubleshooting](#7-faq-and-troubleshooting)
-8. [Glossary](#8-glossary)
-9. [Document change log](#9-document-change-log)
+
+**PART A — RESHIPMENT**
+
+3. [Reshipment — all the details](#3-reshipment--all-the-details-of-the-feature)
+4. [Reshipment — how to use it, step by step](#4-reshipment--how-to-use-the-feature-step-by-step)
+5. [Reshipment — use cases](#5-reshipment--use-cases-step-by-step)
+
+**PART B — RETURN**
+
+6. [Return — all the details](#6-return--all-the-details-of-the-feature)
+7. [Return — how to use it, step by step](#7-return--how-to-use-the-feature-step-by-step)
+8. [Return — use cases](#8-return--use-cases-step-by-step)
+
+**BOTH**
+
+9. [Where to see returns and reshipments](#9-where-to-see-returns-and-reshipments)
+10. [FAQ and troubleshooting](#10-faq-and-troubleshooting)
+11. [Glossary](#11-glossary)
+12. [Document change log](#12-document-change-log)
 
 ---
 
-## 1. What is a Reshipment?
+## 1. What are a Reshipment and a Return?
+
+**In short:** a **Return** is goods coming **back** from the customer (and the refund or replacement that follows). A **Reshipment** is goods going **out again** to the customer. A customer who sends goods back and wants a replacement needs **both**, linked to each other. Part A explains the Reshipment, Part B explains the Return.
 
 A **Reshipment** is a second shipment of goods for an order that has already been shipped. Typical reasons:
 
@@ -57,7 +63,7 @@ Instead of editing the original **Lyfe Order**, you create a separate **Lyfe Ord
 | Document | Lyfe Order Reshipment | Lyfe Order Return |
 | Money | Cost to us (cost of goods + shipping) | Refund to the customer |
 
-A customer who sends goods back and wants a replacement needs **both**: a Return and a Reshipment linked to it (see [3.6](#36-reshipment-and-return)).
+How the two link together is explained in [3.6](#36-reshipment-and-return) and in Return use case 3 in Part B.
 
 📷 **[SCREENSHOT RS-01]** — A finished Reshipment form (top part): Lyfe Order, Reason, Workflow State and the Reshipment Items table.
 
@@ -75,9 +81,21 @@ A customer who sends goods back and wants a replacement needs **both**: a Return
 
 > The **Create → Reshipment** button on a Lyfe Order is shown only to **Customer Service** and **System Manager**.
 
+**Return**
+
+| Role | Create | Edit | Workflow steps | Cancel |
+|---|:---:|:---:|---|:---:|
+| **Customer Service** | ✅ | ✅ | Mark In Transit, Mark Received, Close Return | ❌ |
+| **Factory** | ❌ | ✅ | Mark Received | ❌ |
+| **System Manager** | ✅ | ✅ | Any | ✅ **(only role that can cancel)** |
+
+> The **Create → Return** button on a Lyfe Order is shown only to **Customer Service** and **System Manager**.
+
 ---
 
-## 3. All the details of the feature
+**PART A — RESHIPMENT**
+
+## 3. Reshipment — all the details of the feature
 
 ### 3.1 Naming
 
@@ -268,7 +286,7 @@ Reshipment cost appears as its own line in the **PnL dashboard**, the Founder da
 
 ---
 
-## 4. How to use the feature — step by step
+## 4. Reshipment — how to use the feature (step by step)
 
 ### 4.1 Create a Reshipment from a Lyfe Order
 
@@ -355,7 +373,7 @@ Only a **System Manager** can cancel (workflow button **Cancel**), before the pa
 
 ---
 
-## 5. Use cases — step by step
+## 5. Reshipment — use cases (step by step)
 
 ### Use case 1 — Carrier lost the parcel (direct from Factory)
 
@@ -434,22 +452,302 @@ Create **Create → Reshipment** again. It becomes `LH2946-R02`. Each reshipment
 
 ---
 
-## 6. Where to see reshipments
+**PART B — RETURN**
+
+## 6. Return — all the details of the feature
+
+A **Lyfe Order Return** is created for an order when the customer sends goods back, or when we refund the customer (with or without taking the goods back). It tracks the returned goods, the refund, the restock fee and any replacement. The details are kept in the Return itself — not on the Lyfe Order.
+
+### 6.1 Naming
+
+Every return is named **`{Order ID}-RT-{number}`**, counting per order. For order `LH2058`: `LH2058-RT-01`, then `LH2058-RT-02`, and so on. An order can have several returns over time, but only **one open return at a time**.
+
+### 6.2 When you can create a Return
+
+- The order must be **Completed**, **Shipped**, **Reshipment In Progress** or **Return Successfully**.
+- It must **not** be a **split child** order (raise the return on the main order) and must **not** be a **merged** order (raise it on the order it was merged into).
+- The order must not already have an **open** return (Return Requested, Return In Transit or Return Received).
+- The **Create → Return** button is shown only to Customer Service and System Manager, and the system checks the same rules again when you save.
+
+### 6.3 The form — every section and field
+
+📷 **[SCREENSHOT RT-01]** — A Return form (top part): Lyfe Order, Return Type, Reason, dates and the Return Items table.
+
+| Field | What it is |
+|---|---|
+| **Lyfe Order** | The order being returned. Filled automatically, read-only. |
+| **Customer** | Taken from the order. |
+| **Workflow State** | Current status (see 6.4). Read-only — change it with the buttons at the top. |
+| **Return Type** | **Refund** (money back), **Reship** (replacement only), or **Refund & Reship** (both). |
+| **Return Reason** | **Preference**, **Damaged**, **Exchange**, **Wrong Item Received** or **Others**. Choosing **Others** makes the **Other** text box required. |
+| **Is RTO** | Tick if the courier returned the parcel to us (return to origin). |
+| **No Physical Return** | Tick if the customer keeps the goods and only a refund is given. The In Transit step is skipped. |
+| **Return Initiated Date** | Defaults to today. |
+| **Return Received Date** | Filled automatically when the goods are received. Read-only. |
+| **Return To Warehouse** | **Factory - LH** or **US Warehouse - LH** — where the goods are coming back to. |
+
+**Return Items**
+
+| Column | What it is |
+|---|---|
+| Item Name, SKU | From the order. |
+| Ordered Qty | Quantity on the order. |
+| **Return Qty** | How many come back. Defaults to the full quantity; **lower it for a partial return**. It cannot be more than the ordered quantity. At least one row must have a quantity above 0. |
+| Unit Price | From the order. |
+
+**Refund**
+
+| Field | What it is |
+|---|---|
+| **Refund Status** | PENDING / ON GOING / **SUCCESSFUL** / NOT APPLICABLE / UNSUCCESSFUL. |
+| **Refund Amount**, **Refund Date** | **Both required** when Refund Status is **SUCCESSFUL**. |
+| **Restock Fee %** | Percentage kept as a restock fee, if any. |
+| **Restock Fee** | Calculated automatically: order total × Restock Fee %. Read-only. |
+
+**Reship**
+
+| Field | What it is |
+|---|---|
+| **Reship Status** | PENDING / ON GOING / **SUCCESSFUL** / NOT APPLICABLE / UNSUCCESSFUL. Follows the linked Reshipment(s) automatically. |
+| **Reship Date** | Set automatically when the replacement is completed. |
+| **Reshipments** | Number of reshipments linked to this return. |
+
+**Return Tracking tab**
+
+| Field | What it is |
+|---|---|
+| **Return Tracking Number**, **Return Carrier** | Entered when the customer ships the goods back. Saving **both** moves the return to *Return In Transit* by itself. |
+| **Track Status**, **Tracking Details** | Filled automatically by the hourly tracking job. Read-only. |
+| **Tracking Alert** (+ reason, since, last event) | Set automatically when the carrier never scans the parcel, tracking goes stale, an exception is reported, or the parcel looks lost. |
+
+**Connections tab:** shows the **Reshipments** linked to this return.
+
+### 6.4 The workflow (statuses)
+
+```
+Return Requested ──(Customer Service: Mark In Transit)──► Return In Transit
+      │                                                         │
+      │                                              (carrier says Delivered — automatic)
+      │                                                         ▼
+      └──(No Physical Return: automatic)──────────────► Return Received
+                                                                │ (Customer Service: Close Return)
+                                                                ▼
+                                                             Closed
+   Cancelled — System Manager only, from Return Requested or Return In Transit
+```
+
+📷 **[SCREENSHOT RT-02]** — The workflow buttons at the top of a Return (for example "Mark Received").
+
+| Status | Meaning | Moved by |
+|---|---|---|
+| **Return Requested** | The return is opened; goods not on their way yet. | Created by Customer Service |
+| **Return In Transit** | The customer has shipped the goods back. | **Automatic** when tracking number and carrier are saved (or *Mark In Transit*) |
+| **Return Received** | The goods are back with us. | **Automatic** when the carrier reports Delivered, or *Mark Received* by Customer Service / Factory |
+| **Closed** | Everything is settled: refund and/or replacement done. | **Manual** — Customer Service clicks *Close Return* |
+| **Cancelled** | The return did not go ahead. | System Manager only |
+
+> **Closing is always manual.** The system never closes a return by itself.
+
+**What you must complete before *Close Return* works**
+
+| Check | Required when |
+|---|---|
+| **Return Received Date** is set | Always, unless **No Physical Return** is ticked |
+| **Refund Status** is SUCCESSFUL or NOT APPLICABLE | Return Type is **Refund** or **Refund & Reship** |
+| **Reship Status** is SUCCESSFUL or NOT APPLICABLE | Return Type is **Reship** or **Refund & Reship** |
+
+### 6.5 What the system does for you automatically
+
+| When | What happens |
+|---|---|
+| A Return is created | A line is added to the order's return history. The order's status becomes **Return InProgress**. |
+| Tracking number **and** carrier are saved | The return moves to **Return In Transit**. |
+| Every hour | Return tracking is checked. On "Delivered" the return moves to **Return Received** and the received date is stamped. Alerts are sent for lost / stale / exception parcels. |
+| **No Physical Return** is ticked | The return goes straight to **Return Received**. |
+| The return reaches **Return Received** | A **follow-up Task** is created (see 6.6). |
+| A linked Reshipment changes status | The return's **Reship Status** and **Reship Date** update by themselves. |
+| Any important change | A line is written to the **timeline of the Lyfe Order** (status, type, reason, dates, refund, restock fee, reship status, tracking, items). |
+| The return is **Closed** | The follow-up Task is marked **Completed**. |
+
+### 6.6 The follow-up Task (when goods arrive)
+
+When a return reaches **Return Received**, a **Task** is created in the **CS Ticket** project:
+
+- **Assigned to** Customer Service (`support@lyfehardware.com`), and also to the **Factory user** if the goods were returned to **Factory - LH**.
+- **Subject:** "Return received — {Return} ({Order}): update refund/restock & close".
+- **Contents:** links to the Return and Lyfe Order, customer, return type, reason, initiated and received dates, warehouse, tracking, refund and reship status, restock fee, the return items (returned / ordered) and a **"Still to update"** checklist (refund, reship, restock fee, then *Close Return*).
+- One task per return. It is marked **Completed** automatically when the return is **Closed**.
+- A comment on the Lyfe Order timeline links to the task.
+
+📷 **[SCREENSHOT RT-03]** — The follow-up Task with the return details and the "Still to update" list.
+
+### 6.7 How a Return affects the original Lyfe Order
+
+| Return event | Lyfe Order status becomes |
+|---|---|
+| Created / In Transit / Received | **Return InProgress** |
+| **Closed** | **Return Successfully** — or **Completed** if the return had reshipments (the reshipment decides the final status) |
+| **Cancelled** | **Completed** |
+
+- While a **Reshipment is in progress** (order status *Reshipment In Progress*), the Return does not change the order's status.
+- When a Return is **cancelled**, its line is removed from the order's return history and the order's old return fields are cleared (or set back to the previous return, if there is one), so reports do not count a return that never happened.
+- The order's older return fields (return type, refund status and amount, dates, tracking) are kept in step with the latest active Return so existing dashboards (customer intelligence, founder dashboard) keep working.
+
+### 6.8 Return and Reshipment
+
+- On a Return, click **Create → Reshipment** to create the replacement. It works for **any Return that is not Cancelled**, even after it is closed. See [3.6](#36-reshipment-and-return).
+- A **Refund-only** return that gets a reshipment becomes **Refund & Reship** (while it is still open), so it cannot be closed before the replacement is done.
+- A Return can have several Reshipments. The Return's **Reship Status** is **SUCCESSFUL** only when all of its (non-cancelled) reshipments are Completed.
+
+### 6.9 Rules and error messages
+
+| Message / situation | Why | What to do |
+|---|---|---|
+| "A Return can only be created for an order that is Completed, Shipped, Reshipment In Progress, Return Successfully" | The order is in another status (New, Cancelled, Awaiting Shipping …) | Wait until the order has shipped |
+| "… is a split order. Raise the Return against the main order …" | You tried a split child order | Open the main order |
+| "… was merged into …" | You tried a merged order | Open the order it was merged into |
+| "… is still open for this order. Close or cancel it before creating another return." | Another return is open | Finish or cancel it first |
+| "Please describe the return reason when the category is Others." | Reason = Others with no text | Fill the **Other** box |
+| "Return Qty cannot exceed Ordered Qty" / "At least one return item needs a Return Qty greater than 0" | Quantities | Correct the item rows |
+| "Refund Amount and Refund Date are required when Refund Status is SUCCESSFUL." | Incomplete refund | Fill both |
+| "Mark the return as Received before closing it." | Closing too early | Mark it Received first (or tick No Physical Return) |
+| "Refund Status / Reship Status must be SUCCESSFUL or NOT APPLICABLE before closing." | Outcome not finished | Complete or mark it NOT APPLICABLE |
+| Cannot save a change on an **old imported return** | Returns imported from before this feature have no item rows, and a return must have at least one item | Ask System Manager / Admin to correct it |
+
+---
+
+## 7. Return — how to use the feature (step by step)
+
+### 7.1 Create a Return
+
+1. Open the **Lyfe Order** the customer is returning.
+2. Click **Create → Return**.
+
+   📷 **[SCREENSHOT RT-04]** — Lyfe Order toolbar: **Create → Return**.
+
+3. The Return opens with the order and **all items** filled in, and the Return Initiated Date set to today.
+
+   📷 **[SCREENSHOT RT-05]** — The new, unsaved Return with the items pre-filled.
+
+4. Choose the **Return Type** (Refund / Reship / Refund & Reship) and the **Return Reason**. Tick **Is RTO** or **No Physical Return** if they apply.
+5. For a **partial return**, lower the **Return Qty** of the items (delete nothing — just change the quantity).
+6. Choose **Return To Warehouse**.
+7. **Save.** The order now shows **Return InProgress**.
+
+### 7.2 Enter the return tracking
+
+1. When the customer ships the goods back, open the Return's **Return Tracking** tab.
+2. Enter the **Return Tracking Number** and **Return Carrier** and save.
+3. The Return moves to **Return In Transit** by itself. You can click **Track Return** to refresh the carrier status at any time.
+
+   📷 **[SCREENSHOT RT-06]** — The Return Tracking tab and the **Track Return** button.
+
+### 7.3 When the goods arrive
+
+- The hourly job moves the Return to **Return Received** when the carrier reports Delivered. If the goods arrive without tracking, click **Mark Received**.
+- A **follow-up Task** appears for Customer Service (and the Factory user). Open it from your task list — it lists everything still to update.
+
+### 7.4 Update the details (Customer Service)
+
+1. **Refund:** set **Refund Status**, **Refund Amount** and **Refund Date**. For a refund that is done choose **SUCCESSFUL**; if no refund is given choose **NOT APPLICABLE**.
+2. **Restock fee:** enter **Restock Fee %** if a fee applies — the amount is calculated.
+3. **Replacement:** if the customer needs a replacement, click **Create → Reshipment**, complete the Reshipment (Part A) and wait until it is Completed. If no replacement is needed, set **Reship Status** to **NOT APPLICABLE**.
+4. Save.
+
+   📷 **[SCREENSHOT RT-07]** — The Refund and Reship sections of a Return in *Return Received* state.
+
+### 7.5 Close the Return
+
+Click **Close Return**. If something is missing, the message tells you what (see 6.9). On success the Return becomes **Closed**, the follow-up Task completes, and the order shows **Return Successfully** (or **Completed** if there was a reshipment).
+
+### 7.6 Cancel a Return
+
+Only a **System Manager** can cancel, and only from **Return Requested** or **Return In Transit**. The order goes back to **Completed** and the return disappears from the order's return history.
+
+---
+
+## 8. Return — use cases (step by step)
+
+### Return use case 1 — Customer returns the goods for a full refund
+
+**Situation:** Order `LH3045` was delivered; the product is damaged and the customer wants a refund.
+
+1. Customer Service opens `LH3045` → **Create → Return**.
+2. Return Type = **Refund**, Reason = **Damaged**, Return To = **Factory - LH**. Save → `LH3045-RT-01`, status **Return Requested**. The order shows **Return InProgress**.
+3. The customer ships the goods back. Customer Service enters the **Return Tracking Number** and **Return Carrier** and saves → **Return In Transit**.
+4. The carrier delivers it. The hourly job sets **Return Received**; a follow-up Task is created for Customer Service and the Factory user.
+5. Customer Service gives the refund, then sets **Refund Status = SUCCESSFUL**, **Refund Amount** and **Refund Date**. If a restock fee applies, enters **Restock Fee %**.
+6. Customer Service clicks **Close Return** (for a Refund-only return nothing else is needed). The task completes and the order shows **Return Successfully**.
+
+📷 **[SCREENSHOT RT-08]** — The closed Return `LH3045-RT-01` and its timeline entries on the Lyfe Order.
+
+### Return use case 2 — Partial return
+
+1. Create the Return as above.
+2. In **Return Items**, lower the **Return Qty** for the items that stay with the customer (for example 2 of 5 coming back).
+3. Continue as in Return use case 1. The Refund Amount is entered by hand for the returned part only.
+
+### Return use case 3 — Replacement return ("Reship")
+
+1. Create the Return with Return Type **Reship** (or **Refund & Reship** if money is also refunded).
+2. Follow the tracking steps until **Return Received**.
+3. On the Return click **Create → Reshipment**. The reshipment opens pre-filled and linked to the Return (reason "Customer Return Replacement"). Complete it as in Reshipment use case 1.
+4. When the Reshipment is **Completed**, the Return's **Reship Status** becomes **SUCCESSFUL** by itself.
+5. Complete the refund details if the type was Refund & Reship, then click **Close Return**.
+6. Final order status: **Completed**.
+
+### Return use case 4 — Refund only; the customer keeps the goods (No Physical Return)
+
+1. Create the Return with Return Type **Refund** and tick **No Physical Return**.
+2. After you save, the Return goes directly to **Return Received** (no tracking needed) and the follow-up Task is created.
+3. Set **Refund Status = SUCCESSFUL**, **Refund Amount**, **Refund Date** and click **Close Return**.
+
+### Return use case 5 — Courier returned the parcel (RTO)
+
+1. Create the Return and tick **Is RTO**. Return Type is usually **Reship** (send it again) or **Refund**.
+2. Tracking is optional. When the goods are back, mark the Return **Received** (automatic if tracked).
+3. Continue with the refund or **Create → Reshipment**, then **Close Return**.
+
+### Return use case 6 — A second return on the same order
+
+1. After the first return is **Closed** (the order shows Return Successfully), **Create → Return** is available again.
+2. The new return is `…-RT-02`. If the first return is still open you must close or cancel it first.
+
+### Return use case 7 — Refund-only return that later needs a replacement
+
+1. Open the return (open or already closed) → **Create → Reshipment**.
+2. While the Return is open its type changes to **Refund & Reship**, so it can only be closed once the reshipment is done.
+
+### Return use case 8 — Cancelling a return
+
+1. A **System Manager** opens the Return (Return Requested or Return In Transit) and clicks **Cancel**.
+2. The order goes back to **Completed**; the return is removed from the order's return history and from the customer's return count.
+
+---
+
+**BOTH**
+
+## 9. Where to see returns and reshipments
 
 | Place | What you see |
 |---|---|
-| **Lyfe Order → Links → Reshipments** (button) and the **Reshipment** group in Connections | All reshipments of that order |
-| **Lyfe Order timeline** | Every reshipment creation and change |
-| **Lyfe Orders — Status Overview** | **Active Reshipment** card (number of reshipments still open — not Completed, Cancelled or Shipped; click for details) and the collapsible **↩ Reshipments** panel with a state filter (refreshes every 15 seconds) |
-| **Returns Dashboard** | Counts: Return only, Return + Reshipment, Reshipment only, Reshipments from returns, Awaiting Reshipment |
+| **Lyfe Order → Links → Returns / Reshipments** (buttons) and the **Return** and **Reshipment** groups in Connections | All returns and reshipments of that order |
+| **Lyfe Order timeline** | Every return and reshipment creation and change |
+| **Lyfe Order Return list** | All returns. Filter by state, type, reason, order, customer, or *Reshipments* (0 = return only) |
 | **Lyfe Order Reshipment list** | Filter by Return (`is set` / `is not set`), state, order, reason |
+| **Returns Dashboard** | Open it from the search bar or from the Status Overview page. Cards: **Total Returns**, **Pending Refunds**, **Pending Reshipping**, **Avg Cycle Time**, **Return Only** (no reshipment), **Return + Reshipment**, **Reshipment Only** (no return), **Reshipments From Returns**, **Awaiting Reshipment**; filters for date, type and status; charts by type and by week; recent returns table. Click a card to open the matching list. (Set a wide **From Date** to include older returns.) |
+| **Lyfe Orders — Status Overview** | **Active Returns** card (number of returns still open — Requested, In Transit or Received) — click it for a table with return, order, customer, state, type, reason, initiated date and days open, tracking/carrier, received date, return-to warehouse, refund and reship status; buttons to open the **Returns Dashboard** and the returns list. Also the **Active Reshipment** card (open reshipments — not Completed, Cancelled or Shipped) and the collapsible **↩ Reshipments** panel with a state filter. The page refreshes every 15 seconds. |
 | **PnL dashboard / Founder dashboard** | Reshipment cost as a separate cost line |
+
+📷 **[SCREENSHOT RT-09]** — Returns Dashboard cards.
+
+📷 **[SCREENSHOT RT-10]** — Status Overview with the **Active Returns** card and its details dialog.
 
 📷 **[SCREENSHOT RS-19]** — Status Overview with the **Active Reshipment** card and the **↩ Reshipments** panel.
 
 ---
 
-## 7. FAQ and troubleshooting
+## 10. FAQ and troubleshooting
 
 **The Create → Reshipment button is not on my order.**
 The order must be *Completed* or *Shipped*, must not be a split child, and you must be Customer Service or System Manager. If the order is in *Return Successfully* or another state, create the reshipment from the **Return** instead.
@@ -478,17 +776,51 @@ A Return on that order is still open. The order will update when that Return is 
 **The Reshipment Request state shows on my reshipment but nothing happens.**
 Factory must click **Start Progress**; nothing moves it forward automatically at this step.
 
+**Return questions**
+
+**The Create → Return button is not on my order.**
+The order must be *Completed*, *Shipped*, *Reshipment In Progress* or *Return Successfully*, must not be a split child or merged order, and you must be Customer Service or System Manager. If another return is still open, finish or cancel it first.
+
+**I entered the tracking number but the return is still "Return Requested".**
+Both **Return Tracking Number** and **Return Carrier** must be filled and saved. Then it moves to *Return In Transit* by itself.
+
+**The goods arrived but the return is still "Return In Transit".**
+The hourly job moves it when the carrier reports Delivered. If there is no tracking, click **Mark Received**.
+
+**I cannot click Close Return / it shows an error.**
+The message lists what is missing: received date, a finished refund (SUCCESSFUL or NOT APPLICABLE) and a finished reship (SUCCESSFUL or NOT APPLICABLE) when the type includes them.
+
+**Nobody told me the goods arrived.**
+A follow-up **Task** is created in the CS Ticket project when the return reaches *Return Received*. Check your tasks (or the order's timeline for the link).
+
+**The order still says "Return InProgress".**
+The return has not been closed or cancelled yet, or a reshipment is still active.
+
+**The order says "Return Successfully", can I raise another return?**
+Yes — **Create → Return** is available again.
+
+**I cannot edit an old return.**
+Returns imported from before this feature have no item rows and were imported as *Closed*; the system requires at least one item row to save. Ask a System Manager.
+
+**A cancelled return still shows in some report.**
+Cancelling removes it from the order's return history and the customer's return count; the new Returns Dashboard never counts cancelled returns.
+
 📷 **[SCREENSHOT RS-20]** — A completed Reshipment for reference, fully filled in.
 
 ---
 
-## 8. Glossary
+## 11. Glossary
 
 | Term | Meaning |
 |---|---|
 | **Lyfe Order** | The customer's original order. |
 | **Reshipment** | A new shipment for an order that already shipped. |
-| **Return** | Goods coming back from the customer. |
+| **Return** | Goods coming back from the customer (document: Lyfe Order Return, named `…-RT-01`). |
+| **RTO** | Return to origin — the courier sent the parcel back to us. |
+| **No Physical Return** | A refund where the customer keeps the goods; skips the In Transit step. |
+| **Restock Fee** | A fee kept from the refund, calculated as the order total × Restock Fee %. |
+| **Follow-up Task** | The task created in the CS Ticket project when a return arrives. |
+| **Return only / Return + Reshipment / Reshipment only** | Dashboard groups: a return with no reshipment / a return that has a reshipment / a reshipment with no return behind it. |
 | **MIFO** | Material Issue for Order — the document that issues stock for the shipment. |
 | **Gate Pass** | Dispatch document for parcels leaving the factory. |
 | **CJ label** | International shipping label (FedEx via CJ) created from the CJ Shipping tab. |
@@ -500,10 +832,11 @@ Factory must click **Start Progress**; nothing moves it forward automatically at
 
 ---
 
-## 9. Document change log
+## 12. Document change log
 
-> **Maintainer rule:** this is the single end-user document for the Reshipment feature. Any change to the Reshipment doctype, its workflow, buttons, automatic behaviour, messages, the Return link, the Status Overview reshipment card/panel, or the reshipment counts on the Returns Dashboard must be reflected here **in the same change**, with a new row below and an updated *Last updated* date at the top. If the document and the system disagree, the system is right — fix the document.
+> **Maintainer rule:** this is the single end-user document for the **Reshipment and Return** features. Any change to the Reshipment or Return doctypes, their workflows, buttons, automatic behaviour, messages, the Return link, the follow-up Task, the Status Overview Active Returns / Reshipment cards, or the Returns Dashboard must be reflected here **in the same change**, with a new row below and an updated *Last updated* date at the top. If the document and the system disagree, the system is right — fix the document.
 
 | Version | Date | What changed |
 |---|---|---|
+| 2.0 | 2026-10-12 | Added **Part B — Return**: details, workflow, automatic behaviour, follow-up Task, effect on the order, rules/messages, how-to steps and eight use cases; Return rows in roles, where-to-see, FAQ and glossary. Sections renumbered (Where to see = 9, FAQ = 10, Glossary = 11, Change log = 12). Document renamed to *Reshipment and Return End User Guide*. |
 | 1.0 | 2026-10-12 | First end-user guide: full feature details, how-to steps, use cases. Replaces the older `docs/reshipment_user_guide.md` (which described Customer Service as able to cancel and said tracking never moves the status — both are no longer true). |
