@@ -160,7 +160,10 @@ Used to create the international shipping label (FedEx via CJ).
 | **Shipment Items** | Item, Qty, **Rate (USD)**, **HSN Code**. Filled automatically when the Material Issue for Order is submitted (see step 4.5). |
 | **Output** | **AWB No.**, **CJ Tracking No.**, **Shipping Label** — filled when you click **Generate CJ Label**. |
 
-📷 **[SCREENSHOT RS-03]** — The CJ Shipping tab filled in.
+<img width="1685" height="917" alt="image" src="https://github.com/user-attachments/assets/1f92cdaa-2dfe-4402-81a5-67bf975ea2b4" />
+
+<img width="1757" height="916" alt="image" src="https://github.com/user-attachments/assets/92690cbb-f18e-41b0-9e41-1f664b256093" />
+
 
 #### 1Click Logistics tab (only when "Via US Warehouse" is ticked)
 
@@ -202,7 +205,8 @@ Reshipment Request ──(Factory: Start Progress)──► Reshipment In Progre
    Cancelled — System Manager only, from Request / In Progress / Ready for Dispatch / Awaiting Tracking / Awaiting Shipping
 ```
 
-📷 **[SCREENSHOT RS-04]** — The workflow action button at the top of the form (for example "Start Progress").
+<img width="1805" height="916" alt="image" src="https://github.com/user-attachments/assets/328c6dbc-5350-4b7f-a42a-5cadece9eb2d" />
+
 
 | Status | Meaning | Who moves it |
 |---|---|---|
@@ -249,7 +253,7 @@ Exception: if a **Return on the same order is still open** (Requested / In Trans
 
 **Timeline:** each creation and change (status, Return link, reason, warehouse, carrier, tracking numbers, costs, Gate Pass, invoice) is written to the Lyfe Order's timeline, so Customer Service can follow the reshipment without opening it.
 
-📷 **[SCREENSHOT RS-05]** — The Lyfe Order timeline showing reshipment activity lines.
+<img width="1702" height="917" alt="image" src="https://github.com/user-attachments/assets/cf3c2ab4-54a8-49c9-a70c-6bd78afe582b" />
 
 ### 3.6 Reshipment and Return
 
@@ -294,11 +298,13 @@ Reshipment cost appears as its own line in the **PnL dashboard**, the Founder da
 1. Open the **Lyfe Order** that needs a reshipment. (The order must be **Completed** or **Shipped**.)
 2. Click **Create** in the toolbar, then **Reshipment**.
 
-   📷 **[SCREENSHOT RS-06]** — Lyfe Order toolbar with the **Create** menu open and **Reshipment** highlighted.
+   <img width="1705" height="607" alt="image" src="https://github.com/user-attachments/assets/ff7dc784-56d5-461b-b2e8-991544818957" />
+
 
 3. A new reshipment opens with the **Lyfe Order** filled in and every order item copied into **Reshipment Items**.
 
-   📷 **[SCREENSHOT RS-07]** — The new, unsaved reshipment with the items pre-filled.
+   <img width="1641" height="915" alt="image" src="https://github.com/user-attachments/assets/f14c0f68-3ec2-4ffe-bea6-68b8d1592319" />
+
 
 ### 4.2 Create a Reshipment from a Return
 
