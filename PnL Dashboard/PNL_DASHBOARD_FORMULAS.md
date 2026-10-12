@@ -48,13 +48,23 @@ Where each expense component comes from (all summed across the filtered orders):
 | Component | Field(s) | Notes |
 |---|---|---|
 | `mfg_cost` | `cost_of_goods` | Per-order COGS rollup (see CLAUDE.md's COGS section) |
-| `custom_charges` | `custom_charges + custom_duty_changes_us_tram + Σ(reshipment_cogs + shipment_cost + customer_shipment_cost)` | Reshipment cost is pulled from **non-cancelled** `Lyfe Order Reshipment` child rows and folded in here — it is not a separate line anywhere. For a "Via US Warehouse" reshipment, `shipment_cost` is its Bulk Transfer Batch share (Factory→US, written by the batch allocation) and `customer_shipment_cost` is the hand-entered US→Customer cost (added 2026-10-08) |
+| `custom_charges` | `custom_charges + custom_duty_changes_us_tram` | Customs / duty only. Reshipment cost is its own line (next row) since 2026-10-12 |
+| `reshipment_cost` | `reshipment_cogs + shipment_cost + customer_shipment_cost + custom_charges_us + additional_charges_us + (custom_charges + additional_charges, only while the reshipment is NOT in a Bulk Transfer Batch)` per non-cancelled `Lyfe Order Reshipment` | Its own expense line, included in `total_expenses` (not in `direct_cost`). Single SQL definition: `costing/landed_cost.py` `reshipment_cost_sql`. **Period views** (below) date it by the reshipment's own `creation` date; **order / customer / category views** keep it on the original order (inside their custom bucket) |
 | `additional_charges` | `additional_charges` | As stored |
 | `shipping_charges` / `shipping_charges_us` | as stored | Domestic + US-leg shipping, kept as two columns internally but usually shown combined |
 | `payment_processing_fee` | as stored | Only used in `get_summary`/order-detail aggregation, not in every endpoint |
 | `tax` | `ss_tax_amount` | ShipStation tax amount |
 
 `direct_cost` (used by the category tile) = `custom_charges + additional_charges + shipping + shipping_us` (mfg_cost and tax excluded).
+
+#### Reshipment cost: which date does it use?
+
+| View | Basis |
+|---|---|
+| Period views: `get_summary` (current / prev month / prev year), `get_monthly_trend`, `get_mom_summary` (no category), `get_margin_trend` (no category), `get_waterfall`, Founder Dashboard tiles (no Category chip), Founder briefing | **Reshipment `creation` date**, regardless of the original order's date or whether that order is Cancelled / Merged / Split (the money was spent). Parent order filters applied: order status, source, order type, customer. A month with reshipment cost but no orders still gets a row. Implemented by `_period_reshipment_cost()` / `_fetch_orders(..., period_filters=...)` |
+| Per-order, customer, category and Category-filtered views (`get_orders_detail`, order-type / category breakdowns, top customers, concentration, repeat customers, source margin, Customer Intelligence) | **Attached to the original order** (a reshipment has no category of its own); not shown as a separate line there (inside the custom bucket); dropped if the original order is excluded |
+
+Release note: from 2026-10-12 a reshipment raised in a later month no longer lowers the original order's month; closed months change once.
 
 ### 1.4 Source filter grouping
 
@@ -240,10 +250,11 @@ refunds       = Σ shopify_refund_amount            ← real deduction
 discounts     = Σ ss_discount_amount               ← DISPLAY ONLY, does not reduce anything
 cogs          = Σ cost_of_goods
 shipping      = Σ (shipping_charges + shipping_charges_us)
-other_costs   = Σ (custom_charges + custom_duty_changes_us_tram + reshipment_cost + additional_charges)
+other_costs   = Σ (custom_charges + custom_duty_changes_us_tram + additional_charges)
+reshipment    = Σ reshipment_cost, by reshipment creation date (own bar since 2026-10-12)
 tax           = Σ ss_tax_amount
 
-contribution  = gross_rev − refunds − cogs − shipping − other_costs − tax
+contribution  = gross_rev − refunds − cogs − shipping − other_costs − reshipment − tax
 ```
 
 **Discounts are shown on the waterfall for context but never subtracted** — they're
@@ -255,7 +266,7 @@ already baked into `total_amount`, so subtracting them again would double-count.
 revenue     = Σ(total_amount − shopify_refund_amount)   per order_source
 cogs        = Σ cost_of_goods
 direct_cost = Σ(custom_charges + additional_charges + shipping + shipping_us)
-              (reshipment cost folded into custom_charges, same as everywhere else)
+              (reshipment cost is inside direct_cost here via the order-attached custom bucket, see §1.3 basis table)
 
 contribution = revenue − cogs − direct_cost
 margin_pct   = contribution / revenue × 100
@@ -378,6 +389,6 @@ revenue_share = order_type's revenue / category's total revenue × 100
 Orders that belong to a Bulk Transfer Batch (`Lyfe Order.bulk_transfer_batch` is set) take their shipping, customs and other costs from the batch instead of the order's own fields:
 
 - The batch's four charges (Factory -> US shipping, US -> Customer shipping, Customs, Other; blank = 0) are split across its orders by weight and stored on `Lyfe Order.batch_landed_cost`.
-- For these orders the P&L adds `batch_landed_cost` into the `shipping_charges_us` bucket and counts `shipping_charges`, `custom_charges`, `custom_duty_changes_us_tram` and `additional_charges` as 0, so nothing is counted twice. Reshipment cost is unchanged.
+- For these orders the P&L adds `batch_landed_cost` into the `shipping_charges_us` bucket and counts `shipping_charges`, `custom_charges`, `custom_duty_changes_us_tram` and `additional_charges` as 0, so nothing is counted twice. Reshipment cost is unchanged, except a reshipment that is itself in a batch ignores its own Factory-leg `custom_charges`/`additional_charges` (its `shipment_cost` is the batch share).
 - Orders not in a batch behave exactly as before.
 - The SQL comes from `lh/lyfe_hardware/costing/landed_cost.py` (`sql_shipping`, `sql_shipping_us`, `sql_custom`, `sql_additional`); do not read the raw columns in new queries.

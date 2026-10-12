@@ -192,7 +192,7 @@ Every tool is documented with the same four sections:
 
 **1. API Details** — delegates to `lh.lyfe_hardware.page.pnl_dashboard.pnl_dashboard.get_summary`.
 
-**2. Functional Details** — revenue/cost/profit-margin KPIs for a period, with month-over-month and year-over-year comparison. Same numbers a founder sees on the Desk PnL Dashboard for the same filters.
+**2. Functional Details** — revenue/cost/profit-margin KPIs for a period, with month-over-month and year-over-year comparison. Same numbers a founder sees on the Desk PnL Dashboard for the same filters. As of 2026-10-12 the response also carries `reshipment_cost` (Lyfe Order Reshipment cost, included in `total_expenses`, dated by the reshipment's creation date), and `custom_charges` no longer includes it.
 
 **3. Technical Details** — `(filters: str | None = None) -> dict`. `filters` is a raw JSON string, e.g. `'{"from_date": "2026-01-01", "to_date": "2026-06-30"}'`; omitted for the dashboard's default range. No new calculation logic — pure passthrough.
 
