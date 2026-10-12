@@ -65,7 +65,7 @@ Instead of editing the original **Lyfe Order**, you create a separate **Lyfe Ord
 
 How the two link together is explained in [3.6](#36-reshipment-and-return) and in Return use case 3 in Part B.
 
-📷 **[SCREENSHOT RS-01]** — A finished Reshipment form (top part): Lyfe Order, Reason, Workflow State and the Reshipment Items table.
+<img width="1700" height="907" alt="image" src="https://github.com/user-attachments/assets/84fc0aed-8122-4c3c-9f49-b1998f5f6e11" />
 
 ---
 
@@ -103,7 +103,8 @@ Every reshipment is named **`{Order ID}-R{number}`**, counting per order. For or
 
 ### 3.2 The form — every section and field
 
-📷 **[SCREENSHOT RS-02]** — The form with all tabs visible (Details, CJ Shipping, Connections, Attachments, 1Click Logistics).
+![Uploading screencapture-172-17-59-31-8000-app-lyfe-order-reshipment-LH3045-R01-2026-10-12-17_43_44.png…]()
+).
 
 #### Header
 
