@@ -59,7 +59,7 @@ Instead of editing the original **Lyfe Order**, you create a separate **Lyfe Ord
 
 A customer who sends goods back and wants a replacement needs **both**: a Return and a Reshipment linked to it (see [3.6](#36-reshipment-and-return)).
 
-📷 **[SCREENSHOT RS-01]** — A finished Reshipment form (top part): Lyfe Order, Reason, Workflow State and the Reshipment Items table.
+<img width="1700" height="907" alt="image" src="https://github.com/user-attachments/assets/84fc0aed-8122-4c3c-9f49-b1998f5f6e11" />
 
 ---
 
