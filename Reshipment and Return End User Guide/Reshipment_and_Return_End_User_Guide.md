@@ -311,7 +311,7 @@ Reshipment cost appears as its own line in the **PnL dashboard**, the Founder da
 1. Open the **Lyfe Order Return**.
 2. Click **Create → Reshipment**.
 
-   📷 **[SCREENSHOT RS-08]** — The Return form with **Create → Reshipment**.
+   <img width="1647" height="540" alt="image" src="https://github.com/user-attachments/assets/4f7290d5-97e7-4f07-94ac-f05512adf7d5" />
 
 3. The reshipment opens pre-filled, with **Return** set and the reason "Customer Return Replacement". Continue from step 4.3.
 
@@ -323,7 +323,7 @@ Reshipment cost appears as its own line in the **PnL dashboard**, the Founder da
 4. If the parcel must go through the US warehouse, tick **Via US Warehouse** (see Use case 5).
 5. **Save**.
 
-   📷 **[SCREENSHOT RS-09]** — Reason, Description, Warehouse and Via US Warehouse fields.
+   <img width="1717" height="912" alt="image" src="https://github.com/user-attachments/assets/aa03679c-39d6-48e8-baca-747c4a6dff57" />
 
 ### 4.4 Start the work (Factory)
 
