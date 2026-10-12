@@ -85,7 +85,8 @@ Every reshipment is named **`{Order ID}-R{number}`**, counting per order. For or
 
 ### 3.2 The form — every section and field
 
-📷 **[SCREENSHOT RS-02]** — The form with all tabs visible (Details, CJ Shipping, Connections, Attachments, 1Click Logistics).
+![Uploading screencapture-172-17-59-31-8000-app-lyfe-order-reshipment-LH3045-R01-2026-10-12-17_43_44.png…]()
+).
 
 #### Header
 
