@@ -4,7 +4,7 @@
 |---|---|
 | **Features** | **Lyfe Order Return** (goods coming back from the customer: refund, restock fee, replacement) and **Lyfe Order Reshipment** (a second shipment to the customer, including the Return link and the Via-US-Warehouse route) |
 | **Who it is for** | Customer Service, Factory, Shipping Forwarder, Finance, Super Admin, System Manager |
-| **Document version** | 2.0 |
+| **Document version** | 2.1 |
 | **Last updated** | 2026-10-12 |
 | **Screenshots** | Every `📷 [SCREENSHOT RS-xx]` (Reshipment) or `📷 [SCREENSHOT RT-xx]` (Return) line is a placeholder. Take the screenshot, save it as the same ID (for example `RT-01.png`) and insert it there. |
 
@@ -220,7 +220,7 @@ Reshipment Request ──(Factory: Start Progress)──► Reshipment In Progre
 
 **Extra statuses for "Via US Warehouse"** (replace the direct route): **In Transit to US Warehouse** → **US Warehouse Delivered** → **Submitted to 1Click** (or **1Click Error**) → Awaiting Shipping → Shipped → Completed.
 
-> **Tracking moves the status for you.** Once a tracking number and carrier are saved, the hourly tracking job sets: *Delivered* → **Completed**, *label created but not scanned* → **Awaiting Shipping**, *anything else (moving)* → **Shipped**. It never moves a reshipment back out of Completed or Cancelled.
+> **Tracking moves the status for you.** Once a tracking number and carrier are saved, the hourly tracking job sets: *Delivered* → **Completed**, *label created but not scanned* → **Awaiting Shipping**, *anything else (moving)* → **Shipped**. It never moves a reshipment back out of Completed or Cancelled. When tracking moves the reshipment, the **original order** is updated in exactly the same way as when someone clicks the workflow button (Reshipment Completed Date, Reship Status, order status, and the order's reship tracking status), so nothing needs to be done by hand.
 
 ### 3.4 What the system does for you automatically
 
@@ -839,5 +839,6 @@ Cancelling removes it from the order's return history and the customer's return 
 
 | Version | Date | What changed |
 |---|---|---|
+| 2.1 | 2026-10-12 | Tracking now updates the original order exactly like a manual click (it used to leave the order on *Reshipment In Progress* and the Reshipment Completed Date empty). Reshipments sent from the US Warehouse now also fill the order's Reship Date / Reship Status. **Dispatch Again** on an order clears the earlier delivery's dates and tracking data so the new shipment is judged on its own. |
 | 2.0 | 2026-10-12 | Added **Part B — Return**: details, workflow, automatic behaviour, follow-up Task, effect on the order, rules/messages, how-to steps and eight use cases; Return rows in roles, where-to-see, FAQ and glossary. Sections renumbered (Where to see = 9, FAQ = 10, Glossary = 11, Change log = 12). Document renamed to *Reshipment and Return End User Guide*. |
 | 1.0 | 2026-10-12 | First end-user guide: full feature details, how-to steps, use cases. Replaces the older `docs/reshipment_user_guide.md` (which described Customer Service as able to cancel and said tracking never moves the status — both are no longer true). |
