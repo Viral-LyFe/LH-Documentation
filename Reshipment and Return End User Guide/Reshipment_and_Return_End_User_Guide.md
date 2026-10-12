@@ -103,7 +103,7 @@ Every reshipment is named **`{Order ID}-R{number}`**, counting per order. For or
 
 ### 3.2 The form — every section and field
 
-<img width="1700" height="907" alt="image" src="https://github.com/user-attachments/assets/ef05291a-a497-4486-be7d-8560a1eaf0a6" />
+<img width="1920" height="5135" alt="screencapture-172-17-59-31-8000-app-lyfe-order-reshipment-LH3045-R01-2026-10-12-17_43_44" src="https://github.com/user-attachments/assets/60bf12fc-7e68-46db-ac5e-f2c39b0d24ae" />
 
 
 #### Header
