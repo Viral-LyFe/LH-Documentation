@@ -349,6 +349,9 @@ Factory clicks **Internal Review**. Customer Service clicks **Approve** (→ App
 
      <img width="1697" height="611" alt="image" src="https://github.com/user-attachments/assets/b5bbcb30-ccd8-401f-896a-c9ffffa15f58" />
 
+     <img width="1401" height="772" alt="image" src="https://github.com/user-attachments/assets/ac45b9c2-ddfd-4d9a-9034-05949a452c4d" />
+
+
 ### 4.7 Create the CJ label (Factory warehouse only)
 
 1. Open the **CJ Shipping** tab and complete all sections (see 3.2).
