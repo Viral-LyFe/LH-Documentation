@@ -364,7 +364,8 @@ Factory clicks **Internal Review**. Customer Service clicks **Approve** (→ App
 
 1. Click **Ready for Dispatch**. A **Gate Pass** and a draft **Sales Invoice** are created automatically and linked in **References**.
 
-   📷 **[SCREENSHOT RS-13]** — "Gate Pass Created" and "Sales Invoice Created" alerts, and the References section.
+   <img width="1442" height="721" alt="image" src="https://github.com/user-attachments/assets/bf1c0469-3945-48d6-89a3-b5eb54da4701" />
+
 
 2. Hand the parcel to the carrier, then click **Dispatched**.
 3. If no invoice was created, use **Create → Sales Invoice**.
@@ -374,13 +375,16 @@ Factory clicks **Internal Review**. Customer Service clicks **Approve** (→ App
 1. Enter **Carrier** and **Tracking Number** (Shipping section).
 2. From now on **do nothing** — the hourly job fills **Tracking Status** and **Tracking Details** and moves the reshipment to **Awaiting Shipping → Shipped → Completed** by itself.
 
-   📷 **[SCREENSHOT RS-14]** — Tracking fields filled by the system.
+   <img width="1377" height="897" alt="image" src="https://github.com/user-attachments/assets/746854ab-fae1-4000-9021-725a4eb7cd4d" />
 
 3. If **Tracking Alert** shows a value (for example *Possible Lost*), contact the carrier; Customer Service is notified by Slack/email.
 
 ### 4.10 Completion
 
 When the carrier reports delivery the reshipment becomes **Completed**, the original Lyfe Order becomes **Completed** and its Reship Status shows **SUCCESSFUL**. If it was created from a Return, the Return's Reship Status also becomes **SUCCESSFUL**.
+
+<img width="1665" height="682" alt="image" src="https://github.com/user-attachments/assets/75c63fcd-e118-48f9-a5e8-e61cf9aa199a" />
+
 
 ### 4.11 Cancel a reshipment
 
