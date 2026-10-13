@@ -4,8 +4,8 @@
 |---|---|
 | **Features** | **Lyfe Order Return** (goods coming back from the customer: refund, restock fee, replacement) and **Lyfe Order Reshipment** (a second shipment to the customer, including the Return link and the Via-US-Warehouse route) |
 | **Who it is for** | Customer Service, Factory, Shipping Forwarder, Finance, Super Admin, System Manager |
-| **Document version** | 2.1 |
-| **Last updated** | 2026-10-12 |
+| **Document version** | 2.4 |
+| **Last updated** | 2026-10-13 |
 | **Screenshots** | Every `📷 [SCREENSHOT RS-xx]` (Reshipment) or `📷 [SCREENSHOT RT-xx]` (Return) line is a placeholder. Take the screenshot, save it as the same ID (for example `RT-01.png`) and insert it there. |
 
 ---
@@ -369,6 +369,7 @@ Factory clicks **Internal Review**. Customer Service clicks **Approve** (→ App
 
 2. Hand the parcel to the carrier, then click **Dispatched**.
 3. If no invoice was created, use **Create → Sales Invoice**.
+4. If the Gate Pass was cancelled (or was never created), use **Create → Gate Pass** while the reshipment is *Ready for Dispatch* and Warehouse is **Factory - LH**. It makes a new Gate Pass (or reuses today's draft one) and links it in **References**. It is refused if the reshipment already has a Gate Pass that is not cancelled. Each box row gets its **Box Group** filled in automatically (BOX-<Gate Pass number>-<row number>), the same as when you add rows on the Gate Pass by hand.
 
 ### 4.9 Tracking
 
@@ -418,7 +419,7 @@ Only a **System Manager** can cancel (workflow button **Cancel**), before the pa
 ### Use case 3 — Customer returns goods and wants a replacement
 
 1. Customer Service creates a **Return** on the order (Return Type **Reship** or **Refund & Reship**).
-2. When the goods are received, the Return reaches **Return Received** and a follow-up task is created for Customer Service (and the Factory user, if the goods went to the factory).
+2. When the goods are received, the Return reaches **Return Received** and a follow-up task is created for Customer Service (`support@lyfehardware.com`).
 3. On the Return, click **Create → Reshipment**. The reshipment opens pre-filled and linked to the Return.
 4. Run the reshipment as in Use case 1.
 5. When the reshipment is **Completed**, the Return's Reship Status becomes **SUCCESSFUL**. Finish the refund details on the Return and click **Close Return**.
@@ -592,7 +593,7 @@ Return Requested ──(Customer Service: Mark In Transit)──► Return In Tr
 
 When a return reaches **Return Received**, a **Task** is created in the **CS Ticket** project:
 
-- **Assigned to** Customer Service (`support@lyfehardware.com`), and also to the **Factory user** if the goods were returned to **Factory - LH**.
+- **Assigned to** Customer Service (`support@lyfehardware.com`) — always, whichever warehouse the goods came back to.
 - **Subject:** "Return received — {Return} ({Order}): update refund/restock & close".
 - **Contents:** links to the Return and Lyfe Order, customer, return type, reason, initiated and received dates, warehouse, tracking, refund and reship status, restock fee, the return items (returned / ordered) and a **"Still to update"** checklist (refund, reship, restock fee, then *Close Return*).
 - One task per return. It is marked **Completed** automatically when the return is **Closed**.
@@ -664,7 +665,7 @@ When a return reaches **Return Received**, a **Task** is created in the **CS Tic
 ### 7.3 When the goods arrive
 
 - The hourly job moves the Return to **Return Received** when the carrier reports Delivered. If the goods arrive without tracking, click **Mark Received**.
-- A **follow-up Task** appears for Customer Service (and the Factory user). Open it from your task list — it lists everything still to update.
+- A **follow-up Task** appears for Customer Service. Open it from your task list — it lists everything still to update.
 
 ### 7.4 Update the details (Customer Service)
 
@@ -694,7 +695,7 @@ Only a **System Manager** can cancel, and only from **Return Requested** or **Re
 1. Customer Service opens `LH3045` → **Create → Return**.
 2. Return Type = **Refund**, Reason = **Damaged**, Return To = **Factory - LH**. Save → `LH3045-RT-01`, status **Return Requested**. The order shows **Return InProgress**.
 3. The customer ships the goods back. Customer Service enters the **Return Tracking Number** and **Return Carrier** and saves → **Return In Transit**.
-4. The carrier delivers it. The hourly job sets **Return Received**; a follow-up Task is created for Customer Service and the Factory user.
+4. The carrier delivers it. The hourly job sets **Return Received**; a follow-up Task is created for Customer Service.
 5. Customer Service gives the refund, then sets **Refund Status = SUCCESSFUL**, **Refund Amount** and **Refund Date**. If a restock fee applies, enters **Restock Fee %**.
 6. Customer Service clicks **Close Return** (for a Refund-only return nothing else is needed). The task completes and the order shows **Return Successfully**.
 
@@ -857,6 +858,9 @@ Cancelling removes it from the order's return history and the customer's return 
 
 | Version | Date | What changed |
 |---|---|---|
+| 2.4 | 2026-10-13 | The **Return Received** follow-up Task is now assigned only to `support@lyfehardware.com`; the Factory user is no longer added when goods return to Factory - LH. |
+| 2.3 | 2026-10-13 | Gate Passes created from a Reshipment (automatically or with Create → Gate Pass) now fill **Box Group** on every box row. |
+| 2.2 | 2026-10-13 | Added **Create → Gate Pass** on the Reshipment, to create the Gate Pass again after it was cancelled. |
 | 2.1 | 2026-10-12 | Tracking now updates the original order exactly like a manual click (it used to leave the order on *Reshipment In Progress* and the Reshipment Completed Date empty). Reshipments sent from the US Warehouse now also fill the order's Reship Date / Reship Status. **Dispatch Again** on an order clears the earlier delivery's dates and tracking data so the new shipment is judged on its own. |
 | 2.0 | 2026-10-12 | Added **Part B — Return**: details, workflow, automatic behaviour, follow-up Task, effect on the order, rules/messages, how-to steps and eight use cases; Return rows in roles, where-to-see, FAQ and glossary. Sections renumbered (Where to see = 9, FAQ = 10, Glossary = 11, Change log = 12). Document renamed to *Reshipment and Return End User Guide*. |
 | 1.0 | 2026-10-12 | First end-user guide: full feature details, how-to steps, use cases. Replaces the older `docs/reshipment_user_guide.md` (which described Customer Service as able to cancel and said tracking never moves the status — both are no longer true). |
