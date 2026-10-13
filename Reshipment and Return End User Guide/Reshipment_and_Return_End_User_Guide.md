@@ -408,7 +408,7 @@ Only a **System Manager** can cancel (workflow button **Cancel**), before the pa
 7. Carrier and tracking number are entered. The system tracks it to **Shipped** and **Completed**.
 8. The order shows **Completed**; Reship Status = SUCCESSFUL.
 
-📷 **[SCREENSHOT RS-15]** — The finished reshipment `LH2946-R01` and its timeline entries on the order.
+<img width="1722" height="791" alt="image" src="https://github.com/user-attachments/assets/4daf1fc8-39ce-44cf-86a9-4e228daccbd7" />
 
 ### Use case 2 — Wrong item sent (partial reshipment)
 
@@ -425,7 +425,7 @@ Only a **System Manager** can cancel (workflow button **Cancel**), before the pa
 5. When the reshipment is **Completed**, the Return's Reship Status becomes **SUCCESSFUL**. Finish the refund details on the Return and click **Close Return**.
 6. Final order status: **Completed** (the reshipment decides the final status).
 
-📷 **[SCREENSHOT RS-16]** — A Return with its linked Reshipment in the Connections tab.
+<img width="1697" height="611" alt="image" src="https://github.com/user-attachments/assets/48c1a48d-8d26-4251-8f30-43586898bb70" />
 
 ### Use case 4 — Refund-only return where the customer later asks for a replacement
 
@@ -439,7 +439,12 @@ Only a **System Manager** can cancel (workflow button **Cancel**), before the pa
 2. Factory completes **Start Progress → material issue → Ready for Dispatch → Dispatched**. The reshipment must be on a **submitted Gate Pass**.
 3. Factory opens a **Bulk Transfer Batch** → **Update Orders → From Reshipment Order**, pastes the reshipment IDs (one per line) and clicks **Update**.
 
-   📷 **[SCREENSHOT RS-17]** — The Bulk Transfer Batch "Update Orders" dialog.
+   <img width="1687" height="416" alt="image" src="https://github.com/user-attachments/assets/276581cc-81b7-4486-b225-df39d9f0b5d0" />
+
+   <img width="1567" height="782" alt="image" src="https://github.com/user-attachments/assets/8f1a8630-750d-49d7-9c65-03fea14198ee" />
+
+   <img width="1652" height="837" alt="image" src="https://github.com/user-attachments/assets/256c52b3-6c24-4fb6-b162-00a27f52b537" />
+
 
 4. Factory enters the batch tracking number and carrier and **submits** the batch. The number is copied to each reshipment as **Tracking #1**. After this the reshipment can no longer be cancelled and Via US Warehouse is locked.
 5. The system tracks Tracking #1 hourly: **In Transit to US Warehouse** → **US Warehouse Delivered**. If tracking is late, click **1Click → Mark Delivered to US Warehouse**.
@@ -447,7 +452,7 @@ Only a **System Manager** can cancel (workflow button **Cancel**), before the pa
 7. 1Click ships to the customer; the customer's tracking number and carrier appear automatically. The status moves to **Awaiting Shipping → Shipped → Completed**.
 8. Finance enters the batch charges (even days later); each reshipment's **Shipment Cost** share updates automatically. **Customer Leg Shipment Cost** (US → customer) is typed by hand.
 
-   📷 **[SCREENSHOT RS-18]** — The **1Click** button group on the reshipment.
+   <img width="1385" height="921" alt="image" src="https://github.com/user-attachments/assets/27314db6-b7fe-4cb7-a9b1-a22c931ecc7d" />
 
 ### Use case 6 — 1Click rejected the reshipment
 
@@ -491,7 +496,7 @@ Every return is named **`{Order ID}-RT-{number}`**, counting per order. For orde
 
 ### 6.3 The form — every section and field
 
-📷 **[SCREENSHOT RT-01]** — A Return form (top part): Lyfe Order, Return Type, Reason, dates and the Return Items table.
+<img width="1372" height="865" alt="image" src="https://github.com/user-attachments/assets/5921c227-2c34-414b-8b2d-535f8ae796b4" />
 
 | Field | What it is |
 |---|---|
@@ -556,7 +561,8 @@ Return Requested ──(Customer Service: Mark In Transit)──► Return In Tr
    Cancelled — System Manager only, from Return Requested or Return In Transit
 ```
 
-📷 **[SCREENSHOT RT-02]** — The workflow buttons at the top of a Return (for example "Mark Received").
+<img width="1482" height="607" alt="image" src="https://github.com/user-attachments/assets/d70ea7d0-0ee7-412d-b14c-ceed96263bf2" />
+
 
 | Status | Meaning | Moved by |
 |---|---|---|
