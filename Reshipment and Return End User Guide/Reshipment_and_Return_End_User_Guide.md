@@ -709,7 +709,8 @@ Only a **System Manager** can cancel, and only from **Return Requested** or **Re
 5. Customer Service gives the refund, then sets **Refund Status = SUCCESSFUL**, **Refund Amount** and **Refund Date**. If a restock fee applies, enters **Restock Fee %**.
 6. Customer Service clicks **Close Return** (for a Refund-only return nothing else is needed). The task completes and the order shows **Return Successfully**.
 
-📷 **[SCREENSHOT RT-08]** — The closed Return `LH3045-RT-01` and its timeline entries on the Lyfe Order.
+<img width="1641" height="807" alt="image" src="https://github.com/user-attachments/assets/deb14f2e-d895-4bce-a780-176403b5430f" />
+
 
 ### Return use case 2 — Partial return
 
