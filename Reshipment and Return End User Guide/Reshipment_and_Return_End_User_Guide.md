@@ -335,22 +335,28 @@ The Factory user clicks **Start Progress**. The Lyfe Order status changes to **R
 2. Complete and **submit** the Material Issue. This is **mandatory** before **Ready for Dispatch**.
 3. Submitting it fills **Shipment Items** in the CJ Shipping tab.
 
-   📷 **[SCREENSHOT RS-10]** — The Material Issue for Order opened from the reshipment.
+   <img width="1632" height="560" alt="image" src="https://github.com/user-attachments/assets/6c60a3c9-03b6-4fb0-a303-a275189b32a5" />
+
+   <img width="1631" height="796" alt="image" src="https://github.com/user-attachments/assets/ad6f5599-7f30-439f-bbb9-29910154b6d5" />
+
+
 
 ### 4.6 Optional quality review
 
 Factory clicks **Internal Review**. Customer Service clicks **Approve** (→ Approved) or **Reject** (→ Rework Required; Factory fixes it and sends it back to Internal Review).
+
+     <img width="1697" height="611" alt="image" src="https://github.com/user-attachments/assets/b5bbcb30-ccd8-401f-896a-c9ffffa15f58" />
 
 ### 4.7 Create the CJ label (Factory warehouse only)
 
 1. Open the **CJ Shipping** tab and complete all sections (see 3.2).
 2. Click **CJ Shipping → Generate CJ Label**.
 
-   📷 **[SCREENSHOT RS-11]** — **CJ Shipping → Generate CJ Label**.
+  <img width="1691" height="465" alt="image" src="https://github.com/user-attachments/assets/9df57f7a-4bd7-4b95-a3fe-f17531fb6369" />
 
-3. If something is missing, a message lists it. When it succeeds, **AWB No.**, **CJ Tracking No.** and **Shipping Label** are filled in.
+3. If something is missing, a message lists it. When it succeeds, **Parcel Details**, **Exporter Invoice No** and **Invoice Attachment (PDF)** are filled in.
 
-   📷 **[SCREENSHOT RS-12]** — "Missing Fields in CJ Shipping Tab" message and the success message.
+   <img width="1562" height="535" alt="image" src="https://github.com/user-attachments/assets/729c2ca3-dc1e-4746-9e05-59a6b246499d" />
 
 ### 4.8 Ready for Dispatch → Dispatched (Factory)
 
