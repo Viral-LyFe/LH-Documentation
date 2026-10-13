@@ -117,7 +117,7 @@ Every reshipment is named **`{Order ID}-R{number}`**, counting per order. For or
 | **Order Type** | Standard or Custom. Copied from the order. |
 | **Workflow State** | Current status (see 3.3). Read-only — change it with the buttons at the top. |
 | **Factory Assignment Date / Ready for Dispatch Date / Reshipment Completed Date** | Stamped automatically the first time each step happens. Read-only. Used for SLA reporting. |
-| **Reason** | **Required.** One of the reasons listed in section 1. |
+| **Reason** | **Required.** One of the reasons listed in “What are a Reshipment and a Return?”. |
 | **Via US Warehouse** | Tick if the parcel should travel Factory → 1Click US Warehouse → Customer. Locked once the reshipment is in a Bulk Transfer Batch. See [Use case 5](#use-case-5--reshipment-through-the-us-warehouse). |
 | **Description** | Free text (support ticket number, notes). |
 | **Signature Required / Photo Required / Note Required** | Copied from the order. |
