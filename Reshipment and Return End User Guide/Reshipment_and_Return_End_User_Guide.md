@@ -684,7 +684,7 @@ When a return reaches **Return Received**, a **Task** is created in the **CS Tic
 3. **Replacement:** if the customer needs a replacement, click **Create → Reshipment**, complete the Reshipment (Part A) and wait until it is Completed. If no replacement is needed, set **Reship Status** to **NOT APPLICABLE**.
 4. Save.
 
-   📷 **[SCREENSHOT RT-07]** — The Refund and Reship sections of a Return in *Return Received* state.
+   <img width="1670" height="916" alt="image" src="https://github.com/user-attachments/assets/44e95bb8-4b73-469a-9fa2-05dd70e26da8" />
 
 ### 7.5 Close the Return
 
@@ -770,11 +770,13 @@ Only a **System Manager** can cancel, and only from **Return Requested** or **Re
 | **Lyfe Orders — Status Overview** | **Active Returns** card (number of returns still open — Requested, In Transit or Received) — click it for a table with return, order, customer, state, type, reason, initiated date and days open, tracking/carrier, received date, return-to warehouse, refund and reship status; buttons to open the **Returns Dashboard** and the returns list. Also the **Active Reshipment** card (open reshipments — not Completed, Cancelled or Shipped) and the collapsible **↩ Reshipments** panel with a state filter. The page refreshes every 15 seconds. |
 | **PnL dashboard / Founder dashboard** | Reshipment cost as a separate cost line |
 
-📷 **[SCREENSHOT RT-09]** — Returns Dashboard cards.
+<img width="1630" height="921" alt="image" src="https://github.com/user-attachments/assets/903a894a-ee2c-4638-9e22-c4b0e872d98d" />
 
-📷 **[SCREENSHOT RT-10]** — Status Overview with the **Active Returns** card and its details dialog.
+<img width="1662" height="887" alt="image" src="https://github.com/user-attachments/assets/9e0a1405-95aa-4e6d-92c8-689b49b5e337" />
 
-📷 **[SCREENSHOT RS-19]** — Status Overview with the **Active Reshipment** card and the **↩ Reshipments** panel.
+<img width="1620" height="587" alt="image" src="https://github.com/user-attachments/assets/95b5298d-e80c-46f7-9829-4e0aafcb2b18" />
+
+<img width="1622" height="547" alt="image" src="https://github.com/user-attachments/assets/7d399ad3-c5e4-4ba1-aebd-16ece4593b74" />
 
 ---
 
