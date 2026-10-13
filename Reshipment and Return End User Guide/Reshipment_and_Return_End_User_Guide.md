@@ -405,7 +405,7 @@ Only a **System Manager** can cancel (workflow button **Cancel**), before the pa
 7. Carrier and tracking number are entered. The system tracks it to **Shipped** and **Completed**.
 8. The order shows **Completed**; Reship Status = SUCCESSFUL.
 
-📷 **[SCREENSHOT RS-15]** — The finished reshipment `LH2946-R01` and its timeline entries on the order.
+<img width="1722" height="791" alt="image" src="https://github.com/user-attachments/assets/4daf1fc8-39ce-44cf-86a9-4e228daccbd7" />
 
 ### Use case 2 — Wrong item sent (partial reshipment)
 
@@ -422,7 +422,7 @@ Only a **System Manager** can cancel (workflow button **Cancel**), before the pa
 5. When the reshipment is **Completed**, the Return's Reship Status becomes **SUCCESSFUL**. Finish the refund details on the Return and click **Close Return**.
 6. Final order status: **Completed** (the reshipment decides the final status).
 
-📷 **[SCREENSHOT RS-16]** — A Return with its linked Reshipment in the Connections tab.
+<img width="1697" height="611" alt="image" src="https://github.com/user-attachments/assets/48c1a48d-8d26-4251-8f30-43586898bb70" />
 
 ### Use case 4 — Refund-only return where the customer later asks for a replacement
 
@@ -436,7 +436,12 @@ Only a **System Manager** can cancel (workflow button **Cancel**), before the pa
 2. Factory completes **Start Progress → material issue → Ready for Dispatch → Dispatched**. The reshipment must be on a **submitted Gate Pass**.
 3. Factory opens a **Bulk Transfer Batch** → **Update Orders → From Reshipment Order**, pastes the reshipment IDs (one per line) and clicks **Update**.
 
-   📷 **[SCREENSHOT RS-17]** — The Bulk Transfer Batch "Update Orders" dialog.
+   <img width="1687" height="416" alt="image" src="https://github.com/user-attachments/assets/276581cc-81b7-4486-b225-df39d9f0b5d0" />
+
+   <img width="1567" height="782" alt="image" src="https://github.com/user-attachments/assets/8f1a8630-750d-49d7-9c65-03fea14198ee" />
+
+   <img width="1652" height="837" alt="image" src="https://github.com/user-attachments/assets/256c52b3-6c24-4fb6-b162-00a27f52b537" />
+
 
 4. Factory enters the batch tracking number and carrier and **submits** the batch. The number is copied to each reshipment as **Tracking #1**. After this the reshipment can no longer be cancelled and Via US Warehouse is locked.
 5. The system tracks Tracking #1 hourly: **In Transit to US Warehouse** → **US Warehouse Delivered**. If tracking is late, click **1Click → Mark Delivered to US Warehouse**.
