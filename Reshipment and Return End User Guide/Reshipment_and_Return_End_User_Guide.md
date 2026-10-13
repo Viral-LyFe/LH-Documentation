@@ -558,7 +558,8 @@ Return Requested ──(Customer Service: Mark In Transit)──► Return In Tr
    Cancelled — System Manager only, from Return Requested or Return In Transit
 ```
 
-📷 **[SCREENSHOT RT-02]** — The workflow buttons at the top of a Return (for example "Mark Received").
+<img width="1482" height="607" alt="image" src="https://github.com/user-attachments/assets/d70ea7d0-0ee7-412d-b14c-ceed96263bf2" />
+
 
 | Status | Meaning | Moved by |
 |---|---|---|
