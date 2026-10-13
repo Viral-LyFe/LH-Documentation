@@ -605,7 +605,8 @@ When a return reaches **Return Received**, a **Task** is created in the **CS Tic
 - One task per return. It is marked **Completed** automatically when the return is **Closed**.
 - A comment on the Lyfe Order timeline links to the task.
 
-📷 **[SCREENSHOT RT-03]** — The follow-up Task with the return details and the "Still to update" list.
+<img width="1410" height="897" alt="image" src="https://github.com/user-attachments/assets/78feffa7-405e-49b3-ba7b-a0e09c10a783" />
+
 
 ### 6.7 How a Return affects the original Lyfe Order
 
@@ -649,11 +650,11 @@ When a return reaches **Return Received**, a **Task** is created in the **CS Tic
 1. Open the **Lyfe Order** the customer is returning.
 2. Click **Create → Return**.
 
-   📷 **[SCREENSHOT RT-04]** — Lyfe Order toolbar: **Create → Return**.
+   <img width="1365" height="506" alt="image" src="https://github.com/user-attachments/assets/089a116a-3fa3-47bf-903b-ded860ae7a08" />
 
 3. The Return opens with the order and **all items** filled in, and the Return Initiated Date set to today.
 
-   📷 **[SCREENSHOT RT-05]** — The new, unsaved Return with the items pre-filled.
+   <img width="1367" height="806" alt="image" src="https://github.com/user-attachments/assets/52b5270a-82a6-4f94-b957-2c39f394c688" />
 
 4. Choose the **Return Type** (Refund / Reship / Refund & Reship) and the **Return Reason**. Tick **Is RTO** or **No Physical Return** if they apply.
 5. For a **partial return**, lower the **Return Qty** of the items (delete nothing — just change the quantity).
@@ -666,7 +667,7 @@ When a return reaches **Return Received**, a **Task** is created in the **CS Tic
 2. Enter the **Return Tracking Number** and **Return Carrier** and save.
 3. The Return moves to **Return In Transit** by itself. You can click **Track Return** to refresh the carrier status at any time.
 
-   📷 **[SCREENSHOT RT-06]** — The Return Tracking tab and the **Track Return** button.
+   <img width="1337" height="907" alt="image" src="https://github.com/user-attachments/assets/c1791c76-8866-44ea-9ede-774994b94403" />
 
 ### 7.3 When the goods arrive
 
