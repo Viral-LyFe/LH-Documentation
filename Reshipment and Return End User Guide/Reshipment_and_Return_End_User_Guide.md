@@ -838,7 +838,8 @@ Returns imported from before this feature have no item rows and were imported as
 **A cancelled return still shows in some report.**
 Cancelling removes it from the order's return history and the customer's return count; the new Returns Dashboard never counts cancelled returns.
 
-📷 **[SCREENSHOT RS-20]** — A completed Reshipment for reference, fully filled in.
+<img width="1642" height="905" alt="Screenshot 2026-10-13 132758" src="https://github.com/user-attachments/assets/8ccdbbfe-3d1a-49e5-8394-06ca440ac8e5" />
+
 
 ---
 
