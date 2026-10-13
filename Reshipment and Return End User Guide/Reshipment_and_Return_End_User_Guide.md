@@ -347,9 +347,9 @@ The Factory user clicks **Start Progress**. The Lyfe Order status changes to **R
 
 Factory clicks **Internal Review**. Customer Service clicks **Approve** (→ Approved) or **Reject** (→ Rework Required; Factory fixes it and sends it back to Internal Review).
 
-     <img width="1697" height="611" alt="image" src="https://github.com/user-attachments/assets/b5bbcb30-ccd8-401f-896a-c9ffffa15f58" />
+<img width="1697" height="611" alt="image" src="https://github.com/user-attachments/assets/b5bbcb30-ccd8-401f-896a-c9ffffa15f58" />
 
-     <img width="1401" height="772" alt="image" src="https://github.com/user-attachments/assets/ac45b9c2-ddfd-4d9a-9034-05949a452c4d" />
+<img width="1401" height="772" alt="image" src="https://github.com/user-attachments/assets/ac45b9c2-ddfd-4d9a-9034-05949a452c4d" />
 
 
 ### 4.7 Create the CJ label (Factory warehouse only)
