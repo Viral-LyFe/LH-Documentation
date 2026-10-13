@@ -103,8 +103,8 @@ Every reshipment is named **`{Order ID}-R{number}`**, counting per order. For or
 
 ### 3.2 The form — every section and field
 
-![Uploading screencapture-172-17-59-31-8000-app-lyfe-order-reshipment-LH3045-R01-2026-10-12-17_43_44.png…]()
-).
+<img width="1920" height="5135" alt="screencapture-172-17-59-31-8000-app-lyfe-order-reshipment-LH3045-R01-2026-10-12-17_43_44" src="https://github.com/user-attachments/assets/60bf12fc-7e68-46db-ac5e-f2c39b0d24ae" />
+
 
 #### Header
 
@@ -160,7 +160,10 @@ Used to create the international shipping label (FedEx via CJ).
 | **Shipment Items** | Item, Qty, **Rate (USD)**, **HSN Code**. Filled automatically when the Material Issue for Order is submitted (see step 4.5). |
 | **Output** | **AWB No.**, **CJ Tracking No.**, **Shipping Label** — filled when you click **Generate CJ Label**. |
 
-📷 **[SCREENSHOT RS-03]** — The CJ Shipping tab filled in.
+<img width="1685" height="917" alt="image" src="https://github.com/user-attachments/assets/1f92cdaa-2dfe-4402-81a5-67bf975ea2b4" />
+
+<img width="1757" height="916" alt="image" src="https://github.com/user-attachments/assets/92690cbb-f18e-41b0-9e41-1f664b256093" />
+
 
 #### 1Click Logistics tab (only when "Via US Warehouse" is ticked)
 
@@ -202,7 +205,8 @@ Reshipment Request ──(Factory: Start Progress)──► Reshipment In Progre
    Cancelled — System Manager only, from Request / In Progress / Ready for Dispatch / Awaiting Tracking / Awaiting Shipping
 ```
 
-📷 **[SCREENSHOT RS-04]** — The workflow action button at the top of the form (for example "Start Progress").
+<img width="1805" height="916" alt="image" src="https://github.com/user-attachments/assets/328c6dbc-5350-4b7f-a42a-5cadece9eb2d" />
+
 
 | Status | Meaning | Who moves it |
 |---|---|---|
@@ -249,7 +253,7 @@ Exception: if a **Return on the same order is still open** (Requested / In Trans
 
 **Timeline:** each creation and change (status, Return link, reason, warehouse, carrier, tracking numbers, costs, Gate Pass, invoice) is written to the Lyfe Order's timeline, so Customer Service can follow the reshipment without opening it.
 
-📷 **[SCREENSHOT RS-05]** — The Lyfe Order timeline showing reshipment activity lines.
+<img width="1702" height="917" alt="image" src="https://github.com/user-attachments/assets/cf3c2ab4-54a8-49c9-a70c-6bd78afe582b" />
 
 ### 3.6 Reshipment and Return
 
@@ -294,18 +298,20 @@ Reshipment cost appears as its own line in the **PnL dashboard**, the Founder da
 1. Open the **Lyfe Order** that needs a reshipment. (The order must be **Completed** or **Shipped**.)
 2. Click **Create** in the toolbar, then **Reshipment**.
 
-   📷 **[SCREENSHOT RS-06]** — Lyfe Order toolbar with the **Create** menu open and **Reshipment** highlighted.
+   <img width="1705" height="607" alt="image" src="https://github.com/user-attachments/assets/ff7dc784-56d5-461b-b2e8-991544818957" />
+
 
 3. A new reshipment opens with the **Lyfe Order** filled in and every order item copied into **Reshipment Items**.
 
-   📷 **[SCREENSHOT RS-07]** — The new, unsaved reshipment with the items pre-filled.
+   <img width="1641" height="915" alt="image" src="https://github.com/user-attachments/assets/f14c0f68-3ec2-4ffe-bea6-68b8d1592319" />
+
 
 ### 4.2 Create a Reshipment from a Return
 
 1. Open the **Lyfe Order Return**.
 2. Click **Create → Reshipment**.
 
-   📷 **[SCREENSHOT RS-08]** — The Return form with **Create → Reshipment**.
+   <img width="1647" height="540" alt="image" src="https://github.com/user-attachments/assets/4f7290d5-97e7-4f07-94ac-f05512adf7d5" />
 
 3. The reshipment opens pre-filled, with **Return** set and the reason "Customer Return Replacement". Continue from step 4.3.
 
@@ -317,7 +323,7 @@ Reshipment cost appears as its own line in the **PnL dashboard**, the Founder da
 4. If the parcel must go through the US warehouse, tick **Via US Warehouse** (see Use case 5).
 5. **Save**.
 
-   📷 **[SCREENSHOT RS-09]** — Reason, Description, Warehouse and Via US Warehouse fields.
+   <img width="1717" height="912" alt="image" src="https://github.com/user-attachments/assets/aa03679c-39d6-48e8-baca-747c4a6dff57" />
 
 ### 4.4 Start the work (Factory)
 
@@ -329,22 +335,28 @@ The Factory user clicks **Start Progress**. The Lyfe Order status changes to **R
 2. Complete and **submit** the Material Issue. This is **mandatory** before **Ready for Dispatch**.
 3. Submitting it fills **Shipment Items** in the CJ Shipping tab.
 
-   📷 **[SCREENSHOT RS-10]** — The Material Issue for Order opened from the reshipment.
+   <img width="1632" height="560" alt="image" src="https://github.com/user-attachments/assets/6c60a3c9-03b6-4fb0-a303-a275189b32a5" />
+
+   <img width="1631" height="796" alt="image" src="https://github.com/user-attachments/assets/ad6f5599-7f30-439f-bbb9-29910154b6d5" />
+
+
 
 ### 4.6 Optional quality review
 
 Factory clicks **Internal Review**. Customer Service clicks **Approve** (→ Approved) or **Reject** (→ Rework Required; Factory fixes it and sends it back to Internal Review).
+
+     <img width="1697" height="611" alt="image" src="https://github.com/user-attachments/assets/b5bbcb30-ccd8-401f-896a-c9ffffa15f58" />
 
 ### 4.7 Create the CJ label (Factory warehouse only)
 
 1. Open the **CJ Shipping** tab and complete all sections (see 3.2).
 2. Click **CJ Shipping → Generate CJ Label**.
 
-   📷 **[SCREENSHOT RS-11]** — **CJ Shipping → Generate CJ Label**.
+  <img width="1691" height="465" alt="image" src="https://github.com/user-attachments/assets/9df57f7a-4bd7-4b95-a3fe-f17531fb6369" />
 
-3. If something is missing, a message lists it. When it succeeds, **AWB No.**, **CJ Tracking No.** and **Shipping Label** are filled in.
+3. If something is missing, a message lists it. When it succeeds, **Parcel Details**, **Exporter Invoice No** and **Invoice Attachment (PDF)** are filled in.
 
-   📷 **[SCREENSHOT RS-12]** — "Missing Fields in CJ Shipping Tab" message and the success message.
+   <img width="1562" height="535" alt="image" src="https://github.com/user-attachments/assets/729c2ca3-dc1e-4746-9e05-59a6b246499d" />
 
 ### 4.8 Ready for Dispatch → Dispatched (Factory)
 
