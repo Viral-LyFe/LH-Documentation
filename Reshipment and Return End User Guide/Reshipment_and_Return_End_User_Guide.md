@@ -493,7 +493,7 @@ Every return is named **`{Order ID}-RT-{number}`**, counting per order. For orde
 
 ### 6.3 The form — every section and field
 
-📷 **[SCREENSHOT RT-01]** — A Return form (top part): Lyfe Order, Return Type, Reason, dates and the Return Items table.
+<img width="1372" height="865" alt="image" src="https://github.com/user-attachments/assets/5921c227-2c34-414b-8b2d-535f8ae796b4" />
 
 | Field | What it is |
 |---|---|
