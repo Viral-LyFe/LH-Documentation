@@ -449,7 +449,7 @@ Only a **System Manager** can cancel (workflow button **Cancel**), before the pa
 7. 1Click ships to the customer; the customer's tracking number and carrier appear automatically. The status moves to **Awaiting Shipping → Shipped → Completed**.
 8. Finance enters the batch charges (even days later); each reshipment's **Shipment Cost** share updates automatically. **Customer Leg Shipment Cost** (US → customer) is typed by hand.
 
-   📷 **[SCREENSHOT RS-18]** — The **1Click** button group on the reshipment.
+   <img width="1385" height="921" alt="image" src="https://github.com/user-attachments/assets/27314db6-b7fe-4cb7-a9b1-a22c931ecc7d" />
 
 ### Use case 6 — 1Click rejected the reshipment
 
