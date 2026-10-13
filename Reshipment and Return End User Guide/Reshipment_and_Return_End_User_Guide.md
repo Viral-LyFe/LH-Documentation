@@ -251,6 +251,8 @@ Reshipment Request ──(Factory: Start Progress)──► Reshipment In Progre
 
 Exception: if a **Return on the same order is still open** (Requested / In Transit / Received), a Completed or Cancelled reshipment leaves the order as **Return InProgress** until that Return is closed or cancelled.
 
+The table applies in every case — whether a person clicks the workflow button or the **hourly tracking job** moves the reshipment (for example, when the carrier reports Delivered the reshipment becomes **Completed**, the order becomes **Completed** with Reship Status **SUCCESSFUL**, and the **Reshipment Completed Date** is stamped).
+
 **Timeline:** each creation and change (status, Return link, reason, warehouse, carrier, tracking numbers, costs, Gate Pass, invoice) is written to the Lyfe Order's timeline, so Customer Service can follow the reshipment without opening it.
 
 <img width="1702" height="917" alt="image" src="https://github.com/user-attachments/assets/cf3c2ab4-54a8-49c9-a70c-6bd78afe582b" />
