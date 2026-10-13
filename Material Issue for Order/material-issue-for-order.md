@@ -240,7 +240,7 @@ These are checked **on the server**, so they apply whichever way the document is
 
 | # | Rule | Message title |
 |---|---|---|
-| 1 | **Gift items:** for an **Issue**, every order on the MIFO that has gift items needs **at least one gift ticked** | *Gift Item Required* — "Select at least one issued gift item for: …" |
+| 1 | **Gift items:** for an **Issue**, every order on the MIFO that has gift items needs **at least one gift ticked** (not required when issued against a Reshipment order) | *Gift Item Required* — "Select at least one issued gift item for: …" |
 | 2 | **Every row must have an Item Code** (rows added empty) | *Incomplete Rows* — "Row N: Item Code is required." |
 | 3 | **Enough stock** in the rack for every row (**Issue only**) | *Insufficient Stock* |
 | 4 | **Tube items must have a Finished Item** | *Finished Item Required* — "Row N: … is a tube item — Finished Item is required." |
@@ -318,7 +318,7 @@ Some orders include free **gift items**. They are shown at the bottom of an **Is
 How it works:
 
 - **Tick the gifts you physically issued.** Each tick is saved to the order immediately — before you submit — and updates the order's cost of goods (ticked gifts count toward cost; unticked do not).
-- **Rule:** for every order on the MIFO that has gift items, **at least one gift must be ticked**, otherwise submission is blocked with *Gift Item Required*. The screen scrolls you to the section.
+- **Rule:** for every order on the MIFO that has gift items, **at least one gift must be ticked**, otherwise submission is blocked with *Gift Item Required*. This rule does **not** apply when the MIFO is issued against a **Reshipment** order — ticking gifts is optional there. The screen scrolls you to the section.
 - The section appears **after the MIFO has been saved once**.
 - It does **not** appear for **Returns**. If the orders have no gifts, it says *"No gift items on these orders."*
 - After submission the tick boxes are locked.
