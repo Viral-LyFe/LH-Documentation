@@ -41,7 +41,9 @@ Every number comes from the records the team already works in every day: stock o
 | **Confidence** | How much history sits behind the daily-use number. **High** = the item moved in 8 or more of the last 13 weeks, **Medium** = 4 to 7 weeks, **Low** = under 4 weeks. |
 | **Revenue exposed** | The dollar value of open-order lines that contain an item at risk (Critical, High or Medium). It is a warning, not proof that the order cannot be built. |
 | **Blocked** (Buildable Orders) | The dollar value of orders that truly cannot be fully built from current stock. This is the real "blocked" figure. |
-| **Trend arrow** | Shown on Stockout Risk rows. "up +40%" means recent daily use is 40% higher than the 90-day average. "down -30%" means lower. Shown only when the change is 25% or more. |
+| **Trend arrow** | Shown on Stockout Risk rows. "up +40%" means recent daily use is 40% higher than the 90-day average. "down -30%" means lower. Shown only when the change is 25% or more, and only when the item was issued at least 3 times in the last 90 days (one order is not a trend). |
+| **Unexpected order** | A flag shown instead of the trend arrow when one big issue makes up at least half of the item's 90-day use and is at least 3 times the typical other issue (for example a one-off order for 100 brackets). It is not treated as demand. Needs at least 2 issues to compare. |
+| **×N finishes** | One row standing for the same product in several finishes (for example WFL2-100-PB, -SB and -PBU). The finish is applied after the blank is stocked, so stock, use and open orders are added together and days of cover, risk and the order quantity are worked out on the total. Hover to see each finish. |
 | **Lyfe BOM** | Our own recipe for a product: which components, how many of each, and the scrap allowance. It is the only recipe the page uses. |
 | **Child SKU** | A component SKU that belongs to a product. In the fallback rule (section 3.7), the parts a previous order actually used. |
 | **Live vs Snapshot** | **Live** means calculated right now. **Snapshot** means taken from last night's saved copy. The Stockout Risk tile says which one it is using. |
@@ -148,7 +150,7 @@ A small refresh arrow under the cards reloads just the cards.
 ### 4.2 Stockout Risk
 **What it shows:** every item that was used in the window and has **under 30 days** of cover (Medium, High or Critical). Low-risk items are not listed.
 
-**Each row:** item code, "used N in 30d" (with the trend arrow when relevant), available, suggested order quantity (only when above zero), days of cover, and "exposes $X" (Revenue exposed) or "no open orders". A risk badge with a symbol (not just colour). The footer shows the count of Critical / High / Medium.
+**Each row:** item code (a product that comes in several finishes is one row marked "×N finishes"), "used N in 30d" (with the trend arrow when relevant), available, suggested order quantity (only when above zero), days of cover, and "exposes $X" (Revenue exposed) or "no open orders". A risk badge with a symbol (not just colour). The footer shows the count of Critical / High / Medium.
 
 **Sort order:** items where open orders already exceed stock first, then Critical, High, Medium, then higher dollars exposed, then fewer days of cover.
 
@@ -156,7 +158,7 @@ A small refresh arrow under the cards reloads just the cards.
 
 **Left out on purpose:** items with no use in the window, tube and acrylic rods (own tiles), and items whose stock policy is "Make to Order" or "Do Not Stock". Acrylic rod caps are not rods and stay here.
 
-**What to click:** **View forecast detail** opens the full list with a search box and a risk filter. Click a row to see more: daily use, committed, confidence, BOM committed with its reliability, recommended action, **Where used** (which Lyfe BOMs contain the item and how many open orders carry them) and **Go to** links to the Item and its stock ledger. **Download restock list (CSV)** exports every row.
+**What to click:** **View forecast detail** opens the full list with a search box and a risk filter. Click a row to see more: daily use, committed, confidence, BOM committed with its reliability, recommended action, **Where used** (which Lyfe BOMs contain the item and how many open orders carry them) and **Go to** links to the Item and its stock ledger. **Download restock list (CSV)** exports every row. A "×N finishes" row opens the Item list for that product (not a single Item), and **Where used** covers all its finishes.
 
 The subtitle says **Live** or **Snapshot - date**.
 
@@ -361,7 +363,7 @@ A simple rule: **Stockout Risk and Restock List look at the pace of use. The thr
 
 **A spike (trend arrow shows "up")**
 1. Look at the arrow: how far above the 90-day average?
-2. Ask whether it is a one-off (large order) or lasting.
+2. Ask whether it is a one-off (large order) or lasting. A single outsized order shows "⚑ unexpected order" instead of an arrow, so an arrow means several orders over time.
 3. If lasting, raise the target cover or buy extra. The forecast will take time to catch up.
 
 ---
@@ -451,7 +453,7 @@ An older Ready order has already taken the stock.
 Not in on-hand stock or in use. (The old Not In Stock tiles used to count it; they now exclude it too.)
 
 **Why is the trend arrow missing?**
-The change is under 25%, the window is 90 days or more, or there is no 90-day history.
+The change is under 25%, the window is 90 days or more, there is no 90-day history, or the item was issued fewer than 3 times in 90 days. If one big order caused the jump, you see "⚑ unexpected order" instead.
 
 **Can I change the 7 / 15 / 30 day levels?**
 Yes, an administrator can, in the briefing settings. The page and the nightly update use the same levels.

@@ -210,12 +210,23 @@ Rows returned by `get_tile_stockout_risk.top_items`, `get_stockout_risk_drilldow
 | `suggested_qty` | number | Quantity to order to restore target cover, MOQ applied (see section 4 for the two formulas). UI column "Order qty". 0 when nothing needed. |
 | `confidence` | string | `High` (>= 8 of the last 13 weeks with consumption), `Medium` (>= 4), else `Low`. |
 | `movement_weeks` | int | Weeks (of the last 13, 91 days) with any Material Issue. Absent on snapshot-sourced rows. |
-| `trend_pct` | int/null | Added only by `get_tile_stockout_risk`: current window daily use vs the 90-day average, `round((use/avg90 - 1) x 100)`; null when there is no 90-day history or the window is >= 90. Not on drilldown rows. |
+| `trend_pct` | int/null | Added only by `get_tile_stockout_risk`: current window daily use vs the 90-day average, `round((use/avg90 - 1) x 100)`; null when there is no 90-day history, the window is >= 90, the item had fewer than 3 Material Issue entries in 90 days (`MIN_ORDERS_FOR_TREND`), or `unexpected_order_qty` is set. Not on drilldown rows. |
+| `unexpected_order_qty` | float/null | Added only by `get_tile_stockout_risk`: quantity of the single Material Issue that is >= half of the 90-day total and >= 3x the median of the other issues (needs >= 2 entries); null otherwise. The UI shows "unexpected order" instead of the trend arrow. Entries come from `_issues_90d` (one per Stock Entry; a finish family's finishes on one entry count once). |
+| `variants` | object[] (optional) | Present only on a merged finish family row: `{item_code, current_qty, avg_daily_outflow, committed_qty}` per finish, highest use first. On such a row `item_code` is the family key (SKU without its finish token, e.g. `WFL2-100`), not an Item; `current_qty`, `avg_daily_outflow`, `committed_qty`, `bom_committed_qty` are sums; `days_of_stock`, `risk_level`, `available_qty`, `available_days`, `stockout_date`, `suggested_qty` (largest member cover override and MOQ), `confidence` (best `movement_weeks`) are recomputed on the sums; `item_group` is the members' most common group. Rows of a one-SKU family have no `variants`. See 6.1. |
 | `blocked_amount` | float | UI label "Revenue exposed". `SUM(quantity x unit_price)` of this SKU's order lines (`ShipStation Order Item`, `adjustment = 0`) on Lyfe Orders whose status is not Cancelled/Merged/Split/Shipped/Completed/Return Successfully AND that have no submitted `Material Issue` Stock Entry (`custom_lyfe_order`). Currency: order currency as stored (USD). Present on `get_tile_stockout_risk` rows and on drilldown rows only with `include_all=1` (0 for non-at-risk items). |
 | `blocked_orders` | int | UI label "Orders exposed": distinct Lyfe Orders in that sum. |
 | `snapshot_date` | date | Snapshot rows only. |
 
 ---
+
+### 6.1 Finish-variant merge (2026-10-14)
+
+`_stockout_rows()` merges SKUs that differ only by a finish token into one family row (`_merge_finish_variants`). The blank is stocked in one finish and finished to order, so which finish holds the stock is arbitrary; pooling avoids listing the same product once per finish.
+
+- **Family key:** the SKU with its finish token removed (`WFL2-100-PB` -> `WFL2-100`; `28L-ASBR-AB-075` -> `28L-ASBR-075`). Finish tokens = `Product Finish.abbreviation` values plus each with a `U` suffix (`PSSU`, `SSSU`); the first SKU part is never a finish. A one-SKU family is unchanged.
+- **Where:** after the cached all-items rows are built, before the `item_group` (with descendants) and window (`days_of_stock <` Medium) filters, so a filter on one member's group never splits a family. Applies to every consumer of `_stockout_rows` (Stockout Risk tile, drilldowns, category chart, stock summary, Restock List, `get_stock_forecast_page`, and the MCP tile/drilldown tools that call them).
+- **Not merged:** `founder_briefing.data.get_projected_stockouts`, the nightly `Stock Forecast Snapshot` rows, the Daily Briefing / Slack and `get_stockout_forecast` / `get_component_forecast` MCP tools stay per SKU. The dashboard's Critical families therefore can be fewer than Slack's Critical SKUs (another finish may hold the stock).
+- **Per-SKU queries:** `_blocked_by_item` and `_issues_90d` expand a family key to its member SKUs (`frappe.local.fd_finish_members`, set on each `_stockout_rows` call); `get_where_used` accepts comma-joined member SKUs (the UI sends `variants`). Restock List rows carry `variant_count`.
 
 ## 7. Common errors
 
@@ -342,13 +353,14 @@ bench --site lyfelocal.com execute lh.lyfe_hardware.page.founder_dashboard.found
 | Field | Type | Meaning |
 |---|---|---|
 | `critical_count`, `high_count`, `medium_count` | int | Counts per level among returned rows. |
-| `total_at_risk` | int | `len(top_items)`. |
+| `total_at_risk` | int | `len(top_items)` (families, not SKUs, once finish variants are merged). |
 | `top_items` | object[] | EVERY row with `days_of_stock <` Medium threshold, most urgent first (name kept for compatibility; the founder page slices to 6, the stock page scrolls all). Row fields: section 6 including `trend_pct`, `blocked_amount`, `blocked_orders`. Tube and acrylic rod items are not here (own tiles); Make-to-Order / Do-Not-Stock policy items excluded. |
 | `window_days` | int | Effective (clamped) window. |
 | `source` | string | `Live` or `Snapshot · YYYY-MM-DD`. |
 | `period_label` | string | `Live - projected from trailing {days}-day usage`. |
 
   If there are no rows, `top_items` is empty and `blocked_amount`/`trend_pct` enrichment is skipped.
+- **Finish merge (6.1):** rows are one per SKU family, so `total_at_risk` and the level counts count families.
 - **Errors:** `_log_and_reraise("stockout_risk")`.
 - **Example request:** `args: {item_group: "Iron Door Pulls", days: 30}`
 - **Example response (real, 1 row):**
