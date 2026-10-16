@@ -5,7 +5,7 @@
 | **Features** | **Lyfe Order Return** (goods coming back from the customer: refund, restock fee, replacement) and **Lyfe Order Reshipment** (a second shipment to the customer, including the Return link and the Via-US-Warehouse route) |
 | **Who it is for** | Customer Service, Factory, Shipping Forwarder, Finance, Super Admin, System Manager |
 | **Document version** | 2.4 |
-| **Last updated** | 2026-10-13 |
+| **Last updated** | 2026-10-16 |
 | **Screenshots** | Every `📷 [SCREENSHOT RS-xx]` (Reshipment) or `📷 [SCREENSHOT RT-xx]` (Return) line is a placeholder. Take the screenshot, save it as the same ID (for example `RT-01.png`) and insert it there. |
 
 ---
@@ -243,9 +243,10 @@ Reshipment Request ──(Factory: Start Progress)──► Reshipment In Progre
 
 | Reshipment event | Lyfe Order status becomes | Other effects |
 |---|---|---|
-| Moves to **Reshipment In Progress** | **Reshipment In Progress** | — |
-| Moves to **Ready for Dispatch** | (no change) | Order's Reship Status = **PENDING**, Reship Date set |
-| Moves to **Shipped** | (no change) | Reship Status = **ON GOING** |
+| Reshipment is **created** (state *Reshipment Request*) | (no change) | Reship Status = **PENDING** |
+| Moves to **Reshipment In Progress** | **Reshipment In Progress** | Reship Status = **ON GOING** |
+| Moves to **Ready for Dispatch** | (no change) | Reship Date set, Reship Status = **ON GOING** |
+| Moves to **Shipped** (or any other step after *Reshipment Request*) | (no change) | Reship Status = **ON GOING** |
 | Moves to **Completed** | **Completed** | Reship Status = **SUCCESSFUL** |
 | **Cancelled** | **Completed** (the original order was already delivered) | — |
 
@@ -627,7 +628,7 @@ When a return reaches **Return Received**, a **Task** is created in the **CS Tic
 
 - On a Return, click **Create → Reshipment** to create the replacement. It works for **any Return that is not Cancelled**, even after it is closed. See [3.6](#36-reshipment-and-return).
 - A **Refund-only** return that gets a reshipment becomes **Refund & Reship** (while it is still open), so it cannot be closed before the replacement is done.
-- A Return can have several Reshipments. The Return's **Reship Status** is **SUCCESSFUL** only when all of its (non-cancelled) reshipments are Completed.
+- A Return can have several Reshipments. The Return's **Reship Status** is **PENDING** while its reshipments are only requested, **ON GOING** once any of them moves past *Reshipment Request*, and **SUCCESSFUL** only when all of its (non-cancelled) reshipments are Completed. If every reshipment is cancelled, an automatic PENDING / ON GOING is cleared (a value set by hand stays).
 
 ### 6.9 Rules and error messages
 
@@ -872,6 +873,7 @@ Cancelling removes it from the order's return history and the customer's return 
 
 | Version | Date | What changed |
 |---|---|---|
+| 2.5 | 2026-10-16 | **Reship Status** now follows the Reshipment from the start: *Reshipment Request* → **PENDING**, any later step (In Progress, Internal Review, Ready for Dispatch, Awaiting Tracking/Shipping, Shipped, US Warehouse / 1Click steps) → **ON GOING**, all Completed → **SUCCESSFUL**. Cancelling every reshipment clears the automatic value. Applies to the Return and the Lyfe Order. |
 | 2.4 | 2026-10-13 | The **Return Received** follow-up Task is now assigned only to `support@lyfehardware.com`; the Factory user is no longer added when goods return to Factory - LH. |
 | 2.3 | 2026-10-13 | Gate Passes created from a Reshipment (automatically or with Create → Gate Pass) now fill **Box Group** on every box row. |
 | 2.2 | 2026-10-13 | Added **Create → Gate Pass** on the Reshipment, to create the Gate Pass again after it was cancelled. |

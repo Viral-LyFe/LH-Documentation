@@ -244,9 +244,10 @@ Reshipment Request ──(Factory: Start Progress)──► Reshipment In Progre
 
 | Reshipment event | Lyfe Order status becomes | Other effects |
 |---|---|---|
-| Moves to **Reshipment In Progress** | **Reshipment In Progress** | — |
-| Moves to **Ready for Dispatch** | (no change) | Order's Reship Status = **PENDING**, Reship Date set |
-| Moves to **Shipped** | (no change) | Reship Status = **ON GOING** |
+| Reshipment is **created** (state *Reshipment Request*) | (no change) | Reship Status = **PENDING** |
+| Moves to **Reshipment In Progress** | **Reshipment In Progress** | Reship Status = **ON GOING** |
+| Moves to **Ready for Dispatch** | (no change) | Reship Date set, Reship Status = **ON GOING** |
+| Moves to **Shipped** (or any other step after *Reshipment Request*) | (no change) | Reship Status = **ON GOING** |
 | Moves to **Completed** | **Completed** | Reship Status = **SUCCESSFUL** |
 | **Cancelled** | **Completed** (the original order was already delivered) | — |
 
@@ -593,7 +594,7 @@ When a return reaches **Return Received**, a **Task** is created in the **CS Tic
 
 - On a Return, click **Create → Reshipment** to create the replacement. It works for **any Return that is not Cancelled**, even after it is closed. See [Reshipment and Return](#reshipment-and-return).
 - A **Refund-only** return that gets a reshipment becomes **Refund & Reship** (while it is still open), so it cannot be closed before the replacement is done.
-- A Return can have several Reshipments. The Return's **Reship Status** is **SUCCESSFUL** only when all of its (non-cancelled) reshipments are Completed.
+- A Return can have several Reshipments. The Return's **Reship Status** is **PENDING** while its reshipments are only requested, **ON GOING** once any of them moves past *Reshipment Request*, and **SUCCESSFUL** only when all of its (non-cancelled) reshipments are Completed. If every reshipment is cancelled, an automatic PENDING / ON GOING is cleared (a value set by hand stays).
 
 ### Rules and error messages
 

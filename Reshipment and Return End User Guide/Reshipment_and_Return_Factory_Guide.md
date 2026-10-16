@@ -229,9 +229,10 @@ Reshipment Request ──(Factory: Start Progress)──► Reshipment In Progre
 
 | Reshipment event | Lyfe Order status becomes | Other effects |
 |---|---|---|
-| Moves to **Reshipment In Progress** | **Reshipment In Progress** | — |
-| Moves to **Ready for Dispatch** | (no change) | Order's Reship Status = **PENDING**, Reship Date set |
-| Moves to **Shipped** | (no change) | Reship Status = **ON GOING** |
+| Reshipment is **created** (state *Reshipment Request*) | (no change) | Reship Status = **PENDING** |
+| Moves to **Reshipment In Progress** | **Reshipment In Progress** | Reship Status = **ON GOING** |
+| Moves to **Ready for Dispatch** | (no change) | Reship Date set, Reship Status = **ON GOING** |
+| Moves to **Shipped** (or any other step after *Reshipment Request*) | (no change) | Reship Status = **ON GOING** |
 | Moves to **Completed** | **Completed** | Reship Status = **SUCCESSFUL** |
 | **Cancelled** | **Completed** (the original order was already delivered) | — |
 
