@@ -1,4 +1,4 @@
-<img width="1922" height="917" alt="image" src="https://github.com/user-attachments/assets/3c6f0da7-6cde-4319-98a9-274763c275e8" /># Lyfe Stock PO Planner — End User Guide
+# Lyfe Stock PO Planner — End User Guide
 
 ## What is this screen for?
 
