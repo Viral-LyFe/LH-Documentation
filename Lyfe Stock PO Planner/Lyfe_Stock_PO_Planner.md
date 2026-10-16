@@ -13,14 +13,24 @@ When you open it, you see the list **"Forecast: needs ordering"**: only items th
 | Filter | What it does | Default |
 |---|---|---|
 | **Show** | Chooses the list you want to see (see section 2) | Forecast: needs ordering |
-| **Days of usage** | How many past days to look at when checking what was used | 30 |
-| **Min orders (trend)** | An item used in at least this many orders is called "frequently ordered" | 3 |
-| **Cover days** | How many days of stock you want to hold. Leave blank to use the company setting | blank |
+| **Days of usage** | How many past days to look at when checking what was used. *Only visible in the three "Forecast / Trend" lists* | 30 |
+| **Min orders (trend)** | An item used in at least this many orders is called "frequently ordered". *Only visible in the three "Forecast / Trend" lists* | 3 |
+| **Cover days** | How many days of stock you want to hold. Leave blank to use the company setting. *Only visible in the three "Forecast / Trend" lists* | blank |
 | **Item Type** | Child Items (specific SKUs) or Parent Items | Child Items |
 | **Item Group** | Show one group only | all |
 | **Item Code** | Show one item only | all |
+| **Not registered only** | Shows only items that have never been in stock. *Only visible in the other three lists (Minimum / Target, Always in stock, All items)* | off |
 
 <img width="1922" height="917" alt="image" src="https://github.com/user-attachments/assets/0200ca47-a6fd-4696-9823-cf95a9d15037" />
+
+**Some filters and columns change with the list you pick in "Show".** The filter bar and the table adjust by themselves:
+
+| | Forecast lists *(Forecast: needs ordering, Trend: frequently ordered, Forecast: all used items)* | Stock-level lists *(Minimum / Target: needs ordering, Always in stock, All items)* |
+|---|---|---|
+| Filters shown | Days of usage, Min orders, Cover days | Not registered only |
+| Extra columns shown | Committed, Used, Orders, Trend, Days Left, Why | Minimum, Target |
+
+The columns Status, Item, On Hand, On Order, Order Qty and Finishes are shown in every list.
 
 You can also use the **search box** above the table, and click a **status count** (for example "Order now") to show only those rows.
 
@@ -61,6 +71,8 @@ Items that differ only by **finish** (for example Polished Brass and Satin Brass
 How much is physically in stock right now. Stock in the Rejected Material warehouse is **not** counted.
 
 ### Committed
+*(Forecast lists only.)*
+
 Quantity already **promised to open customer orders** that haven't been issued from stock yet. This stock is spoken for.
 
 > Example: On Hand 100, Committed 30. Only 70 is really free to use.
@@ -69,15 +81,21 @@ Quantity already **promised to open customer orders** that haven't been issued f
 Quantity on **Lyfe POs we've already placed** that haven't arrived yet. Closed and Cancelled POs are not counted.
 
 ### Used
+*(Forecast lists only.)*
+
 How much of this item was **used in the "Days of usage" period** (last 30 days by default).
 
 ### Orders
+*(Forecast lists only.)*
+
 The number of **different customer orders** that used this item in the same period.
 
 > Example: 500 units used but in only 2 orders → Used 500, Orders 2.
 > 50 units used across 20 orders → Used 50, Orders 20. This item is needed all the time, even though the quantity is small.
 
 ### Trend
+*(Forecast lists only.)*
+
 Shows whether the item is being ordered **more or less often** than in the period before. It compares the **number of orders**, not the quantity.
 
 | Trend | Meaning | When it appears |
@@ -98,6 +116,8 @@ Shows whether the item is being ordered **more or less often** than in the perio
 Hover your mouse over the Trend to see how many orders there were in the earlier period.
 
 ### Days Left
+*(Forecast lists only.)*
+
 How many days the stock on hand will last at the current rate of use. It is colour-coded:
 
 | Colour | Meaning |
@@ -111,14 +131,14 @@ How many days the stock on hand will last at the current rate of use. It is colo
 If the item hasn't been used, Days Left is blank.
 
 ### Minimum and Target
-*(Only in the Minimum / Target lists.)*
+*(Only in the stock-level lists: Minimum / Target: needs ordering, Always in stock, All items. Not shown in the Forecast lists.)*
 - **Minimum** — the lowest stock we're willing to hold. Below this, order.
 - **Target** — the level we want to bring stock back up to when we order.
 
 ### Order Qty
-**How many to order.** It is filled in for you, and you can change it. Typing a quantity ticks the row automatically.
+*(All lists.)* **How many to order.** It is filled in for you, and you can change it. Typing a quantity ticks the row automatically.
 
-In the Forecast lists the suggestion is:
+In the Forecast lists the suggestion is as below. In the stock-level lists it is the Target minus On Hand minus On Order (rounded up to the item's minimum order quantity).
 
 1. Enough to cover your **Cover days** of expected use, **minus** what is free in stock, rounded up to the item's minimum order quantity.
 2. For frequently ordered items, the planner also works out how many orders to expect and the usual quantity per order, and uses whichever number is **bigger**.
@@ -130,6 +150,8 @@ In the Forecast lists the suggestion is:
 
 
 ### Why
+*(Forecast lists only.)*
+
 Tells you *why* the item is on the list:
 - **Low stock** — stock is running low based on usage.
 - **Frequent orders** — it is used in many orders and stock may not cover the orders we expect.
@@ -145,7 +167,7 @@ Click a product row to open a window with **each finish separately**, where you 
 
 | Button | What it does |
 |---|---|
-| **Create / Update Lyfe PO** | Makes a new Draft Lyfe PO from the ticked rows, or adds them to an existing Draft or Ordered PO. Items already on that PO are left unchanged and reported to you |
+| **Create / Update Lyfe PO** | Adds the ticked rows to **today's Draft Lyfe PO** if there is one (a PO with status Draft and today's date). Otherwise it creates a new Lyfe PO. A PO that is no longer Draft (for example Ordered) or was made on an earlier day is never changed. Items already on that PO are left unchanged and reported to you |
 | **Select all 'Order now'** | Ticks every red row in one click |
 | **Column filters** | Shows a filter box under each column heading. For number columns you can type things like `>5` or `<=100` |
 | **Export Excel** | Downloads the list to Excel |
@@ -162,6 +184,7 @@ You can also click any column heading to sort by it.
 4. Change **Order Qty** if you know better (for example, a big order is coming).
 5. Tick the rows you want. Or click **Select all 'Order now'**.
 6. Click **Create / Update Lyfe PO**.
+7. Need to add more items later the same day? Tick the new rows and click the button again. They go into the same Draft PO, so you don't get a second PO.
 
 ---
 
@@ -192,4 +215,4 @@ You can also click any column heading to sort by it.
 - Suggestions come from **past usage**. They don't know about future promotions, so adjust Order Qty when needed.
 - Only items used in the chosen period appear in the Forecast lists.
 - After a PO is placed, its quantity shows under **On Order** and the row changes from "Order now" to "On order", so the same item isn't ordered twice.
-- Once the PO arrives, use **Add to Stock** on the Lyfe PO to book it into the warehouse.
+- Once the PO arrives, use **Add to Stock** on the Lyfe PO to book it into the warehouse. The window has a **Default Rack** and a **Rack** column per item, so each item can go to a different rack. A row with no rack of its own uses the Default Rack.
