@@ -126,6 +126,9 @@ In the Forecast lists the suggestion is:
 
 > Example: uses 5 per day, Cover days 30 → need 150. Free stock is 40, already on order 50. Order Qty = 150 − 40 − 50 = **60**.
 
+<img width="1917" height="854" alt="image" src="https://github.com/user-attachments/assets/f7b35514-b6e5-499e-b4fa-dce12f993377" />
+
+
 ### Why
 Tells you *why* the item is on the list:
 - **Low stock** — stock is running low based on usage.
