@@ -1,4 +1,4 @@
-# Lyfe Stock PO Planner — End User Guide
+<img width="1922" height="917" alt="image" src="https://github.com/user-attachments/assets/3c6f0da7-6cde-4319-98a9-274763c275e8" /># Lyfe Stock PO Planner — End User Guide
 
 ## What is this screen for?
 
@@ -20,6 +20,8 @@ When you open it, you see the list **"Forecast: needs ordering"**: only items th
 | **Item Group** | Show one group only | all |
 | **Item Code** | Show one item only | all |
 
+<img width="1922" height="917" alt="image" src="https://github.com/user-attachments/assets/0200ca47-a6fd-4696-9823-cf95a9d15037" />
+
 You can also use the **search box** above the table, and click a **status count** (for example "Order now") to show only those rows.
 
 ---
@@ -34,6 +36,8 @@ You can also use the **search box** above the table, and click a **status count*
 | **Minimum / Target: needs ordering** | Items below the fixed Minimum stock set on the item |
 | **Always in stock (all)** | All items that have a Minimum set |
 | **All items** | Every item (slow, large list) |
+
+<img width="1913" height="577" alt="image" src="https://github.com/user-attachments/assets/4c747272-82aa-49a3-877f-a2bab6a1f6d7" />
 
 ---
 
@@ -88,6 +92,8 @@ Shows whether the item is being ordered **more or less often** than in the perio
 - 10 orders before → 6 now = **↓ Falling**
 - 2 orders before → 3 now = **→ Steady** (only 1 more order, too small to count)
 - 0 orders before → 5 now = **★ New**
+
+<img width="1917" height="840" alt="image" src="https://github.com/user-attachments/assets/a5f28c8b-e039-47d4-9669-d84be84aac91" />
 
 Hover your mouse over the Trend to see how many orders there were in the earlier period.
 
