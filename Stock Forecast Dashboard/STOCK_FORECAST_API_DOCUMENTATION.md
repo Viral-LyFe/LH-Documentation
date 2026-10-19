@@ -598,7 +598,7 @@ bench --site lyfelocal.com execute lh.lyfe_hardware.page.founder_dashboard.found
 ### 8.10 `get_tile_restock_list`
 
 - **Kind / path:** Desk whitelisted, `.../get_tile_restock_list`.
-- **Purpose:** one buy list: every Critical/High/Medium item with `suggested_qty > 0` (from the include_all stockout rows, deduplicated), plus tube pipes with `order_rods > 0` and acrylic classes with inches to order (`max(inches_per_day x target_cover - inches_on_hand, 0)`), in the unit they are bought. Restocking is booked as Stock Entry (Material Receipt), so there is no "on order" signal; `last_received` shows the latest receipt instead.
+- **Purpose:** one buy list: every Critical/High/Medium item with `suggested_qty > 0` (from the include_all stockout rows, deduplicated), plus tube pipes with `order_rods > 0` and acrylic classes with inches to order (`max(inches_per_day x target_cover - inches_on_hand, 0)`), in the unit they are bought. Restocking is booked as a Purchase Receipt (Lyfe PO "Add to Stock") or, historically, a Stock Entry (Material Receipt), so there is no "on order" signal; `last_received` shows the latest receipt of either kind instead.
 - **Parameters:** none. **Filters:** none (tube/acrylic use the default window).
 - **Sort:** `(available_qty >= 0, Critical < High < Medium, days_of_stock)`: open orders already above stock first.
 - **Response:**
@@ -614,7 +614,7 @@ bench --site lyfelocal.com execute lh.lyfe_hardware.page.founder_dashboard.found
 | `rows[].days_of_stock` | float/null | Cover. |
 | `rows[].order_qty` | float | Units (MOQ applied) / rods / inches. |
 | `rows[].unit` | string | `units`, `rods (100 ft; N ft short)`, `inches`. |
-| `rows[].last_received` | string | Latest submitted Material Receipt date, `""` if none (always `""` for Acrylic). |
+| `rows[].last_received` | string | Latest submitted Purchase Receipt (non-return) or Material Receipt Stock Entry date, `""` if none (always `""` for Acrylic). |
 | `total` | int | Row count. |
 | `target_cover_days` | int | Settings value used. |
 

@@ -215,4 +215,4 @@ You can also click any column heading to sort by it.
 - Suggestions come from **past usage**. They don't know about future promotions, so adjust Order Qty when needed.
 - Only items used in the chosen period appear in the Forecast lists.
 - After a PO is placed, its quantity shows under **On Order** and the row changes from "Order now" to "On order", so the same item isn't ordered twice.
-- Once the PO arrives, use **Add to Stock** on the Lyfe PO to book it into the warehouse. The window has a **Default Rack** and a **Rack** column per item, so each item can go to a different rack. A row with no rack of its own uses the Default Rack.
+- Once the PO arrives, use **Add to Stock** on the Lyfe PO to book it into the warehouse. This creates and submits a **Purchase Receipt** against supplier CHANDAK BROS (every piece is valued at a flat $1). Cancelling that Purchase Receipt takes the quantity back off the PO. Receipts booked before this change are Stock Entries (Material Receipt) and stay as they are. The window has a **Default Rack** and a **Rack** column per item, so each item can go to a different rack. A row with no rack of its own uses the Default Rack.
