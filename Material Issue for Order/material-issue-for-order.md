@@ -267,7 +267,7 @@ A MIFO also needs at least one item row and a rack on every row — otherwise th
 1. **Stock moves.** A stock movement record (Stock Entry) is created and submitted automatically, dated with the MIFO's **Date**, and its number appears in the *Stock Entry* field.
    - **Issue** → *Material Issue* (stock out of the rack).
    - **Return** → *Material Receipt* (stock into the rack).
-2. **The order's issued list is rebuilt.** The order's shipment items now show the net quantity physically issued, together with HSN/HTS codes, unit and price from the order's lines. If you had manually edited things like price on that list, your edits are kept; only quantities are refreshed.
+2. **The order's issued list is rebuilt.** The order's shipment items now show the net quantity physically issued, together with HSN/HTS codes, unit, net weight (from the item's net weight per piece) and price from the order's lines. If you had manually edited things like price or net weight on that list, your edits are kept; only quantities are refreshed.
 3. **Draft documents follow along.** A *draft* Sales Invoice for the order is updated to match. A *draft* Purchase Order for the order is updated to match (it is never left with zero items). Submitted invoices and POs are **not** changed — they must be amended by hand.
 4. **1Click registration (Issue only).** Any item that 1Click does not yet recognise is registered with 1Click before the stock moves. If 1Click is unavailable or fails, **nothing is blocked** — the issue still goes through and the problem is logged for support.
 5. The order's progress bar shows **✓ Material Issued** (green).
