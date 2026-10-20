@@ -298,7 +298,7 @@ Review prices and discounts, then click:
 When a quotation is in **Pending Approval**, the manager sees a yellow prompt banner at the top of the form.
 
 ### Approving from Slack
-Only users with the approver role can use the Slack buttons. Others see “You’re not authorized to act on Quotation approvals from Slack.” If the quotation is no longer Pending Approval, the card changes to “Out of Date”. **Slack’s “Send Quotation to Client” only changes the status — it does NOT email the customer or create a payment link.** Always send from the quotation form in the system, or use **Resend Email** afterwards (section 13).
+Only users with the approver role can use the Slack buttons. Others see “You’re not authorized to act on Quotation approvals from Slack.” If the quotation is no longer Pending Approval, the card changes to “Out of Date”. The Slack card has only **Approve** and **Send Back to Sales User**. To send the quotation to the client, use the quotation form in the system (section 13).
 
 > **Note:** When Factory approves feasibility on an order of 10,000 or more, the quotation goes to Pending Approval directly **without** a Slack card and without the Cost of Goods check. Managers should look in the system for such quotations.
 

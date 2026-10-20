@@ -120,7 +120,7 @@ Surfaces stuck orders to operations/warehouse/CS teams before they become custom
 ## 2.4 Quotation Approval Card (Interactive — Two-Way)
 
 **Details:**
-When a quotation needs approval, a card is posted with **Approve**, **Send Back**, and **Send to Client** buttons. Clicking a button (or filling a short popup form for "Send Back") updates the quotation in ERPNext immediately — no need to open the system.
+When a quotation needs approval, a card is posted with **Approve** and **Send Back** buttons (sending to the client is done in ERPNext only). Clicking a button (or filling a short popup form for "Send Back") updates the quotation in ERPNext immediately — no need to open the system.
 
 **Settings if need to do:**
 - Doctype: **LH Slack Settings** → `Enable Quotation Approval`
