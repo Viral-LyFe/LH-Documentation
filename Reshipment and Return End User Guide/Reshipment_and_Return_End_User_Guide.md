@@ -4,8 +4,8 @@
 |---|---|
 | **Features** | **Lyfe Order Return** (goods coming back from the customer: refund, restock fee, replacement) and **Lyfe Order Reshipment** (a second shipment to the customer, including the Return link and the Via-US-Warehouse route) |
 | **Who it is for** | Customer Service, Factory, Shipping Forwarder, Finance, Super Admin, System Manager |
-| **Document version** | 2.4 |
-| **Last updated** | 2026-10-16 |
+| **Document version** | 2.6 |
+| **Last updated** | 2026-10-22 |
 | **Screenshots** | Every `📷 [SCREENSHOT RS-xx]` (Reshipment) or `📷 [SCREENSHOT RT-xx]` (Return) line is a placeholder. Take the screenshot, save it as the same ID (for example `RT-01.png`) and insert it there. |
 
 ---
@@ -768,7 +768,7 @@ Only a **System Manager** can cancel, and only from **Return Requested** or **Re
 | **Lyfe Order Return list** | All returns. Filter by state, type, reason, order, customer, or *Reshipments* (0 = return only) |
 | **Lyfe Order Reshipment list** | Filter by Return (`is set` / `is not set`), state, order, reason |
 | **Returns Dashboard** | Open it from the search bar or from the Status Overview page. Cards: **Total Returns**, **Pending Refunds**, **Pending Reshipping**, **Avg Cycle Time**, **Return Only** (no reshipment), **Return + Reshipment**, **Reshipment Only** (no return), **Reshipments From Returns**, **Awaiting Reshipment**; filters for date, type and status; charts by type and by week; recent returns table. Click a card to open the matching list. (Set a wide **From Date** to include older returns.) |
-| **Lyfe Orders — Status Overview** | **Active Returns** card (number of returns still open — Requested, In Transit or Received) — click it for a table with return, order, customer, state, type, reason, initiated date and days open, tracking/carrier, received date, return-to warehouse, refund and reship status; buttons to open the **Returns Dashboard** and the returns list. Also the **Active Reshipment** card (open reshipments — not Completed, Cancelled or Shipped) and the collapsible **↩ Reshipments** panel with a state filter. The page refreshes every 15 seconds. |
+| **Lyfe Orders — Status Overview** | **Active Returns** card (number of returns still open — Requested, In Transit or Received) — click it for a table with return, order, customer, state, type, reason, initiated date and days open, tracking/carrier, received date, return-to warehouse, refund and reship status; buttons to open the **Returns Dashboard** and the returns list. Also the **Active Reshipment** card (open reshipments — not Completed, Cancelled or Shipped) and the collapsible **↩ Reshipments** panel with a state filter. Completed reshipments are hidden in that panel unless **Show Completed Orders** is ticked or the state filter is set to *Completed*. The page refreshes every 15 seconds. |
 | **PnL dashboard / Founder dashboard** | Reshipment cost as a separate cost line |
 
 <img width="1630" height="921" alt="image" src="https://github.com/user-attachments/assets/903a894a-ee2c-4638-9e22-c4b0e872d98d" />
@@ -873,6 +873,7 @@ Cancelling removes it from the order's return history and the customer's return 
 
 | Version | Date | What changed |
 |---|---|---|
+| 2.6 | 2026-10-22 | Status Overview **↩ Reshipments** panel: Completed reshipments now show only when **Show Completed Orders** is ticked (or the state filter is set to *Completed*). |
 | 2.5 | 2026-10-16 | **Reship Status** now follows the Reshipment from the start: *Reshipment Request* → **PENDING**, any later step (In Progress, Internal Review, Ready for Dispatch, Awaiting Tracking/Shipping, Shipped, US Warehouse / 1Click steps) → **ON GOING**, all Completed → **SUCCESSFUL**. Cancelling every reshipment clears the automatic value. Applies to the Return and the Lyfe Order. |
 | 2.4 | 2026-10-13 | The **Return Received** follow-up Task is now assigned only to `support@lyfehardware.com`; the Factory user is no longer added when goods return to Factory - LH. |
 | 2.3 | 2026-10-13 | Gate Passes created from a Reshipment (automatically or with Create → Gate Pass) now fill **Box Group** on every box row. |
