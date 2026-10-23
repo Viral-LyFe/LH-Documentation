@@ -25,10 +25,6 @@ New folder: `/home/frappe/frappe-bench/LH Documentation/Security Review 2026-10/
 The docs never contain secret values. Masked prefixes only (e.g. `shpss_****`).
 
 ## Content of 00 – Slack reply (outline)
-- **Critical, flagged now:**
-  - The Shopify client secret is hardcoded in a tracked patch.
-  - A Shopify Admin token is still in git history.
-  - Both are being rotated today.
 - **This week's incidents vs us:**
   - LiteLLM 1.107.0 PyPI/Docker compromise (Oct 21): not installed in our bench, so not affected.
   - ERPNext CVE batch (Oct 13: SQLi and access-control bugs, fixed in 15.121.3): local dev runs frappe 15.121.1, so it is affected. Production's version is being confirmed on Frappe Cloud, with an update scheduled if it is affected.
