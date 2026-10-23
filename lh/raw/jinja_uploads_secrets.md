@@ -11,7 +11,7 @@ Secret values are redacted to their first 4 characters followed by "…".
 
 ## CRITICAL / HIGH
 
-### H1. ~~1Click API key in docs that are served publicly without login~~: **RESOLVED in `f9f83402`** (rotation tracked under H2 / REPORT C2)
+### H1. ~~1Click API key in docs that are served publicly without login~~: **RESOLVED in `f9f83402`** (rotation tracked under H2 / REPORT C1)
 
 > **Status 2026-10-23: key redacted from both docs in commit `f9f83402` (not yet pushed or deployed). Rotation with 1Click is still required.** Earlier re-check at `0e003915`: Both files still contain the key, and `sites/assets/lh_docs` still links to `lh/docs`. Deleting the link alone will not stick: Frappe recreates `assets/{app}_docs` for every app that has a `docs/` folder on each `bench build` (`frappe/build.py:333-340`). The durable fix is to remove the key from both files, and either move these docs out of `lh/docs` or deny `/assets/lh_docs/` in nginx. Key rotation with 1Click can't be checked from the code; confirm it separately.
 - `lh/docs/oneclick_live_config_test_plan_2026-08-25.md:12`: `| api_key | zXTs… |` (46 chars)

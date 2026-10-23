@@ -35,7 +35,7 @@ The second theme is **webhooks that fail open when their secret is blank** (Ship
 
 | Severity | Count (deduplicated) |
 |---|---|
-| Critical | 6 (C1 resolved) |
+| Critical | 6 (1Click public-docs key resolved) |
 | High | 15 |
 | Medium | ~20 |
 | Low | ~25 |
@@ -46,27 +46,17 @@ The second theme is **webhooks that fail open when their secret is blank** (Ship
 
 | # | Finding | Where | Who can exploit |
 |---|---|---|---|
-| C2 | **Leaked 1Click keys in git history:** `zXTs…` (8df6c4d1, 1dff520f; publicly served via `/assets/lh_docs` until f9f83402) and the Postman collection keys `GbOI…`, `Ak7M…`, `OekL…` (e69a1f25). Deleting files does not revoke them. _Status: the Shopify secrets in this finding are done (client secret rotated in prod on 2026-10-23, access tokens rotate every 45 min; see Resolved). The 1Click keys are still open._ | git history | Anyone with repo access, now or in the past |
-| C3 | **ShipStation webhook has no auth when the secret is blank.** It creates or overwrites Lyfe Orders (address, items, totals, status) by `orderNumber`, with `ignore_permissions`. ShipStation v1 does not sign webhooks, so if this endpoint works in prod it is effectively unauthenticated. | `integrations/shipstation_webhook.py:19-29` | Anyone (unauthenticated) |
-| C4 | **Fake payments:** `add_payment_entry` and `complete_draft_order` have no permission check. They record a payment (`ignore_permissions`), move the Quotation to Won and complete the Shopify draft order, so goods ship unpaid. | `integrations/shopify.py:597`, `:732` | Any logged-in user |
-| C5 | **Shopify webhook hijack:** `register_shopify_webhooks(site_url=…)` and `deregister_shopify_webhooks` have no checks. A user can point the order, payment and refund webhooks at their own host (customer PII stream), or delete them so payments go undetected. | `integrations/shopify.py:236`, `:296` | Any logged-in user |
-| C6 | **Forged order import:** `process_shipstation_response` is whitelisted with no check. It creates Lyfe Orders, Customers and Addresses (`ignore_permissions`), and new orders then start 1Click fulfilment. It is only called internally. | `doctype/shipstation_orders/shipstation_orders.py:944` | Any logged-in user |
-| C7 | **Billable shipping labels:** `generate_cj_label`, `generate_cj_label_for_reshipment` and `retry_from_integration_log` have no check, and the consignee address comes from the caller's payload. | `shipping/cj_api.py:558`, `:435`; `shipping/cj_api_reshipment.py:142` | Any logged-in user |
+| C1 | **Leaked 1Click keys in git history:** `zXTs…` (8df6c4d1, 1dff520f; publicly served via `/assets/lh_docs` until f9f83402) and the Postman collection keys `GbOI…`, `Ak7M…`, `OekL…` (e69a1f25). Deleting files does not revoke them. _Status: the Shopify secrets in this finding are done (client secret rotated in prod on 2026-10-23, access tokens rotate every 45 min; confirm `shpat_0217…` was not a separate custom-app token). The 1Click keys are still open._ | git history | Anyone with repo access, now or in the past |
+| C2 | **ShipStation webhook has no auth when the secret is blank.** It creates or overwrites Lyfe Orders (address, items, totals, status) by `orderNumber`, with `ignore_permissions`. ShipStation v1 does not sign webhooks, so if this endpoint works in prod it is effectively unauthenticated. | `integrations/shipstation_webhook.py:19-29` | Anyone (unauthenticated) |
+| C3 | **Fake payments:** `add_payment_entry` and `complete_draft_order` have no permission check. They record a payment (`ignore_permissions`), move the Quotation to Won and complete the Shopify draft order, so goods ship unpaid. | `integrations/shopify.py:597`, `:732` | Any logged-in user |
+| C4 | **Shopify webhook hijack:** `register_shopify_webhooks(site_url=…)` and `deregister_shopify_webhooks` have no checks. A user can point the order, payment and refund webhooks at their own host (customer PII stream), or delete them so payments go undetected. | `integrations/shopify.py:236`, `:296` | Any logged-in user |
+| C5 | **Forged order import:** `process_shipstation_response` is whitelisted with no check. It creates Lyfe Orders, Customers and Addresses (`ignore_permissions`), and new orders then start 1Click fulfilment. It is only called internally. | `doctype/shipstation_orders/shipstation_orders.py:944` | Any logged-in user |
+| C6 | **Billable shipping labels:** `generate_cj_label`, `generate_cj_label_for_reshipment` and `retry_from_integration_log` have no check, and the consignee address comes from the caller's payload. | `shipping/cj_api.py:558`, `:435`; `shipping/cj_api_reshipment.py:142` | Any logged-in user |
 
 **Immediate actions (hours, not sprints):**
 1. Rotate the 1Click keys (including `zXTs…`). The Shopify client secret is done (rotated 2026-10-23).
 2. Remove `@frappe.whitelist()` from `process_shipstation_response`. Add `frappe.only_for([...])` to the Shopify payment, webhook-registration and CJ label methods.
 3. Make all webhook signature checks **fail closed** (`raise` when no secret is configured). `lh/lh_project/gorgias/webhook.py:_verify_secret` is the in-repo pattern to copy. Delete the ShipStation webhook if the scheduled sync is the real ingestion path.
-
----
-
-## Resolved
-
-| # | Finding | Fixed in |
-|---|---|---|
-| C1 | 1Click API key in `lh/docs`, served publicly at `/assets/lh_docs/…` | `f9f83402`: key redacted from both docs. Not yet pushed or deployed. The key is still in git history, so rotate it (see C2). |
-| C2 (Shopify part) | Shopify client secret `shpss_0bad…` (1568bb25–666b4165) and Admin token `shpat_0217…` (60b91113) in git history | Client secret rotated in the Shopify Partner Dashboard and updated in prod Shopify Setting on 2026-10-23 (reported by the team; not verified from code). The access and refresh tokens are replaced every 45 min by `shopify_token_rotation.py`, so older leaked tokens from this app are dead. Confirm `shpat_0217…` is not a separate custom-app token; if it is, revoke it in Shopify Admin → Apps. |
-| — | S3 `aws_secret` stored in plain text | `0e003915`: stored encrypted. Rotate the AWS key after deploying (see Revision). |
 
 ---
 
@@ -139,7 +129,7 @@ The second theme is **webhooks that fail open when their secret is blank** (Ship
 
 ## Not verified (needs a live site)
 
-- Which webhook secrets are actually set in prod: Oneclick Settings `webhook_secret`, Shopify Setting, Seventeen Track Settings. This decides whether C3 and H1 are open right now.
+- Which webhook secrets are actually set in prod: Oneclick Settings `webhook_secret`, Shopify Setting, Seventeen Track Settings. This decides whether C2 and H1 are open right now.
 - Custom DocPerm rows. Real grants may be wider than the JSON permissions show.
 - Whether Frappe sanitizes Comment HTML, and how the Slack `oauth_redirect` return value is rendered.
 
@@ -164,8 +154,8 @@ Changes since `6f8c2ff6`: one commit plus uncommitted working-tree files.
 
 | Finding | Status | Evidence |
 |---|---|---|
-| C1 / raw H1: 1Click key in publicly served docs | **Resolved in code** (`f9f83402`). Removed from the Critical list. | Key redacted from both `lh/docs/oneclick_*_2026-08-25.md` files. Takes effect on the live site once pushed and deployed. Rotating the key is tracked under C2. |
-| C2: Shopify client secret | **Rotated** (2026-10-23, reported by the team) | Note: the 45-min job rotates only the access and refresh tokens. It reads `custom_client_secret` but never writes it, so this had to be a manual rotation. |
-| C2: 1Click keys (`zXTs…`, `GbOI…`, `Ak7M…`, `OekL…`) | **Open** | Ask 1Click to revoke them and issue new keys, then update Oneclick Settings → `api_key`. |
+| Former C1 / raw H1: 1Click key in publicly served docs | **Resolved in code** (`f9f83402`). Removed from the Critical list. | Key redacted from both `lh/docs/oneclick_*_2026-08-25.md` files. Takes effect on the live site once pushed and deployed. Rotating the key is tracked under C1. |
+| C1: Shopify client secret | **Rotated** (2026-10-23, reported by the team) | Note: the 45-min job rotates only the access and refresh tokens. It reads `custom_client_secret` but never writes it, so this had to be a manual rotation. |
+| C1: 1Click keys (`zXTs…`, `GbOI…`, `Ak7M…`, `OekL…`) | **Open** | Ask 1Click to revoke them and issue new keys, then update Oneclick Settings → `api_key`. |
 
 Code changes on `prod` since the audit: `0e003915` (S3 secret encrypted) and `f9f83402` (1Click key redacted from docs). This bench could not fetch `origin`, so fixes that were pushed but not pulled here are not reflected.
