@@ -36,8 +36,7 @@ The docs never contain secret values. Masked prefixes only (e.g. `shpss_****`).
 
 ## Content of 01 – Initial findings (already verified today)
 **Critical**
-- C1: Shopify client secret hardcoded in `apps/lh/lh/patches/add_shopify_client_secret_field.py:24`, tracked in `lyfehardware/lh-erpnext`. Anyone who can read the repo can forge Shopify webhooks.
-- C2: Shopify Admin token `shpat_****` in `lh` git history (commits 60b91113 and aaf02843).
+- C1: Shopify Admin token `shpat_****` in `lh` git history (commits 60b91113 and aaf02843).
 
 **High**
 - H1: Slack webhook hardcoded in `apps/lh/lh/patches/add_us_warehouse_delivered_slack_webhook.py:3`, plus older webhooks in history.
