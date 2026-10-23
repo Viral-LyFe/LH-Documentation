@@ -36,7 +36,7 @@ The docs never contain secret values. Masked prefixes only (e.g. `shpss_****`).
 
 ## Content of 01 – Initial findings (already verified today)
 **Critical**
-- C1: Shopify Admin token `shpat_****` in `lh` git history (commits 60b91113 and aaf02843).
+- None open.
 
 **High**
 - H1: Slack webhook hardcoded in `apps/lh/lh/patches/add_us_warehouse_delivered_slack_webhook.py:3`, plus older webhooks in history.
@@ -86,7 +86,7 @@ The docs never contain secret values. Masked prefixes only (e.g. `shpss_****`).
 | **First restore drill + access review** | by Nov 27 | Then quarterly. |
 
 **P0 Containment (Oct 23–24)**
-- Rotate the Shopify secret and token, the Slack webhooks and the 1Click keys.
+- Rotate the Slack webhooks and the 1Click keys.
 - Remove the hardcoded values from HEAD and read them from Settings instead.
 - Confirm the lh repo is private and who can access it.
 - Confirm the production frappe/erpnext version and update to ≥15.121.3.
