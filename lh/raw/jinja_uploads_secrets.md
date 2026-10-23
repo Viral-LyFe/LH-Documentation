@@ -11,7 +11,7 @@ Secret values are redacted to their first 4 characters followed by "…".
 
 ## CRITICAL / HIGH
 
-### H1. 1Click API key in docs that are served publicly without login (current tree): **Critical if it is the live key, otherwise High**
+### H1. ~~1Click API key in docs that are served publicly without login~~: **RESOLVED in `f9f83402`** (rotation tracked under H2 / REPORT C2)
 
 > **Status 2026-10-23: key redacted from both docs in commit `f9f83402` (not yet pushed or deployed). Rotation with 1Click is still required.** Earlier re-check at `0e003915`: Both files still contain the key, and `sites/assets/lh_docs` still links to `lh/docs`. Deleting the link alone will not stick: Frappe recreates `assets/{app}_docs` for every app that has a `docs/` folder on each `bench build` (`frappe/build.py:333-340`). The durable fix is to remove the key from both files, and either move these docs out of `lh/docs` or deny `/assets/lh_docs/` in nginx. Key rotation with 1Click can't be checked from the code; confirm it separately.
 - `lh/docs/oneclick_live_config_test_plan_2026-08-25.md:12`: `| api_key | zXTs… |` (46 chars)
@@ -36,6 +36,8 @@ Secret values are redacted to their first 4 characters followed by "…".
 - Fix: rotate all three with 1Click. Deleting the file does not revoke them. Scrub history if the repo will ever be shared.
 
 ### H3. Shopify Admin token and app client secret committed to git history: **High**
+
+> **Status 2026-10-23: client secret rotated in prod (reported by the team).** Access and refresh tokens rotate every 45 min. Remaining: confirm `shpat_0217…` was not a separate custom-app token.
 - `shpat_0217…` (Admin API access token) was hardcoded as `SHOPIFY_API_PASSWORD` in `lh/lyfe_hardware/doc_events/fetch_shopify_urls.py`. Added in `60b91113` (2026-03-04), removed in `aaf02843` (2026-03-06).
 - `shpss_0bad…` (Shopify app client secret) was hardcoded in the token-rotation code and in `lh/patches/add_shopify_client_secret_field.py`. Added in `1568bb25` (2026-05-05). The code copy was removed in `5b39bdb6`; the patch copy stayed until `666b4165` ("update patch", 2026-10-23).
 - Exploitation: the client secret plus the shop domain lets an attacker run the refresh-token grant (`/admin/oauth/access_token`) if they also hold a refresh token, and lets them forge Shopify webhook HMACs. `_verify_shopify_hmac` uses `custom_client_secret` as the signing key, so an attacker can forge `orders/paid` and `refunds/create` webhooks, which flips quotations to paid. The `shpat_` token gives full Admin API access unless it was rotated (token rotation every 45 min suggests the old static token may be dead; verify).
