@@ -1,0 +1,1882 @@
+{
+ "frappe": {
+  "repo": "frappe/frappe",
+  "version": "15.121.1",
+  "advisories": 89,
+  "hits": [
+   {
+    "ghsa": "GHSA-6pmg-vc6m-6wrr",
+    "cve": null,
+    "severity": "critical",
+    "summary": "Possibility of Server Side Template Injection",
+    "published": "2026-10-15",
+    "range": "<16.21.0",
+    "patched": "16.21.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-9pp9-wgp9-3p3j",
+    "cve": null,
+    "severity": "critical",
+    "summary": "Remote code execution via path traversal",
+    "published": "2026-10-15",
+    "range": "< 16.34.0",
+    "patched": "16.34.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-wrh5-p77r-jpvq",
+    "cve": null,
+    "severity": "high",
+    "summary": "Unauthorized users can send sms via the API",
+    "published": "2026-09-28",
+    "range": "<v16.33.0",
+    "patched": "v16.33.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-p4w2-9mr5-6prj",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Blind SQL Injection in frappe.desk.doctype.event.event.get_events",
+    "published": "2026-10-07",
+    "range": "<16.33.0",
+    "patched": "16.33.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-h9jq-7pgf-hw8q",
+    "cve": null,
+    "severity": "medium",
+    "summary": "restrict_ip allowlist bypassed for API key, OAuth, and header-based authentication",
+    "published": "2026-10-01",
+    "range": "<16.33.0",
+    "patched": "16.33.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-22v9-hw3x-x59w",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised modification of records due to missing validation",
+    "published": "2026-08-11",
+    "range": "< 16.25.0",
+    "patched": "16.25.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-7cxg-q8x5-rpjh",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Broken Access Control in File list/report queries",
+    "published": "2026-10-23",
+    "range": "<16.35.0",
+    "patched": "16.35.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-55m4-gj6h-q6rc",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Disabled users continue to receive Document Follow email notifications",
+    "published": "2026-09-11",
+    "range": "<16.31.0",
+    "patched": "16.31.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-8v98-cfpm-9p67",
+    "cve": null,
+    "severity": "critical",
+    "summary": "Arbitrary file read via an attribute in outgoing email HTML",
+    "published": "2026-09-16",
+    "range": "<v16.30.0",
+    "patched": "v16.30.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-hxfh-hh23-fvch",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Stored XSS in dashboard chart",
+    "published": "2026-09-22",
+    "range": "<v16.31.0",
+    "patched": "v16.31.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-7vpf-q96h-59x4",
+    "cve": "CVE-2026-66059",
+    "severity": "medium",
+    "summary": "Field-level permission bypass via Document Follow",
+    "published": "2026-07-30",
+    "range": "<16.23.0",
+    "patched": "16.23.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-fgx7-fvpx-mw3g",
+    "cve": "CVE-2026-66058",
+    "severity": "medium",
+    "summary": "Unrestricted access to a Document Follow API",
+    "published": "2026-07-30",
+    "range": "<16.23.0",
+    "patched": "16.23.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-78c5-55xg-jm7m",
+    "cve": "CVE-2026-66057",
+    "severity": "medium",
+    "summary": "Open Redirect via Unsanitized OAuth State Param.",
+    "published": "2026-09-08",
+    "range": "<v16.29.0",
+    "patched": "v16.29.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-c2xv-c53h-qvr5",
+    "cve": "CVE-2026-66002",
+    "severity": "low",
+    "summary": "User Enumeration via PDDR",
+    "published": "2026-08-11",
+    "range": "<v16.27.0",
+    "patched": "v16.27.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-2ph8-x773-8p2x",
+    "cve": "CVE-2026-66001",
+    "severity": "high",
+    "summary": "Improper Authorization in OAuth2 Consent Endpoint",
+    "published": "2026-08-10",
+    "range": "<16.26.0",
+    "patched": "16.26.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-cgwf-xgph-hxgm",
+    "cve": "CVE-2026-63654",
+    "severity": "low",
+    "summary": "Unauthenticated Workflow approval",
+    "published": "2026-08-10",
+    "range": "tbd",
+    "patched": "tbd",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-cgwf-xgph-hxgm",
+    "cve": "CVE-2026-63654",
+    "severity": "low",
+    "summary": "Unauthenticated Workflow approval",
+    "published": "2026-08-10",
+    "range": "tbd",
+    "patched": "tbd",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-2c6h-wv85-fxvj",
+    "cve": "CVE-2026-62315",
+    "severity": "medium",
+    "summary": "Mass assignment in client endpoint",
+    "published": "2026-08-10",
+    "range": "tbd",
+    "patched": "tbd",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-2c6h-wv85-fxvj",
+    "cve": "CVE-2026-62315",
+    "severity": "medium",
+    "summary": "Mass assignment in client endpoint",
+    "published": "2026-08-10",
+    "range": "tbd",
+    "patched": "tbd",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-3vqc-c545-w7jg",
+    "cve": "CVE-2026-58503",
+    "severity": "medium",
+    "summary": "Unauthenticated User Enumeration via reset_password",
+    "published": "2026-06-19",
+    "range": "<v16.16.0",
+    "patched": "v16.16.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-58w2-4cjg-hvp6",
+    "cve": "CVE-2026-55852",
+    "severity": "high",
+    "summary": "TarSlip RCE in Package Import",
+    "published": "2026-07-04",
+    "range": "<16.23.0",
+    "patched": "16.23.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-mf6r-q34j-pjw7",
+    "cve": "CVE-2026-55823",
+    "severity": "medium",
+    "summary": "Possibility of SQL injection in reportview",
+    "published": "2026-09-16",
+    "range": "<16.23.0",
+    "patched": "16.23.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-wcm9-vvcc-r8pr",
+    "cve": "CVE-2026-66000",
+    "severity": "medium",
+    "summary": "Stale authorization in Document Follow allows revoked users to continue receiving document data",
+    "published": "2026-07-30",
+    "range": "<16.23.0",
+    "patched": "16.23.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-rx6h-4p83-m76x",
+    "cve": "CVE-2026-53569",
+    "severity": "medium",
+    "summary": "Missing authorization in toggle_like and mark_as_seen",
+    "published": "2026-08-05",
+    "range": "tbd",
+    "patched": "tbd",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-rx6h-4p83-m76x",
+    "cve": "CVE-2026-53569",
+    "severity": "medium",
+    "summary": "Missing authorization in toggle_like and mark_as_seen",
+    "published": "2026-08-05",
+    "range": "tbd",
+    "patched": "tbd",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-pj59-9hv9-rmrv",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Authenticated SSRF / LFI via pdfkit",
+    "published": "2026-06-26",
+    "range": "<16.17.0",
+    "patched": "16.17.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-r24j-xrj8-273q",
+    "cve": "CVE-2026-49394",
+    "severity": "medium",
+    "summary": "Auth. bypass via update_page",
+    "published": "2026-06-26",
+    "range": "<16.19.0",
+    "patched": "16.19.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-7f28-gm9h-q6rg",
+    "cve": "CVE-2026-49391",
+    "severity": "low",
+    "summary": "Stored XSS via Data Import",
+    "published": "2026-08-03",
+    "range": "<16.19.0",
+    "patched": "16.19.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-fwrv-4rw4-97fw",
+    "cve": "CVE-2026-48127",
+    "severity": "medium",
+    "summary": "Arbitrary File Attachment Injection via File-Handling API Endpoints",
+    "published": "2026-06-26",
+    "range": "<16.20.0",
+    "patched": "16.20.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-cjjx-3v2x-37mf",
+    "cve": "CVE-2026-47765",
+    "severity": "medium",
+    "summary": "Lack of Permissions in restore/bulk_restore",
+    "published": "2026-07-14",
+    "range": "<v16.20.0",
+    "patched": "v16.20.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-w8g7-j846-j248",
+    "cve": "CVE-2026-47422",
+    "severity": "medium",
+    "summary": "Unrestricted API access to an API in reportview",
+    "published": "2026-06-17",
+    "range": "<= v16.18.2",
+    "patched": "> v16.18.2",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-wx8j-cw4r-vrhv",
+    "cve": "CVE-2026-47199",
+    "severity": "low",
+    "summary": "check_safe_sql_query Permits SELECT INTO OUTFILE",
+    "published": "2026-06-23",
+    "range": "<v16.18.3",
+    "patched": "v16.18.3",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-3w78-3cj3-p949",
+    "cve": "CVE-2026-47194",
+    "severity": "high",
+    "summary": "Host header poisoning can redirect magic login links to an attacker-controlled domain",
+    "published": "2026-07-14",
+    "range": "<v16.18.3",
+    "patched": "v16.18.3",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-mcr4-jc52-ww6x",
+    "cve": "CVE-2026-47185",
+    "severity": "medium",
+    "summary": "Broken Access Control in Workspace Save API ",
+    "published": "2026-07-30",
+    "range": "<16.18.0",
+    "patched": "16.18.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-gvg7-4p32-j648",
+    "cve": "CVE-2026-47182",
+    "severity": "high",
+    "summary": "Broken Access Control on Private Files",
+    "published": "2026-05-27",
+    "range": "< 16.17.4",
+    "patched": "16.17.4",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-78rj-jch8-42m8",
+    "cve": "CVE-2026-44976",
+    "severity": "medium",
+    "summary": "IDOR in update_onboarding_step",
+    "published": "2026-06-07",
+    "range": "<16.17.4 ",
+    "patched": "16.17.4",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-78rj-jch8-42m8",
+    "cve": "CVE-2026-44976",
+    "severity": "medium",
+    "summary": "IDOR in update_onboarding_step",
+    "published": "2026-06-07",
+    "range": ">= 15.0.0, < 15.123.0",
+    "patched": "15.123.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-9cxj-48g3-jx22",
+    "cve": "CVE-2026-44975",
+    "severity": "low",
+    "summary": "Missing authorization on reset form tours",
+    "published": "2026-06-07",
+    "range": "<16.17.4",
+    "patched": "16.17.4",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-9c55-cq5r-qj5x",
+    "cve": "CVE-2026-44206",
+    "severity": "medium",
+    "summary": "DB Schema Enumeration",
+    "published": "2026-06-03",
+    "range": "<v16.17.4",
+    "patched": "v16.17.4",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-cw6v-39qx-7r74",
+    "cve": "CVE-2026-44207",
+    "severity": "medium",
+    "summary": "Insecure Direct Object Reference for email accounts",
+    "published": "2026-06-01",
+    "range": "< 16.17.0",
+    "patched": "16.17.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-rx63-c3fh-8926",
+    "cve": "CVE-2026-53568",
+    "severity": "medium",
+    "summary": "Stored XSS in Frappe Report/List View.",
+    "published": "2026-06-03",
+    "range": "<v16.17.4",
+    "patched": "v16.17.4",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-xh7m-j2j2-82f2",
+    "cve": "CVE-2026-44208",
+    "severity": "medium",
+    "summary": " IDOR in `submit_discussion()`",
+    "published": "2026-06-03",
+    "range": "<16.17.0",
+    "patched": "16.17.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-q6m6-759h-46jp",
+    "cve": "CVE-2026-50026",
+    "severity": "medium",
+    "summary": "Lack of permissions checks in 'relink' and 'set_email_password' endpoints",
+    "published": "2026-06-03",
+    "range": "<v16.17.0",
+    "patched": "v16.17.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-w4p4-fp9m-47gj",
+    "cve": "CVE-2026-42219",
+    "severity": "high",
+    "summary": "Path Traversal via 'download_backups'",
+    "published": "2026-06-26",
+    "range": "<16.19.0",
+    "patched": "16.19.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-h9hf-57r4-cm65",
+    "cve": "CVE-2026-41581",
+    "severity": "medium",
+    "summary": "Possible SQL Injection via get_blog_list",
+    "published": "2026-05-18",
+    "range": "<16.16.0",
+    "patched": "16.16.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-234v-jfr8-v2f8",
+    "cve": "CVE-2026-41482",
+    "severity": "high",
+    "summary": "Possible Path Traversal and Local File Inclusion via Chrome PDF Generator",
+    "published": "2026-06-25",
+    "range": "<16.18.3",
+    "patched": "16.18.3",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-vxmp-h244-wv3r",
+    "cve": "CVE-2026-47739",
+    "severity": "medium",
+    "summary": "Stored XSS in Note",
+    "published": "2026-05-20",
+    "range": "<16.16.0",
+    "patched": "16.16.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-67rf-pxgh-vfqv",
+    "cve": "CVE-2026-39352",
+    "severity": "critical",
+    "summary": "Arbitrary File Read via Path Traversal",
+    "published": "2026-05-11",
+    "range": "<16.15.0",
+    "patched": "16.15.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-583g-fg76-fhfr",
+    "cve": "CVE-2026-35614",
+    "severity": "high",
+    "summary": "Possibility of SQL injection in bulk_update",
+    "published": "2026-04-05",
+    "range": "<16.14.0",
+    "patched": "16.14.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-8ggw-hfr6-rw3x",
+    "cve": "CVE-2026-39351",
+    "severity": "medium",
+    "summary": "Unrestricted Doctype access via API exploit",
+    "published": "2026-04-07",
+    "range": "<16.14.0",
+    "patched": "16.14.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-mggg-hmjm-j6c2",
+    "cve": "CVE-2026-31878",
+    "severity": "medium",
+    "summary": "Possible SSRF by any authenticated user",
+    "published": "2026-03-11",
+    "range": "<16.6.0",
+    "patched": "16.6.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-qmhf-rgx2-8p25",
+    "cve": "CVE-2026-31879",
+    "severity": "medium",
+    "summary": "Workspace modification and stored XSS due to improper resource ownership checks",
+    "published": "2026-03-11",
+    "range": "<16.10.0",
+    "patched": "16.10.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-vm63-r48g-7wqh",
+    "cve": "CVE-2026-28436",
+    "severity": "low",
+    "summary": "Stored XSS in avatar_macro.html",
+    "published": "2026-02-28",
+    "range": "16.11.0",
+    "patched": "16.11.0",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-vm63-r48g-7wqh",
+    "cve": "CVE-2026-28436",
+    "severity": "low",
+    "summary": "Stored XSS in avatar_macro.html",
+    "published": "2026-02-28",
+    "range": "15.102.0",
+    "patched": "15.102.0",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-4jj9-5vgc-gc4j",
+    "cve": null,
+    "severity": "low",
+    "summary": "Possible HTML Injection attack",
+    "published": "2023-08-28",
+    "range": "13.52.0",
+    "patched": "13.52.0",
+    "match": "unparsed"
+   }
+  ]
+ },
+ "erpnext": {
+  "repo": "frappe/erpnext",
+  "version": "15.121.4",
+  "advisories": 89,
+  "hits": [
+   {
+    "ghsa": "GHSA-734c-hv9r-mg2c",
+    "cve": null,
+    "severity": "high",
+    "summary": "Stored cross-site scripting due to missing validation",
+    "published": "2026-09-20",
+    "range": "< 16.23.0",
+    "patched": "16.23.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-v38v-9h2p-hr8v",
+    "cve": null,
+    "severity": "critical",
+    "summary": "Possibility of SQL injection due to missing validation",
+    "published": "2026-09-20",
+    "range": "< 16.34.0",
+    "patched": "16.34.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-9vph-hqmm-g7hq",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised access to data due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.34.0",
+    "patched": "16.34.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-xp5c-86f4-7ppf",
+    "cve": null,
+    "severity": "high",
+    "summary": "Possibility of SQL injection due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.32.0",
+    "patched": "16.32.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-pg3r-7236-pg74",
+    "cve": null,
+    "severity": "high",
+    "summary": "Unauthorised Document modification due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.32.0",
+    "patched": "16.32.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-p4jx-mqwq-66cj",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised modification of data due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.34.0",
+    "patched": "16.34.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-f99r-gp2w-xghj",
+    "cve": null,
+    "severity": "high",
+    "summary": "Stored cross-site scripting due to missing validation",
+    "published": "2026-09-20",
+    "range": "< 16.33.0",
+    "patched": "16.33.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-wp9w-rxmg-6pfj",
+    "cve": null,
+    "severity": "high",
+    "summary": "Unauthorised status modification due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.34.0",
+    "patched": "16.34.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-qcff-6669-j3gj",
+    "cve": null,
+    "severity": "high",
+    "summary": "Unauthorised access to financial data due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.34.0",
+    "patched": "16.34.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-vg6r-89q7-wh34",
+    "cve": null,
+    "severity": "high",
+    "summary": "Unauthorised record creation due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.34.0",
+    "patched": "16.34.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-cgjf-xw8x-qjjc",
+    "cve": null,
+    "severity": "high",
+    "summary": "Unauthorised modification of data due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.35.0",
+    "patched": "16.35.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-vr45-2p9x-3vjc",
+    "cve": null,
+    "severity": "high",
+    "summary": "Unauthorised record creation due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.34.0",
+    "patched": "16.34.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-wwgm-3pv3-gmqh",
+    "cve": null,
+    "severity": "high",
+    "summary": "Unauthorised access to party records due to missing validation",
+    "published": "2026-09-20",
+    "range": "< 16.23.0",
+    "patched": "16.23.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-2r76-j6jj-jj56",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised Document modification due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.34.0",
+    "patched": "16.34.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-49wp-r82c-j825",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised Document modification due to missing validation",
+    "published": "2026-09-20",
+    "range": "< 16.34.2",
+    "patched": "16.34.2",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-cgxw-2996-9vj3",
+    "cve": null,
+    "severity": "high",
+    "summary": "Unauthorised access to personal data due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.33.0",
+    "patched": "16.33.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-726x-68g4-fj9v",
+    "cve": null,
+    "severity": "high",
+    "summary": "Unauthorised access to financial data due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.35.0",
+    "patched": "16.35.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-794x-fhm7-58j7",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised invocation of internal methods due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.34.1",
+    "patched": "16.34.1",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-mp29-fjc5-h86p",
+    "cve": null,
+    "severity": "high",
+    "summary": "Possibility of SQL injection due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.34.2",
+    "patched": "16.34.2",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-q6qw-66cm-f9wj",
+    "cve": null,
+    "severity": "high",
+    "summary": "Unauthorised access to financial data due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.33.0",
+    "patched": "16.33.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-5wpj-6rvp-9ff7",
+    "cve": "CVE-2026-108374",
+    "severity": "high",
+    "summary": "Unauthorised status modification due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.34.0",
+    "patched": "16.34.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-7j2w-hg27-8g3q",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised sending of transactional email due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.35.0",
+    "patched": "16.35.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-pr7v-95jp-gwwv",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised access to data due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.34.0",
+    "patched": "16.34.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-jp5q-723q-g826",
+    "cve": null,
+    "severity": "high",
+    "summary": "Possibility of SQL injection due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.32.0",
+    "patched": "16.32.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-jfwr-g9v2-57c9",
+    "cve": null,
+    "severity": "high",
+    "summary": "Unauthorised access to data due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.33.0",
+    "patched": "16.33.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-rv4r-c8v3-3hrc",
+    "cve": null,
+    "severity": "critical",
+    "summary": "Account takeover via stored cross-site scripting",
+    "published": "2026-09-18",
+    "range": "< 16.32.0",
+    "patched": "16.32.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-h787-3x6w-8x4m",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Possibility of SQL injection due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 16.34.0",
+    "patched": "16.34.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-562g-3qrh-3w2f",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised record creation due to missing validation",
+    "published": "2026-08-14",
+    "range": "< 16.15.0",
+    "patched": "16.15.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-g72f-g9wf-42vr",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised access to financial data due to missing validation",
+    "published": "2026-08-14",
+    "range": "< 16.26.0",
+    "patched": "16.26.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-fwgg-5fp9-rg78",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised modification of master data due to missing validation",
+    "published": "2026-08-14",
+    "range": "< 16.14.0",
+    "patched": "16.14.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-73jx-q3gp-r24f",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Possibility of SQL injection due to missing validation",
+    "published": "2026-08-14",
+    "range": "< 16.21.0",
+    "patched": "16.21.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-rqv5-h4rv-w57m",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Possibility of SQL injection due to missing validation",
+    "published": "2026-08-14",
+    "range": "< 16.8.0",
+    "patched": "16.8.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-c496-q7g2-62vv",
+    "cve": null,
+    "severity": "high",
+    "summary": "Unauthorised modification of records due to missing validation",
+    "published": "2026-08-14",
+    "range": "< 16.22.0",
+    "patched": "16.22.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-38rx-wm3g-39m3",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised record creation due to missing validation",
+    "published": "2026-08-14",
+    "range": "< 16.21.0",
+    "patched": "16.21.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-m45g-7cw5-pvr4",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised access to data due to missing validation",
+    "published": "2026-08-14",
+    "range": "< 16.21.0",
+    "patched": "16.21.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-q3vp-8w4j-x78w",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised access to project data due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.22.0",
+    "patched": "16.22.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-48wc-j2qh-rcgw",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised access to valuation data due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.31.0",
+    "patched": "16.31.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-m5xh-ghvj-xjrv",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised record creation due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.31.0",
+    "patched": "16.31.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-pf6r-r324-94jj",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Possibility of SQL injection due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.16.0",
+    "patched": "16.16.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-h68p-2phh-vh26",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Possibility of SQL injection due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.16.0",
+    "patched": "16.16.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-q85h-wj57-hq2h",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Possibility of SQL injection due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.16.0",
+    "patched": "16.16.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-9ph8-h5v4-97j6",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Possibility of SQL injection due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.11.0",
+    "patched": "16.11.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-39rf-vr57-g568",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised access to personal data due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.23.0",
+    "patched": "16.23.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-6qcc-cw7f-328g",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Possible server-side request forgery due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.23.0",
+    "patched": "16.23.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-6w83-8777-v93q",
+    "cve": null,
+    "severity": "critical",
+    "summary": "Possibility of server-side template injection due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.32.0",
+    "patched": "16.32.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-8pr6-r75h-h8xx",
+    "cve": null,
+    "severity": "high",
+    "summary": "Account takeover via stored cross-site scripting",
+    "published": "2026-08-13",
+    "range": "< 16.31.0",
+    "patched": "16.31.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-q8wq-q35q-gj8h",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised sending of transactional email due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.31.0",
+    "patched": "16.31.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-fhc6-v53v-3wjx",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised modification of inventory records due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.26.0",
+    "patched": "16.26.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-4j82-w8f7-hqqp",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised access to item master data due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.30.0",
+    "patched": "16.30.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-mvr5-2j8r-53p4",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Stored cross-site scripting due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.27.0",
+    "patched": "16.27.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-gq9h-847p-h692",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised access to personal data due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.26.0",
+    "patched": "16.26.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-9pj9-fm7x-r62h",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised access to financial data due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.24.0",
+    "patched": "16.24.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-fmr9-rm6j-cfpq",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised modification of production records due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.23.0",
+    "patched": "16.23.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-j2h8-8xqj-jrg9",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised access to financial data due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.27.0",
+    "patched": "16.27.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-4rfh-2hfg-9m7w",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Cross-site scripting in portal pages",
+    "published": "2026-08-13",
+    "range": "< 16.23.0",
+    "patched": "16.23.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-gwfr-5r8f-rwg4",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Possibility of SQL injection due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.22.0",
+    "patched": "16.22.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-j57j-p235-x5mx",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised deactivation of master records due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.18.0",
+    "patched": "16.18.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-6rgf-xx2m-fjr2",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised modification of inventory records due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.21.0",
+    "patched": "16.21.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-x635-wr4c-7345",
+    "cve": null,
+    "severity": "critical",
+    "summary": "Privilege escalation via unauthorised record creation",
+    "published": "2026-08-13",
+    "range": "< 16.22.0",
+    "patched": "16.22.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-5mcx-cjjh-gc64",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised modification of party records due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.21.0",
+    "patched": "16.21.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-6m66-w2qq-v5f8",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised status modification due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.21.0",
+    "patched": "16.21.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-m6x2-278g-pv2g",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Stored cross-site scripting due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.21.0",
+    "patched": "16.21.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-rg9g-c26v-cw27",
+    "cve": null,
+    "severity": "high",
+    "summary": "Account takeover via stored cross-site scripting",
+    "published": "2026-08-13",
+    "range": "< 16.24.0",
+    "patched": "16.24.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-3x6c-gc4v-f5v8",
+    "cve": "CVE-2026-72906",
+    "severity": "medium",
+    "summary": "Unauthorised triggering of automated emails due to missing validation",
+    "published": "2026-08-08",
+    "range": "< 16.22.0",
+    "patched": "16.22.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-qq49-v74j-hjh7",
+    "cve": "CVE-2026-72911",
+    "severity": "critical",
+    "summary": "Possibility of server-side template injection due to missing validation",
+    "published": "2026-08-08",
+    "range": "< 16.29.0",
+    "patched": "16.29.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-g8r3-82j6-wp48",
+    "cve": "CVE-2026-13227",
+    "severity": "medium",
+    "summary": "Broken access control due to missing validation",
+    "published": "2026-08-04",
+    "range": "<16.26.0",
+    "patched": "16.26.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-qpvh-75wh-j645",
+    "cve": "CVE-2026-72910",
+    "severity": "high",
+    "summary": "Unauthorised modification of data due to missing validation",
+    "published": "2026-08-04",
+    "range": "<16.22.0",
+    "patched": "16.22.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-grhp-m55m-63f8",
+    "cve": "CVE-2026-72908",
+    "severity": "medium",
+    "summary": "Possibility of SQL injection due to missing validation",
+    "published": "2026-07-30",
+    "range": "< 16.20.0",
+    "patched": "16.20.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-qjpp-v2gq-hc8r",
+    "cve": "CVE-2026-12895",
+    "severity": "high",
+    "summary": "Possibility of SQL injection due to missing validation",
+    "published": "2026-07-27",
+    "range": "< 16.22.0",
+    "patched": "16.22.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-rgrq-243c-c4g6",
+    "cve": "CVE-2026-108373",
+    "severity": "medium",
+    "summary": "Unauthorised access to financial data due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.27.0",
+    "patched": "16.27.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-w996-r7v3-87wr",
+    "cve": "CVE-2026-65974",
+    "severity": "critical",
+    "summary": "Server-Side Template Injection leading to Remote Code Execution",
+    "published": "2026-07-30",
+    "range": "<16.22.0",
+    "patched": "16.22.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-p577-cxv9-h82f",
+    "cve": "CVE-2026-72909",
+    "severity": "high",
+    "summary": "Broken Access Control on certain endpoints",
+    "published": "2026-08-04",
+    "range": "<16.23.0",
+    "patched": "16.23.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-94v6-784v-24q5",
+    "cve": "CVE-2026-72907",
+    "severity": "medium",
+    "summary": "Broken Access Control on certain endpoint",
+    "published": "2026-07-30",
+    "range": "<16.23.0",
+    "patched": "16.23.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-x35x-4mvx-h959",
+    "cve": "CVE-2026-65822",
+    "severity": "high",
+    "summary": "Possibility of SQL injection due to missing validation",
+    "published": "2026-08-13",
+    "range": "< 16.23.0",
+    "patched": "16.23.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-pxf3-4gvc-v45j",
+    "cve": "CVE-2026-55242",
+    "severity": "high",
+    "summary": "Server-Side Template Injection allows unauthorized data disclosure",
+    "published": "2026-07-04",
+    "range": "<16.22.0",
+    "patched": "16.22.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-mhm9-75w7-423r",
+    "cve": "CVE-2026-44445",
+    "severity": "medium",
+    "summary": "XML External Entity (XEE) Reference Vulnerability in the EDI Module",
+    "published": "2026-04-30",
+    "range": "<16.12.0",
+    "patched": "16.12.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-6ffr-92hr-3394",
+    "cve": "CVE-2026-44440",
+    "severity": "medium",
+    "summary": "Path Traversal Leading to Sensitive File Exposure",
+    "published": "2026-04-30",
+    "range": "<16.10.0",
+    "patched": "16.10.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-m4m4-j2m2-7fcw",
+    "cve": "CVE-2026-44441",
+    "severity": "medium",
+    "summary": "Possible SSRF by any authenticated user",
+    "published": "2026-04-30",
+    "range": "<16.16.0",
+    "patched": "16.16.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-444j-g95x-5pqv",
+    "cve": "CVE-2026-44448",
+    "severity": "medium",
+    "summary": "Unauthorised Document modification due to missing validation",
+    "published": "2026-04-30",
+    "range": "<16.11.0",
+    "patched": "16.11.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-q65v-fm9p-9vh3",
+    "cve": "CVE-2026-44447",
+    "severity": "high",
+    "summary": "Possibility of SQL Injection due to missing validation",
+    "published": "2026-04-30",
+    "range": "<16.9.0",
+    "patched": "16.9.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-6fm9-g88m-hxr7",
+    "cve": "CVE-2026-44446",
+    "severity": "high",
+    "summary": "Possibility of SQL Injection due to missing validation",
+    "published": "2026-04-30",
+    "range": "<16.14.0",
+    "patched": "16.14.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-r99h-h44m-89m2",
+    "cve": null,
+    "severity": "high",
+    "summary": "Stored XSS in Dashboards, Tools and Portals",
+    "published": "2026-04-30",
+    "range": "<16.12.0",
+    "patched": "16.12.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-j669-ghv2-gmqg",
+    "cve": "CVE-2026-32954",
+    "severity": "high",
+    "summary": "Possibility of SQL injection due to missing validation",
+    "published": "2026-03-16",
+    "range": "<16.8.0",
+    "patched": "16.8.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-cg5w-7g26-p3w9",
+    "cve": "CVE-2026-44442",
+    "severity": "critical",
+    "summary": "Unauthorised Document modification due to missing validation",
+    "published": "2026-04-30",
+    "range": "<16.9.1",
+    "patched": "16.9.1",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-wj7p-g62h-jh38",
+    "cve": null,
+    "severity": "high",
+    "summary": "Possibility of SQL injection due to missing validation",
+    "published": "2026-03-10",
+    "range": "<16.6.0",
+    "patched": "16.6.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-wpfx-jw7g-7f83",
+    "cve": "CVE-2026-27471",
+    "severity": "critical",
+    "summary": "Document access through endpoints due to missing validation",
+    "published": "2026-02-20",
+    "range": "< 16.7.0",
+    "patched": "16.7.0",
+    "match": "yes"
+   }
+  ]
+ },
+ "hrms": {
+  "repo": "frappe/hrms",
+  "version": "15.64.2",
+  "advisories": 9,
+  "hits": [
+   {
+    "ghsa": "GHSA-wfc6-cw72-cvhx",
+    "cve": "CVE-2026-64862",
+    "severity": "high",
+    "summary": "Missing Authorization on PWA API Endpoints enables Cross-Employee Data access in HRMS",
+    "published": "2026-09-04",
+    "range": "< 16.4.3",
+    "patched": "16.4.3",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-c32r-q985-64xr",
+    "cve": "CVE-2026-55796",
+    "severity": "medium",
+    "summary": "SQL Injection in HRMS Salary Payments via ECS Report",
+    "published": "2026-06-16",
+    "range": "< 16.7.1",
+    "patched": "16.7.1",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-2gv7-x4h2-3737",
+    "cve": "CVE-2026-54524",
+    "severity": "medium",
+    "summary": "SQL Injection in HRMS Salary Payments Based on Payment Mode Report",
+    "published": "2026-06-05",
+    "range": "16.0.0",
+    "patched": "16.7.0",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-9jpf-5vrm-hpcj",
+    "cve": "CVE-2026-45081",
+    "severity": "medium",
+    "summary": "Permission Bypass in HRMS Leave Details API",
+    "published": "2026-05-07",
+    "range": "< v16.5.0",
+    "patched": "v16.5.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-6cg5-4q6m-vrgm",
+    "cve": "CVE-2026-40889",
+    "severity": "medium",
+    "summary": "Improper Access Control on Files",
+    "published": "2026-04-13",
+    "range": "<16.4.2",
+    "patched": "16.4.2",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-4375-7rxj-9hfx",
+    "cve": "CVE-2026-40888",
+    "severity": "medium",
+    "summary": "Improper Access Control",
+    "published": "2026-04-13",
+    "range": "<16.4.1",
+    "patched": "16.4.1",
+    "match": "yes"
+   }
+  ]
+ },
+ "crm": {
+  "repo": "frappe/crm",
+  "version": "1.82.0",
+  "advisories": 9,
+  "hits": [
+   {
+    "ghsa": "GHSA-5wcf-p378-fmwr",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised disclosure of personal information due to missing validation",
+    "published": "2026-09-24",
+    "range": "<= 1.82.0",
+    "patched": "",
+    "match": "yes"
+   }
+  ]
+ },
+ "insights": {
+  "repo": "frappe/insights",
+  "version": "2.2.14",
+  "advisories": 3,
+  "hits": [
+   {
+    "ghsa": "GHSA-cgww-3f53-h687",
+    "cve": "CVE-2026-91124",
+    "severity": "high",
+    "summary": "Credential and password hash disclosure via Native Query",
+    "published": "2026-08-27",
+    "range": "< 3.9.4",
+    "patched": "3.9.4",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-mh7w-m9g8-3x75",
+    "cve": "CVE-2026-91125",
+    "severity": "critical",
+    "summary": "Privilege escalation via Script Query sandbox escape",
+    "published": "2026-08-27",
+    "range": "< 3.9.4",
+    "patched": "3.9.4",
+    "match": "yes"
+   }
+  ]
+ },
+ "lms": {
+  "repo": "frappe/lms",
+  "version": "2.45.2",
+  "advisories": 32,
+  "hits": [
+   {
+    "ghsa": "GHSA-jf2p-m4wh-hv3x",
+    "cve": null,
+    "severity": "high",
+    "summary": "Unauthorised access to restricted content due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 2.56.0",
+    "patched": "2.56.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-6xm2-ww9w-65m8",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised modification of grading data due to missing validation",
+    "published": "2026-09-18",
+    "range": "< 2.59.0",
+    "patched": "2.59.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-xvj8-v87h-68vw",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised modification of data due to missing validation",
+    "published": "2026-09-16",
+    "range": "< 2.61.0",
+    "patched": "2.61.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-ccm8-xq6c-9fmj",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Unauthorised disclosure of user information due to missing validation",
+    "published": "2026-09-16",
+    "range": "< 2.61.0",
+    "patched": "2.61.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-p37x-f9gw-xp5j",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Stored XSS in Frappe Learning",
+    "published": "2026-08-18",
+    "range": "< 2.52.0",
+    "patched": ">= 2.52.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-5w49-rg27-9q48",
+    "cve": null,
+    "severity": "medium",
+    "summary": "Possibility of stored XSS due to missing validation",
+    "published": "2026-08-05",
+    "range": "< 2.53.1",
+    "patched": "2.53.1",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-f76v-rc7m-rxq8",
+    "cve": null,
+    "severity": "low",
+    "summary": "Course materials public by default",
+    "published": "2026-08-05",
+    "range": "< 2.56.0",
+    "patched": ">= 2.56.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-wxrc-h8qf-x3fx",
+    "cve": "CVE-2026-104788",
+    "severity": "low",
+    "summary": "Certified participants endpoint exposed member email addresses",
+    "published": "2026-07-27",
+    "range": "< 2.54.2",
+    "patched": ">= 2.54.2",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-xjj9-h64v-254g",
+    "cve": "CVE-2026-61806",
+    "severity": "low",
+    "summary": "Unpublished certificate access",
+    "published": "2026-06-24",
+    "range": "< 2.54.2",
+    "patched": ">= 2.54.2",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-4566-2phx-68gh",
+    "cve": "CVE-2026-61805",
+    "severity": "medium",
+    "summary": "Quiz score manipulation (REST bypass) + cross-user quiz forgery / max-attempts DoS",
+    "published": "2026-06-24",
+    "range": "< 2.54.0",
+    "patched": ">= 2.54.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-g5jj-q8m7-359c",
+    "cve": "CVE-2026-61803",
+    "severity": "medium",
+    "summary": "Client-controlled price allows paid-course / certificate purchase for an arbitrary amount",
+    "published": "2026-06-24",
+    "range": "< 2.52.1",
+    "patched": "2.52.1",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-2x47-gr9q-w6fv",
+    "cve": "CVE-2026-46546",
+    "severity": "medium",
+    "summary": " HTML injection in user-controlled metadata",
+    "published": "2026-05-15",
+    "range": "< 2.48.0",
+    "patched": "=> 2.48.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-mxh7-g3r7-g96h",
+    "cve": "CVE-2026-39405",
+    "severity": "critical",
+    "summary": "Path transversal in SCORM",
+    "published": "2026-05-15",
+    "range": "<= 2.49.0",
+    "patched": "2.50.1",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-c4xh-2rcm-6mgc",
+    "cve": "CVE-2026-39385",
+    "severity": "low",
+    "summary": "Enrollment bypass in paid courses via unrelated batch",
+    "published": "2026-06-24",
+    "range": "<= 2.51.0",
+    "patched": "2.52.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-3mq2-3c8v-m92j",
+    "cve": "CVE-2026-54343",
+    "severity": "critical",
+    "summary": "Path Traversal in SCORM File Serving",
+    "published": "2026-06-04",
+    "range": "<= 2.51.0",
+    "patched": "2.52.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-9fqj-95wr-6hm6",
+    "cve": "CVE-2026-39375",
+    "severity": "medium",
+    "summary": "Stored XSS in Course Meta ",
+    "published": "2026-06-24",
+    "range": "<= 2.51.0",
+    "patched": "2.52.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-qf5w-r34q-c7j2",
+    "cve": "CVE-2026-34606",
+    "severity": "medium",
+    "summary": "Stored XSS in Frappe LMS",
+    "published": "2026-03-31",
+    "range": ">= 2.27.0, < 2.48.0",
+    "patched": "2.48.0",
+    "match": "yes"
+   },
+   {
+    "ghsa": "GHSA-9573-68xq-hwrx",
+    "cve": "CVE-2026-39415",
+    "severity": "medium",
+    "summary": "Client-Side Manipulation of Quiz Scores",
+    "published": "2026-04-07",
+    "range": "2.0.0",
+    "patched": "2.46.0",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-26vf-p39q-frx3",
+    "cve": "CVE-2026-26977",
+    "severity": "low",
+    "summary": "Unauthorized users were able to get details of unpublished courses",
+    "published": "2026-02-16",
+    "range": "2.0.0",
+    "patched": "2.45.0",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-3gw9-gwjm-vcq5",
+    "cve": "CVE-2026-26031",
+    "severity": "low",
+    "summary": "Unauthorised user was able to access the full list of batch enrolled students",
+    "published": "2026-02-11",
+    "range": "2.0.0",
+    "patched": "2.45.0",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-78mq-3whw-69j5",
+    "cve": "CVE-2026-23497",
+    "severity": "low",
+    "summary": "Stored XSS via Unsanitized Image Filename in Course and Jobs Pages",
+    "published": "2026-01-14",
+    "range": "2.0.0",
+    "patched": "2.45.0",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-jjc4-j3hw-33h2",
+    "cve": "CVE-2025-67730",
+    "severity": "low",
+    "summary": "HTML and JavaScript injection in description fields",
+    "published": "2025-12-11",
+    "range": "2.0.0",
+    "patched": "2.42.0",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-c495-qg4v-5vr7",
+    "cve": "CVE-2025-67734",
+    "severity": "low",
+    "summary": "JavaScript was being executed through the Company Website field input of Job Form",
+    "published": "2025-12-11",
+    "range": "2.0.0",
+    "patched": "2.42.0",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-2ch7-c74m-432m",
+    "cve": "CVE-2025-66581",
+    "severity": "low",
+    "summary": "Missing Server-Side Authorization in Business Logic",
+    "published": "2025-12-05",
+    "range": "2.0.0",
+    "patched": "2.41.0",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-w2gf-rchw-x6vm",
+    "cve": "CVE-2025-64707",
+    "severity": "low",
+    "summary": "Revoking access did not show immediate effect as roles were cached",
+    "published": "2025-11-11",
+    "range": "2.0.0",
+    "patched": "2.41.0",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-qrvv-6g7r-g3v8",
+    "cve": "CVE-2025-64705",
+    "severity": "low",
+    "summary": "User was able to access the submission of other students",
+    "published": "2025-11-11",
+    "range": "2.0.0",
+    "patched": "2.41.0",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-j6h8-qg65-3fpx",
+    "cve": "CVE-2025-62779",
+    "severity": "low",
+    "summary": "Users were able to add HTML through input fields in the Job Form",
+    "published": "2025-10-27",
+    "range": "2.0.0",
+    "patched": "2.40.1",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-8xvv-6v89-xxgx",
+    "cve": "CVE-2025-62778",
+    "severity": "low",
+    "summary": "Students were able to access the Quiz Form via direct URL",
+    "published": "2025-10-27",
+    "range": "2.0.0",
+    "patched": "2.40.1",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-h6fh-7f24-f2j5",
+    "cve": "CVE-2025-62158",
+    "severity": "low",
+    "summary": "Attachments made by students to their assignments of type Text were public",
+    "published": "2025-10-10",
+    "range": "2.37.0",
+    "patched": "2.38.0",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-h7gh-3vq5-96jx",
+    "cve": "CVE-2025-59415",
+    "severity": "medium",
+    "summary": "Potential for Malicious Content upload via Profile bio field",
+    "published": "2025-09-17",
+    "range": "2.0.0",
+    "patched": "2.35.0",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-mvxw-r9x4-3vrr",
+    "cve": "CVE-2025-55006",
+    "severity": "medium",
+    "summary": "Potential for Malicious SVG Upload in Image Upload Feature",
+    "published": "2025-08-08",
+    "range": "2.0.0",
+    "patched": "2.34.0",
+    "match": "unparsed"
+   },
+   {
+    "ghsa": "GHSA-wvq3-3wvp-6x63",
+    "cve": "CVE-2023-42807",
+    "severity": "medium",
+    "summary": "Frappe LMS SQL Injection Issue on People Page",
+    "published": "2023-09-20",
+    "range": "1.0.0",
+    "patched": "1.0.0",
+    "match": "unparsed"
+   }
+  ]
+ },
+ "payments": {
+  "repo": "frappe/payments",
+  "version": "0.0.1",
+  "advisories": 0,
+  "hits": []
+ },
+ "ecommerce_integrations": {
+  "repo": "frappe/ecommerce_integrations",
+  "version": "1.17.0",
+  "advisories": 0,
+  "hits": []
+ },
+ "frappe_s3_attachment": {
+  "repo": "shridarpatil/Frappe-attachments-s3",
+  "version": "0.0.1",
+  "advisories": 0,
+  "hits": []
+ }
+}
