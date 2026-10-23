@@ -46,7 +46,7 @@ The second theme is **webhooks that fail open when their secret is blank** (Ship
 
 | # | Finding | Where | Who can exploit |
 |---|---|---|---|
-| C1 | **1Click API key served publicly.** `sites/assets/lh_docs` is a symlink to `lh/docs`. Two docs contain a 46-char 1Click key (`zXTs…`), so anyone can download them from `/assets/lh_docs/…`. The docs label it sandbox but also say it is configured in Oneclick Settings. | `lh/docs/oneclick_live_config_test_plan_2026-08-25.md:12`, `lh/docs/oneclick_e2e_test_cases_2026-08-25.md:5` | Anyone (unauthenticated) |
+| C1 | **1Click API key served publicly.** _Status: redacted in `f9f83402`; rotation pending (see Status check)._ `sites/assets/lh_docs` is a symlink to `lh/docs`. Two docs contain a 46-char 1Click key (`zXTs…`), so anyone can download them from `/assets/lh_docs/…`. The docs label it sandbox but also say it is configured in Oneclick Settings. | `lh/docs/oneclick_live_config_test_plan_2026-08-25.md:12`, `lh/docs/oneclick_e2e_test_cases_2026-08-25.md:5` | Anyone (unauthenticated) |
 | C2 | **Leaked secrets in git history:** Shopify Admin token `shpat_0217…` (60b91113), Shopify app client secret `shpss_0bad…` (1568bb25, still in a patch until 666b4165), and 1Click keys in the removed Postman collection (e69a1f25). The client secret **signs Shopify webhooks**, so it is enough to forge "order paid" events. Deleting files does not revoke them. | git history | Anyone with repo access, now or in the past |
 | C3 | **ShipStation webhook has no auth when the secret is blank.** It creates or overwrites Lyfe Orders (address, items, totals, status) by `orderNumber`, with `ignore_permissions`. ShipStation v1 does not sign webhooks, so if this endpoint works in prod it is effectively unauthenticated. | `integrations/shipstation_webhook.py:19-29` | Anyone (unauthenticated) |
 | C4 | **Fake payments:** `add_payment_entry` and `complete_draft_order` have no permission check. They record a payment (`ignore_permissions`), move the Quotation to Won and complete the Shopify draft order, so goods ship unpaid. | `integrations/shopify.py:597`, `:732` | Any logged-in user |
@@ -149,3 +149,14 @@ Changes since `6f8c2ff6`: one commit plus uncommitted working-tree files.
 - **Modified `docs/*.md`:** documentation only. No secrets added.
 
 **I re-verified all seven Critical findings against `0e003915` by parsing the functions.** None of `add_payment_entry`, `complete_draft_order`, `register_shopify_webhooks`, `deregister_shopify_webhooks`, `process_shipstation_response`, `generate_cj_label`, `retry_from_integration_log` or `generate_cj_label_for_reshipment` contains any permission call. The ShipStation webhook still skips HMAC when `webhook_secret` is blank. The `sites/assets/lh_docs` symlink still exists, and both docs still contain the 1Click key. **All Criticals remain open.**
+
+---
+
+## Status check: 2026-10-23, second pass
+
+| Finding | Status | Evidence |
+|---|---|---|
+| C1 / raw H1: 1Click key in publicly served docs | **Fixed in code (`f9f83402`, not yet pushed or deployed). Rotation pending.** | Key redacted in `lh/docs/oneclick_live_config_test_plan_2026-08-25.md` and `lh/docs/oneclick_e2e_test_cases_2026-08-25.md`. It stays public on the live site until deployed. It is still in git history (`8df6c4d1`, `1dff520f`) and may already have been downloaded, so it must be rotated with 1Click. |
+| Key rotation (C1, C2) | **Unverified** | Can't be checked from code. Confirm with 1Click and Shopify. |
+
+Code changes on `prod` since the audit: `0e003915` (S3 secret encrypted) and `f9f83402` (1Click key redacted from docs). This bench could not fetch `origin`, so fixes that were pushed but not pulled here are not reflected.

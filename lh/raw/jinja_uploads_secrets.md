@@ -12,6 +12,8 @@ Secret values are redacted to their first 4 characters followed by "…".
 ## CRITICAL / HIGH
 
 ### H1. 1Click API key in docs that are served publicly without login (current tree): **Critical if it is the live key, otherwise High**
+
+> **Status 2026-10-23: key redacted from both docs in commit `f9f83402` (not yet pushed or deployed). Rotation with 1Click is still required.** Earlier re-check at `0e003915`: Both files still contain the key, and `sites/assets/lh_docs` still links to `lh/docs`. Deleting the link alone will not stick: Frappe recreates `assets/{app}_docs` for every app that has a `docs/` folder on each `bench build` (`frappe/build.py:333-340`). The durable fix is to remove the key from both files, and either move these docs out of `lh/docs` or deny `/assets/lh_docs/` in nginx. Key rotation with 1Click can't be checked from the code; confirm it separately.
 - `lh/docs/oneclick_live_config_test_plan_2026-08-25.md:12`: `| api_key | zXTs… |` (46 chars)
 - `lh/docs/oneclick_e2e_test_cases_2026-08-25.md:5`: "Uses the sandbox token already in Oneclick Settings (`zXTs…`, https://icomwms.dev)"
 - Added in commits `8df6c4d1` and `1dff520f` (2026-08/09).
@@ -210,7 +212,7 @@ Same mitigation and residual risk as L3: customer and address data comes from Sh
 Counts: Critical 0-1 (H1 is Critical if `zXTs…` is the live key), High 5 (H1-H5), Medium 8, Low 9 groups.
 
 Top 5:
-1. **H1**: 1Click API key `zXTs…` is still publicly served at `/assets/lh_docs/oneclick_live_config_test_plan_2026-08-25.md` and `oneclick_e2e_test_cases_2026-08-25.md`. Rotate it and stop serving `lh/docs`.
+1. **H1** (redacted in `f9f83402`; rotation pending): 1Click API key `zXTs…` was publicly served at `/assets/lh_docs/oneclick_live_config_test_plan_2026-08-25.md` and `oneclick_e2e_test_cases_2026-08-25.md`. Rotate it and stop serving `lh/docs`.
 2. **H4**: `CustomFile.get_content` gives full-read SSRF via `download_file` and sends the victim's `sid` cookie to attacker URLs.
 3. **H5**: `register_shopify_webhooks(site_url=…)` has no role check, so any user can redirect all Shopify order PII.
 4. **H2/H3**: 1Click (`GbOI…`, `Ak7M…`, `OekL…`) and Shopify (`shpat_0217…`, `shpss_0bad…`) credentials are in git history. Rotate them.
