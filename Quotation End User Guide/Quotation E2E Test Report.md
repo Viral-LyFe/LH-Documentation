@@ -1,21 +1,23 @@
 # Quotation E2E Test Report
 
-Oct 21, 2026 · @Viral kansodiya
+Oct 21, 2026 · updated Oct 26, 2026 · @Viral kansodiya
 
-137 automated end-to-end tests now cover every LH Quotation customisation: 136 pass and 1 is marked as an expected failure. Nothing is committed or deployed to production yet.
+142 automated end-to-end tests cover every LH Quotation customisation. On the latest run (Oct 26) 139 pass, 1 is a known expected failure, and 2 fail because of a workflow setting on the local site (see Results). Nothing is deployed to production yet.
 
 ## Results
 
-All five modules pass on lyfelocal.com (Frappe 15.121, ERPNext 15.121). A full run takes about 75 seconds and leaves the database and disk exactly as it found them.
+Run on lyfelocal.com (Frappe 15.121, ERPNext 15.121) on Oct 26. A full run takes about 80 seconds and leaves the database and disk exactly as it found them.
 
-| Module | Area | Tests | Pass | Expected failure |
-| --- | --- | --- | --- | --- |
-| test\_lifecycle | Workflow walks, transition guards, approval, revisions | 43 | 43 | 0 |
-| test\_payments | Payment schedule, fee, stage blocks, milestones, reminders | 27 | 27 | 0 |
-| test\_integrations | Email, approval link, Shopify, follow-up, SLA, COGS benchmark, permissions | 26 | 26 | 0 |
-| test\_validate | Order type, box sizes, qty / rate, discounts, approval / COGS flags | 24 | 24 | 0 |
-| test\_drawings | Upload gate, PDF BOM stripper, change details, Senior Review | 17 | 16 | 1 |
-| **Total** |  | **137** | **136** | **1** |
+| Module | Area | Tests | Pass | Fail | Expected failure |
+| --- | --- | --- | --- | --- | --- |
+| test\_lifecycle | Workflow walks, transition guards, approval, revisions | 44 | 42 | 2 | 0 |
+| test\_payments | Payment schedule, fee, stage blocks, milestones, reminders | 27 | 27 | 0 | 0 |
+| test\_integrations | Email, approval link, payment link retry, Shopify, follow-up, SLA, COGS benchmark, permissions | 30 | 30 | 0 | 0 |
+| test\_validate | Order type, box sizes, qty / rate, discounts, approval / COGS flags | 24 | 24 | 0 | 0 |
+| test\_drawings | Upload gate, PDF BOM stripper, change details, Senior Review | 17 | 16 | 0 | 1 |
+| **Total** |  | **142** | **139** | **2** | **1** |
+
+The 2 failures are lifecycle tests 13 and 15 (fee-only quotation sent for approval from Sales User Review). On Oct 23 the local Quotation-3 workflow condition for **Sales User Review → Send for Approval** was changed back to `doc.cogs_pending == 0 and doc.approval_required == 1`, so the action is hidden for a quotation with no COGS. Setting it to `doc.approval_required == 1` (the before-production checklist item at the end) fixes both. The expected failure is drawings test 6, a local-storage-only issue described in that test.
 
 Every test runs inside one database transaction that is rolled back at the end. Outbound effects (background jobs, email, Slack, Shopify, S3, PDF rendering) are stubbed, so a run sends nothing. Quotation, Lyfe Order, File and Comment counts were identical before and after a full run.
 
@@ -36,6 +38,7 @@ The tests check these business rules.
 | Pending Engineer Review → Completed with Drawing Required or Photo Required | Order Drawing required, except Urgent quotations |
 | Item rate | 0 allowed (fee-only quotes); negative rejected |
 | Item qty | 0 rejected (ERPNext core) |
+| Payment link generation or update fails (any error) | Retried every 3 seconds, up to 5 attempts; alert only if all 5 fail |
 | Customer approval link on a Lost, Cancelled or Expired quotation | Rejected ("Quotation No Longer Valid"); state unchanged |
 
 ## Coverage
@@ -64,16 +67,16 @@ Every item in the Asana scope is covered by at least one test class.
 | COGS benchmark check | SlaAndCogsWiringTest |
 | Permission query conditions | PermissionQueryTest |
 | Email: send, open tracking, approval token + approve\_quotation | SendQuotationEmailTest, EmailOpenTrackingTest, CustomerApprovalLinkTest |
-| Shopify payment link + payment status polling | ShopifyLinkTest, ShopifyPollingTest |
+| Shopify payment link + payment status polling | ShopifyLinkTest, PaymentLinkRetryTest, ShopifyPollingTest |
 | Follow-up scheduler | FollowupSchedulerTest |
 | Linked Lyfe Orders, dashboard data | LinkedOrdersAndDashboardTest |
 | Full lifecycle | HappyPathTest, RejectionBranchTest |
 
 ## Negative test cases
 
-63 of the 137 tests are negative tests: they feed in bad data or a disallowed action, or check that something does not happen. Numbers match the test case catalogue below.
+65 of the 142 tests are negative tests: they feed in bad data or a disallowed action, or check that something does not happen. Numbers match the test case catalogue below.
 
-### Blocked, rejected or flagged (41)
+### Blocked, rejected or flagged (43)
 
 | Module | # | Test | Negative case |
 | --- | --- | --- | --- |
@@ -83,40 +86,42 @@ Every item in the Asana scope is covered by at least one test class.
 | test\_lifecycle | 21 | test\_completed\_blocked\_without\_drawing | Completed without drawing |
 | test\_lifecycle | 22 | test\_completed\_to\_production\_review\_blocked\_without\_drawing | Completed → Production Details Review without drawing |
 | test\_lifecycle | 23 | test\_completed\_blocked\_by\_item\_photo\_required | Completed with an item Photo Required and no drawing |
-| test\_lifecycle | 28 | test\_production\_review\_needs\_shipping\_unless\_free | Feasibility Approve without shipping |
-| test\_lifecycle | 29 | test\_feasibility\_approve\_needs\_cogs\_whatever\_the\_target | Feasibility Approve with COGS 0 |
-| test\_lifecycle | 32 | test\_request\_senior\_review\_only\_for\_custom\_orders | Senior Review on a Standard order |
-| test\_lifecycle | 33 | test\_inquiry\_rejected\_needs\_reason | Inquiry Rejected without a reason |
-| test\_lifecycle | 34 | test\_not\_feasible\_needs\_reason\_then\_cs\_review | Not Feasible without a reason |
-| test\_lifecycle | 35 | test\_not\_feasible\_reason\_locked\_to\_factory | Sales User edits Not Feasible Reason |
-| test\_lifecycle | 36 | test\_guards | Browser-path guards: missing drawing, COGS 0, approval required |
-| test\_lifecycle | 39 | test\_rev3\_blocks\_further\_changes | Change after Rev 3 |
-| test\_lifecycle | 41 | test\_item\_edit\_after\_send\_is\_rejected | Item edit after submit |
-| test\_lifecycle | 43 | test\_invalid\_shopify\_link\_rejected | Non-Shopify URL as Shopify Order Link |
+| test\_lifecycle | 29 | test\_production\_review\_needs\_shipping\_unless\_free | Feasibility Approve without shipping |
+| test\_lifecycle | 30 | test\_feasibility\_approve\_needs\_cogs\_whatever\_the\_target | Feasibility Approve with COGS 0 |
+| test\_lifecycle | 33 | test\_request\_senior\_review\_only\_for\_custom\_orders | Senior Review on a Standard order |
+| test\_lifecycle | 34 | test\_inquiry\_rejected\_needs\_reason | Inquiry Rejected without a reason |
+| test\_lifecycle | 35 | test\_not\_feasible\_needs\_reason\_then\_cs\_review | Not Feasible without a reason |
+| test\_lifecycle | 36 | test\_not\_feasible\_reason\_locked\_to\_factory | Sales User edits Not Feasible Reason |
+| test\_lifecycle | 37 | test\_guards | Form button checks: missing drawing, COGS 0, approval required |
+| test\_lifecycle | 40 | test\_rev3\_blocks\_further\_changes | Change after Rev 3 |
+| test\_lifecycle | 42 | test\_item\_edit\_after\_send\_is\_rejected | Item edit after submit |
+| test\_lifecycle | 44 | test\_invalid\_shopify\_link\_rejected | Non-Shopify URL as Shopify Order Link |
 | test\_payments | 2 | test\_zero\_portion\_rejected | 0% schedule row |
 | test\_payments | 3 | test\_row\_without\_stage\_rejected | Schedule row with no stage |
 | test\_payments | 4 | test\_amounts\_must\_sum\_to\_total | Schedule amounts not adding up to the total |
-| test\_payments | 7 | test\_underpaid\_blocks\_and\_tracks\_on\_lyfe\_order | Underpaid stage on the Lyfe Order step |
+| test\_payments | 7 | test\_underpaid\_blocks\_and\_tracks\_on\_lyfe\_order | Unpaid stage on the Lyfe Order step |
 | test\_payments | 8 | test\_repeat\_block\_does\_not\_re\_notify | Repeat block (no second reminder) |
-| test\_payments | 10 | test\_non\_cs\_user\_gets\_generic\_message | Non-CS user sees only the generic message |
+| test\_payments | 10 | test\_non\_cs\_user\_gets\_generic\_message | Non-CS user sees only the general message |
 | test\_payments | 14 | test\_unpaid\_is\_rejected | Unpaid quotation marked Won |
 | test\_integrations | 1 | test\_no\_outgoing\_account\_skips | No outgoing email account |
 | test\_integrations | 4 | test\_requires\_contact\_email | Send email with no contact email |
-| test\_integrations | 6 | test\_bad\_token\_records\_nothing | Tracking pixel with a bad token |
+| test\_integrations | 6 | test\_bad\_token\_records\_nothing | Tracking image with a bad token |
 | test\_integrations | 8 | test\_bad\_or\_missing\_token\_rejected | Approval link with a forged or missing token |
 | test\_integrations | 9 | test\_closed\_quotation\_not\_approved | Approval link on Lost, Cancelled or Expired |
-| test\_integrations | 10 | test\_cancelled\_docstatus\_not\_approved | Approval link on a cancelled (docstatus 2) quotation |
-| test\_validate | 6 | test\_bom\_with\_missing\_child\_dims\_is\_flagged | BOM child with missing box sizes (flagged) |
+| test\_integrations | 10 | test\_cancelled\_docstatus\_not\_approved | Approval link on a cancelled document |
+| test\_integrations | 12 | test\_gives\_up\_after\_5\_failed\_attempts | Shopify fails all 5 attempts: stops and reports the error |
+| test\_integrations | 13 | test\_network\_error\_every\_attempt\_raises | Network error on all 5 attempts: error shown |
+| test\_validate | 6 | test\_bom\_with\_missing\_child\_dims\_is\_flagged | BOM part with missing box size (flagged) |
 | test\_validate | 10 | test\_missing\_cogs\_sets\_cogs\_pending | Missing COGS (COGS Pending flagged) |
 | test\_validate | 14 | test\_negative\_rate\_rejected | Negative item rate |
-| test\_validate | 15 | test\_zero\_qty\_rejected | Zero qty |
+| test\_validate | 15 | test\_zero\_qty\_rejected | Zero quantity |
 | test\_validate | 16 | test\_card\_payment\_over\_5pct\_needs\_approval | Card discount over 5% (approval flagged) |
 | test\_validate | 18 | test\_item\_group\_limit\_applies\_when\_item\_has\_none | Discount over the Item Group limit (approval flagged) |
 | test\_drawings | 1 | test\_engineer\_without\_timesheet\_is\_blocked | Engineer upload without a Timesheet |
 | test\_drawings | 9 | test\_first\_upload\_needs\_details\_then\_notifies | Drawing saved without change details |
 | test\_drawings | 10 | test\_clear\_then\_reattach\_counts\_as\_replacement | Clear and re-attach without change details |
 | test\_drawings | 11 | test\_popup\_flow\_mark\_pending\_then\_submit\_details | Blank change details |
-| test\_drawings | 13 | test\_endpoints\_reject\_unknown\_quotation | Endpoints called for a quotation that doesn't exist |
+| test\_drawings | 13 | test\_endpoints\_reject\_unknown\_quotation | Popup actions called for a quotation that does not exist |
 | test\_drawings | 15 | test\_request\_and\_complete\_senior\_review | Senior Review without a Reason Code, and a duplicate request |
 
 ### Must not happen (22)
@@ -126,1017 +131,1868 @@ Every item in the Asana scope is covered by at least one test class.
 | test\_lifecycle | 11 | test\_slack\_card\_off\_when\_setting\_disabled | No Slack card when the setting is off |
 | test\_lifecycle | 16 | test\_no\_second\_card\_while\_already\_pending | No second Slack card |
 | test\_lifecycle | 18 | test\_slack\_approve\_does\_not\_double\_close\_card | Slack card not closed twice |
-| test\_lifecycle | 38 | test\_no\_item\_change\_no\_revision | No revision without an item change |
-| test\_lifecycle | 40 | test\_revision\_ignored\_outside\_sent\_to\_customer | No revision outside Sent to Customer |
-| test\_payments | 11 | test\_unconfigured\_stage\_is\_noop | Unconfigured stage does nothing |
-| test\_payments | 16 | test\_non\_terminal\_state\_keeps\_block | Non-terminal state keeps the block |
+| test\_lifecycle | 39 | test\_no\_item\_change\_no\_revision | No revision without an item change |
+| test\_lifecycle | 41 | test\_revision\_ignored\_outside\_sent\_to\_customer | No revision outside Sent to Customer |
+| test\_payments | 11 | test\_unconfigured\_stage\_is\_noop | Stage not in the schedule does nothing |
+| test\_payments | 16 | test\_non\_terminal\_state\_keeps\_block | Non-closing state keeps the block |
 | test\_payments | 20 | test\_block\_reminder\_skipped\_and\_cleared\_for\_lost | No block reminder for Lost |
 | test\_payments | 22 | test\_due\_and\_stage\_notifications\_skipped\_for\_cancelled | No Due or stage notification for Cancelled |
-| test\_payments | 25 | test\_unpaid\_shipped\_stage\_does\_not\_block\_dispatch | Unpaid Before Shipped doesn't block dispatch |
+| test\_payments | 25 | test\_unpaid\_shipped\_stage\_does\_not\_block\_dispatch | Unpaid Before Shipped does not block dispatch |
 | test\_payments | 26 | test\_unpaid\_shipped\_stage\_sends\_reminder | Before Shipped reminder sets no payment block |
 | test\_payments | 27 | test\_order\_code\_never\_hard\_blocks\_reminder\_only\_stages | No hard block for Before Shipped / On Delivery |
 | test\_integrations | 3 | test\_bank\_transfer\_never\_gets\_card\_link | No card link for bank transfer |
-| test\_integrations | 13 | test\_open\_draft\_changes\_nothing | Open Shopify draft records nothing |
-| test\_integrations | 14 | test\_pending\_bank\_transfer\_order\_not\_recorded | Pending bank-transfer order not recorded |
-| test\_integrations | 16 | test\_day\_already\_sent\_is\_skipped | Follow-up day already sent is skipped |
-| test\_integrations | 18 | test\_valid\_till\_passed\_expires | Expired quotation gets no follow-up task |
-| test\_integrations | 19 | test\_never\_emailed\_is\_skipped | Never-emailed quotation is skipped |
-| test\_integrations | 21 | test\_cogs\_deviation\_enqueues\_alert\_only\_when\_cogs\_changes | No COGS alert when COGS is unchanged |
+| test\_integrations | 17 | test\_open\_draft\_changes\_nothing | Open Shopify draft records nothing |
+| test\_integrations | 18 | test\_pending\_bank\_transfer\_order\_not\_recorded | Pending bank-transfer order not recorded |
+| test\_integrations | 20 | test\_day\_already\_sent\_is\_skipped | Follow-up day already sent is skipped |
+| test\_integrations | 22 | test\_valid\_till\_passed\_expires | Expired quotation gets no follow-up task |
+| test\_integrations | 23 | test\_never\_emailed\_is\_skipped | Never-emailed quotation is skipped |
+| test\_integrations | 25 | test\_cogs\_deviation\_enqueues\_alert\_only\_when\_cogs\_changes | No COGS alert when COGS is unchanged |
 | test\_drawings | 7 | test\_pdf\_without\_bom\_left\_alone | PDF without a BOM page left untouched |
 | test\_drawings | 8 | test\_unchanged\_drawing\_not\_reprocessed | Unchanged drawing not reprocessed |
-| test\_drawings | 14 | test\_sweep | Unanswered upload reverted by the grace sweep |
+| test\_drawings | 14 | test\_sweep | Unanswered upload undone by the scheduled job |
+
+## Terms used in this report
+
+| Term | Meaning |
+| --- | --- |
+| State | The quotation's workflow state (Inquiry, Sent to Customer, Won …). |
+| Action | A workflow button that moves the quotation to another state (Send for Approval, Completed …). |
+| Submitted | From **Sent to Customer** onward the quotation is submitted: its item lines are locked. |
+| Blocked | The action or save is refused and the user sees an error message. "Blocked with X" means the message contains X. |
+| COGS | Cost of Goods per item line, entered by the factory. |
+| COGS Pending | Ticked automatically when an item line has no COGS. |
+| Approval Required | Ticked automatically when the total is 10,000 or more, or a discount is over its limit. |
+| Spec hash | A snapshot of the items saved when the quotation is approved. If the items change later, the approval is cancelled. |
+| Payment schedule / stage | The rows that split the total into parts. Each row has one stage: Advance, Photo Approval, Before Dispatch, Before Shipped or On Delivery. |
+| Payment block | A hold on the Lyfe Order until the payment for the current stage is received. |
+| Milestone status | The status shown on each schedule row: Upcoming, Due, Paid, Overdue or Escalated. |
+| Shopify draft order / payment link | The Shopify order created for card payment; its link is the payment link in the customer email. |
+| Token | A secret code inside a link (approval link, tracking image) that proves it was issued for that quotation. |
+| Queued | A background job or Slack/email message was handed to the system to send. In tests nothing is really sent; the test checks it was queued. |
+| Simulated / stand-in | Shopify, Slack, email, file storage and PDF printing are replaced by stand-ins, so a test run never contacts outside services. |
+
+## How to read a test case
+
+The steps use these starting points:
+
+- **Standard quotation**: one item (qty 1, rate 100, COGS 40), payment terms "100 % Advance". Saving it moves it from Draft to **Inquiry** and adds empty Shipping Charges and Custom Fee rows.
+- **Staged quotation**: one item at rate 1,000 (COGS 400) with a 40 / 30 / 30 schedule = 400 / 300 / 300, stages Advance / Photo Approval / Before Dispatch unless the test says otherwise.
+- **Ready-to-send quotation**: a standard quotation with a contact email and a customer address, moved to **Inquiry Approved**.
+- **Sent quotation**: a ready-to-send quotation after **Send Quotation to Client** (state Sent to Customer, submitted).
+- **Linked Lyfe Order**: a minimal Lyfe Order whose Source Quotation is the test quotation.
+- **Record a payment**: add a received-payment row to the quotation (and, where the step says so, update Total Received Amount).
+- **Jumped to [state]**: the test puts the quotation straight into that state to skip setup that other tests already cover. No workflow rules run for the jump itself.
+- **Called directly**: a few tests run one server check on its own instead of clicking through the form, because the situation cannot be reached with a normal save. The class description says when.
+
+Each test lists **What it checks** (the business rule in one sentence), the **Starting point**, the **Steps**, and the **Expected result**.
 
 ## Test case catalogue
 
-All 137 test cases, grouped by module and test class. Each test lists the steps it performs and what it expects. All pass unless marked Expected failure.
+All 142 test cases, grouped by module and test class. Each test is labelled **Positive** (the normal case works), **Negative** (bad input or a disallowed action is stopped, or something must not happen) or **Expected failure**.
 
-### Common setup
+### test\_lifecycle (44)
 
-The steps use these shorthands:
-
-- **Standard quotation**: one item at rate 100 with COGS 40, payment terms "100 % Advance" (one Advance row). Saving it moves it from Draft to Inquiry.
-- **Staged quotation**: one item at rate 1,000 with COGS 400 and a 40 / 30 / 30 schedule (Advance / Photo Approval / Before Dispatch unless the test says otherwise).
-- **Ready to send**: standard quotation with a contact email and a customer address, moved to Inquiry Approved.
-- **Sent quotation**: ready to send, then Send Quotation to Client (state Sent to Customer, submitted).
-- **Linked Lyfe Order**: a minimal Lyfe Order whose Source Quotation is the test quotation.
-- **Record payment**: add a Quotation Payment Entry row for the amount and set Total Received Amount.
-- **Jump to state**: set the workflow state directly to skip setup steps that are tested elsewhere.
-
-Slack, email, Shopify, S3 and background jobs are stubbed. When a step says "queued" or "sent", the test checks that the call was made.
-
-### test\_lifecycle (43)
+Walks quotations through the Quotation-3 workflow and checks every rule that allows or blocks a workflow action.
 
 #### HappyPathTest
 
-**1. test\_inquiry\_to\_won\_to\_cancelled**
+The normal sales journey from inquiry to payment.
 
-1. Create a standard quotation
-2. Add contact and address, then Inquiry Approved
-3. Send Quotation to Client
-4. Bank Transfer Selected, record full payment, Confirm Payment
-5. Cancel
+**1. Full journey: Inquiry → Sent → Won → Cancelled** · Positive
 
-- **Expected:** State is Inquiry after insert, with Shipping Charges and Custom Fee rows; then Sent to Customer (submitted), Won, Cancelled (docstatus 2)
+`test_inquiry_to_won_to_cancelled`
 
-**2. test\_partial\_payment\_then\_remaining**
+- **What it checks:** A normal quotation can go through the whole sales cycle, and each action lands in the right state.
+- **Steps:**
+  1. Create a standard quotation.
+  2. Add a contact and address, save, then click **Inquiry Approved**.
+  3. Click **Send Quotation to Client**.
+  4. Click **Bank Transfer Selected**, record a payment for the full grand total, then click **Confirm Payment**.
+  5. Click **Cancel**.
+- **Expected result:**
+  - After step 1: state is **Inquiry**, and the taxes table has a Shipping Charges row and a Custom Fee row.
+  - After step 2: state is **Inquiry Approved**; Approval Required is not ticked (total is under 10,000).
+  - After step 3: state is **Sent to Customer** and the quotation is submitted.
+  - After step 4: state is **Won**.
+  - After step 5: state is **Cancelled** and the quotation is cancelled.
 
-1. Sent quotation → Bank Transfer Selected
-2. Record half the total, Confirm Payment
-3. Record the full total, Confirm Remaining Payment
+**2. Part payment first, then the balance** · Positive
 
-- **Expected:** Partially Paid, then Won
+`test_partial_payment_then_remaining`
 
-**3. test\_sent\_to\_customer\_needs\_email\_and\_address**
+- **What it checks:** A customer can pay in two parts: the first part makes the quotation Partially Paid, the balance makes it Won.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Click **Bank Transfer Selected**.
+  2. Record a payment for half the grand total, then click **Confirm Payment**.
+  3. Record payments up to the full grand total, then click **Confirm Remaining Payment**.
+- **Expected result:**
+  - After step 2: state is **Partially Paid**.
+  - After step 3: state is **Won**.
 
-1. Standard quotation → Inquiry Approved, no contact
-2. Send Quotation to Client
-3. Add contact email only, send again
+**3. Cannot send without customer email and address** · Negative
 
-- **Expected:** Blocked with "Customer email", then with "Customer address"
+`test_sent_to_customer_needs_email_and_address`
+
+- **What it checks:** A quotation cannot be sent to the customer until it has a contact email and a customer address.
+- **Starting point:** A standard quotation moved to Inquiry Approved, with no contact and no address.
+- **Steps:**
+  1. Click **Send Quotation to Client**.
+  2. Add a contact with an email (still no address), save, and click **Send Quotation to Client** again.
+- **Expected result:**
+  - Step 1 is blocked with a message about **Customer email**.
+  - Step 2 is blocked with a message about **Customer address**.
 
 #### PostSubmitHooksTest
 
-**4. test\_cancel\_releases\_payment\_gates**
+Actions taken after the quotation is submitted (Sent to Customer and later).
 
-1. Sent quotation
-2. Linked Lyfe Order with a Before Dispatch payment block
-3. Cancel the quotation
+**4. Cancelling the quotation releases the order's payment block** · Positive
 
-- **Expected:** Lyfe Order payment block is cleared
+`test_cancel_releases_payment_gates`
 
-**5. test\_lost\_releases\_payment\_gates**
+- **What it checks:** When a quotation is cancelled, its Lyfe Order is no longer held waiting for payment.
+- **Starting point:** A sent quotation with a linked Lyfe Order that is blocked waiting for the Before Dispatch payment.
+- **Steps:**
+  1. Click **Cancel** on the quotation.
+- **Expected result:**
+  - The Lyfe Order's payment block is cleared.
 
-1. Same as above, but mark the quotation Lost
+**5. Marking the quotation Lost releases the order's payment block** · Positive
 
-- **Expected:** Lyfe Order payment block is cleared
+`test_lost_releases_payment_gates`
 
-**6. test\_won\_with\_no\_payment\_is\_blocked**
+- **What it checks:** Same as the test above, for Lost instead of Cancel.
+- **Starting point:** A sent quotation with a linked Lyfe Order that is blocked waiting for the Before Dispatch payment.
+- **Steps:**
+  1. Click **Lost** on the quotation.
+- **Expected result:**
+  - The Lyfe Order's payment block is cleared.
 
-1. Sent quotation, jump to Payment Received
-2. Mark as Won with no payment recorded
+**6. Cannot mark Won when nothing has been paid** · Negative
 
-- **Expected:** Blocked with "no payment has been recorded"
+`test_won_with_no_payment_is_blocked`
 
-**7. test\_won\_marks\_advance\_milestone\_paid**
+- **What it checks:** A quotation cannot become Won if no payment is recorded. The workflow itself has no amount check on this action, so this rule is the only guard.
+- **Starting point:** A sent quotation jumped to **Payment Received**, with no payment rows.
+- **Steps:**
+  1. Click **Mark as Won**.
+- **Expected result:**
+  - Blocked with "no payment has been recorded".
 
-1. Sent quotation → Bank Transfer Selected
-2. Record full payment, Confirm Payment
+**7. Full payment marks the Advance milestone Paid** · Positive
 
-- **Expected:** Advance payment schedule row shows Paid
+`test_won_marks_advance_milestone_paid`
+
+- **What it checks:** When the quotation is paid in full, the Advance row in its payment schedule shows Paid.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Click **Bank Transfer Selected**.
+  2. Record a payment for the full grand total, then click **Confirm Payment**.
+- **Expected result:**
+  - State is **Won** and the Advance payment schedule row shows **Paid**.
 
 #### ApprovalPathTest
 
-**8. test\_over\_10k\_needs\_approval\_then\_sends**
+Quotations of 10,000 or more need manager approval before they can be sent. Approval can happen in ERPNext or from a Slack card.
 
-1. Ready to send at rate 12,000 (COGS 5,000)
-2. Send for Approval
-3. Approve
-4. Send Quotation to Client
+**8. Quotation of 10,000+ goes through approval, then can be sent** · Positive
 
-- **Expected:** Approval Required set; Pending Approval; Approved – Pending Send with the flag cleared and spec hash stored; Sent to Customer
+`test_over_10k_needs_approval_then_sends`
 
-**9. test\_send\_back\_to\_sales\_user**
+- **What it checks:** A large quotation is flagged for approval and can only be sent after it is approved.
+- **Starting point:** A ready-to-send quotation with one item at rate 12,000 (COGS 5,000).
+- **Steps:**
+  1. Check the Approval Required flag.
+  2. Click **Send for Approval**.
+  3. Click **Approve**.
+  4. Click **Send Quotation to Client**.
+- **Expected result:**
+  - Step 1: **Approval Required** is ticked.
+  - Step 2: state is **Pending Approval**.
+  - Step 3: state is **Approved – Pending Send**, Approval Required is cleared, and a snapshot of the approved items (spec hash) is saved.
+  - Step 4: state is **Sent to Customer**.
 
-1. 12,000 quotation → Send for Approval
-2. Send Back to Sales User
+**9. Approver can send the quotation back to sales** · Positive
 
-- **Expected:** State is Sales User Review
+`test_send_back_to_sales_user`
 
-**10. test\_slack\_card\_from\_feasibility\_approved**
+- **What it checks:** The approver can return a quotation to the sales user instead of approving it.
+- **Starting point:** A 12,000 quotation in Pending Approval.
+- **Steps:**
+  1. Click **Send Back to Sales User**.
+- **Expected result:**
+  - State is **Sales User Review**.
 
-1. 12,000 quotation, jump to Feasibility Approved
-2. Enable Quotation Approval on, Send for Approval
+**10. Slack approval card is posted from Feasibility Approved** · Positive
 
-- **Expected:** Slack approval card queued for this quotation
+`test_slack_card_from_feasibility_approved`
 
-**11. test\_slack\_card\_off\_when\_setting\_disabled**
+- **What it checks:** When a quotation goes for approval and Slack approval is switched on, an approval card is posted to Slack.
+- **Starting point:** A 12,000 quotation jumped to **Feasibility Approved**.
+- **Steps:**
+  1. Turn **Enable Quotation Approval** on in LH Slack Settings.
+  2. Click **Send for Approval**.
+- **Expected result:**
+  - A Slack approval card is queued for this quotation.
 
-1. Same as above with Enable Quotation Approval off
+**11. No Slack card when Slack approval is switched off** · Negative
 
-- **Expected:** No card queued
+`test_slack_card_off_when_setting_disabled`
 
-**12. test\_fee\_only\_quote\_sent\_for\_approval\_from\_inquiry\_approved**
+- **What it checks:** The Slack setting really switches the card off.
+- **Starting point:** A 12,000 quotation jumped to **Feasibility Approved**.
+- **Steps:**
+  1. Turn **Enable Quotation Approval** off.
+  2. Click **Send for Approval**.
+- **Expected result:**
+  - No Slack card is queued.
 
-1. Quotation with a 0-rate item, no COGS, Custom Fee 12,000
-2. Inquiry Approved
-3. Send for Approval
+**12. Fee-only quotation can go for approval without COGS (from Inquiry Approved)** · Positive
 
-- **Expected:** COGS Pending and Approval Required are set, yet it reaches Pending Approval
+`test_fee_only_quote_sent_for_approval_from_inquiry_approved`
 
-**13. test\_fee\_only\_quote\_sent\_for\_approval\_from\_sales\_user\_review**
+- **What it checks:** A quotation whose price is carried only by the Custom Fee (item at rate 0, no COGS) can still be sent for approval.
+- **Starting point:** A fee-only quotation: one item at rate 0 with no COGS, and a Custom Fee of 12,000; moved to Inquiry Approved.
+- **Steps:**
+  1. Check the flags.
+  2. Click **Send for Approval**.
+- **Expected result:**
+  - Step 1: **COGS Pending** and **Approval Required** are both ticked.
+  - Step 2: state is **Pending Approval** (COGS is not required for Send for Approval).
 
-1. Same fee-only quotation, jump to Sales User Review, Send for Approval
+**13. Fee-only quotation can go for approval without COGS (from Sales User Review)** · Positive · ⚠ Currently failing
 
-- **Expected:** Pending Approval
+`test_fee_only_quote_sent_for_approval_from_sales_user_review`
 
-**14. test\_no\_cogs\_needed\_from\_feasibility\_approved**
+- **What it checks:** Same as the test above, starting from Sales User Review.
+- **Starting point:** The same fee-only quotation, jumped to **Sales User Review**.
+- **Steps:**
+  1. Click **Send for Approval**.
+- **Expected result:**
+  - State is **Pending Approval**.
+- **Note:** **Failing on lyfelocal.com since 23 Oct.** The Quotation-3 workflow condition for Sales User Review → Send for Approval was changed back to `doc.cogs_pending == 0 and doc.approval_required == 1`, so ERPNext hides the action for this quotation. Fix: the before-production checklist item at the end of this report.
 
-1. 12,000 quotation with COGS 0, jump to Feasibility Approved
-2. Send for Approval
+**14. No COGS needed to send for approval from Feasibility Approved** · Positive
 
-- **Expected:** Pending Approval (no COGS gate)
+`test_no_cogs_needed_from_feasibility_approved`
 
-**15. test\_slack\_card\_from\_every\_route**
+- **What it checks:** Send for Approval does not require COGS, whichever state it starts from.
+- **Starting point:** A ready-to-send quotation at 12,000 with COGS 0, jumped to **Feasibility Approved**.
+- **Steps:**
+  1. Click **Send for Approval**.
+- **Expected result:**
+  - State is **Pending Approval**.
 
-1. Enter Pending Approval three ways: Send for Approval from Inquiry Approved, Send for Approval from Sales User Review (fee-only), Feasibility Approve from Production Details Review (free shipping)
+**15. One Slack card, whichever way the quotation reaches Pending Approval** · Positive · ⚠ Currently failing
 
-- **Expected:** Each route queues one card, after the save commits
+`test_slack_card_from_every_route`
 
-**16. test\_no\_second\_card\_while\_already\_pending**
+- **What it checks:** There are three ways into Pending Approval; each must post exactly one Slack card, and only after the save is fully committed (so a later error in the same save cancels the card).
+- **Steps:**
+  1. With Slack approval on, take three quotations into Pending Approval:
+     - a) 12,000 quotation: **Send for Approval** from Inquiry Approved.
+     - b) Fee-only quotation: **Send for Approval** from Sales User Review.
+     - c) 12,000 quotation with Free Shipping: **Feasibility Approve** from Production Details Review.
+- **Expected result:**
+  - Each route queues one card, set to post after the save commits.
+- **Note:** **Failing on lyfelocal.com since 23 Oct** at route b), for the same workflow-condition reason as the fee-only test above.
 
-1. 12,000 quotation → Send for Approval
-2. Save again in Pending Approval
+**16. No second Slack card when a pending quotation is saved again** · Negative
 
-- **Expected:** No second card queued
+`test_no_second_card_while_already_pending`
 
-**17. test\_erp\_approve\_closes\_slack\_card**
+- **What it checks:** Saving a quotation that is already waiting for approval does not post a duplicate card.
+- **Starting point:** A 12,000 quotation already in Pending Approval (its card was posted).
+- **Steps:**
+  1. With Slack approval on, save the quotation again.
+- **Expected result:**
+  - No second card is queued.
 
-1. 12,000 quotation → Send for Approval
-2. Approve in ERPNext
+**17. Approving in ERPNext closes the Slack card** · Positive
 
-- **Expected:** Job to close the Slack card queued
+`test_erp_approve_closes_slack_card`
 
-**18. test\_slack\_approve\_does\_not\_double\_close\_card**
+- **What it checks:** If the approver approves in ERPNext, the Slack card is closed so nobody acts on it later.
+- **Starting point:** A 12,000 quotation in Pending Approval.
+- **Steps:**
+  1. Click **Approve** in ERPNext.
+- **Expected result:**
+  - A job to close the Slack card is queued.
 
-1. Same, but Approve with the "from Slack" flag set
+**18. Approving from Slack does not close the card twice** · Negative
 
-- **Expected:** Close job not queued (Slack closes its own card)
+`test_slack_approve_does_not_double_close_card`
 
-**19. test\_slack\_approve\_rejected\_by\_erp\_replies\_in\_thread**
+- **What it checks:** When the approval comes from the Slack button, Slack updates its own card, so ERPNext must not also close it.
+- **Starting point:** A 12,000 quotation in Pending Approval.
+- **Steps:**
+  1. Approve the quotation from Slack.
+- **Expected result:**
+  - ERPNext does not queue a close job.
 
-1. 12,000 quotation in Pending Approval with an open Slack thread
-2. Run the Slack Approve action, with ERPNext raising "COGS missing"
+**19. Slack approval refused by ERPNext is explained in the Slack thread** · Negative
 
-- **Expected:** Reply posted in the thread with "Reason: COGS missing"; card buttons and thread left open so the approver can retry
+`test_slack_approve_rejected_by_erp_replies_in_thread`
+
+- **What it checks:** If the approver clicks Approve in Slack but ERPNext refuses (for example COGS is missing), the approver is told why and can try again.
+- **Starting point:** A 12,000 quotation in Pending Approval with an open Slack approval thread.
+- **Steps:**
+  1. The approver clicks **Approve** on the Slack card; ERPNext refuses with "COGS missing".
+- **Expected result:**
+  - A reply is posted in the same Slack thread containing "Reason: COGS missing".
+  - The card's buttons are not removed and the thread stays open, so the approver can retry after the fix.
 
 #### EngineeringBranchTest
 
-**20. test\_drawing\_required\_routes\_to\_engineer\_then\_sales**
+Quotations that need a drawing or a feasibility check from the engineer / factory. Several tests start from an **engineer review quotation**: a quotation with Drawing Required ticked, moved Inquiry Approved → Request for Technical Details, so it is in **Pending Engineer Review** with no drawing attached.
 
-1. Quotation with Drawing Required → Inquiry Approved → Request for Technical Details
-2. Attach the Order Drawing with change details, save
-3. Completed
+**20. Drawing Required sends the quotation to the engineer, then back to sales** · Positive
 
-- **Expected:** Pending Engineer Review; Drawing Required auto-clears; Sales User Review
+`test_drawing_required_routes_to_engineer_then_sales`
 
-**21. test\_completed\_blocked\_without\_drawing**
+- **What it checks:** A quotation that needs a drawing goes to the engineer, and returns to sales once the drawing is attached.
+- **Starting point:** A standard quotation with **Drawing Required** ticked.
+- **Steps:**
+  1. Click **Inquiry Approved**, then **Request for Technical Details**.
+  2. Attach the Order Drawing with Drawing Change Details filled, and save.
+  3. Click **Completed**.
+- **Expected result:**
+  - Step 1: state is **Pending Engineer Review**.
+  - Step 2: **Drawing Required** is unticked automatically.
+  - Step 3: state is **Sales User Review**.
 
-1. Quotation in Pending Engineer Review with no drawing → Completed (server path, as list-view bulk action or API)
+**21. Engineer cannot complete without attaching the drawing** · Negative
 
-- **Expected:** Blocked with "Drawing"
+`test_completed_blocked_without_drawing`
 
-**22. test\_completed\_to\_production\_review\_blocked\_without\_drawing**
+- **What it checks:** Completed is blocked when no drawing is attached. This runs on the server, the same way as a list-view bulk action or an API call, so it proves the rule does not depend on the browser.
+- **Starting point:** An engineer review quotation.
+- **Steps:**
+  1. Click **Completed**.
+- **Expected result:**
+  - Blocked with a message about the **Drawing**.
 
-1. Same, with Feasibility Test Required set so Completed leads to Production Details Review
+**22. Completed is also blocked when it would go to Production Details Review** · Negative
 
-- **Expected:** Blocked with "Drawing"
+`test_completed_to_production_review_blocked_without_drawing`
 
-**23. test\_completed\_blocked\_by\_item\_photo\_required**
+- **What it checks:** The drawing rule applies on the other Completed route too (Feasibility Test Required sends the quotation to Production Details Review).
+- **Starting point:** An engineer review quotation with **Feasibility Test Required** ticked.
+- **Steps:**
+  1. Click **Completed**.
+- **Expected result:**
+  - Blocked with a message about the **Drawing**.
 
-1. Pending Engineer Review, Drawing Required off but Photo Required on an item → Completed
+**23. Item Photo Required also needs the drawing** · Negative
 
-- **Expected:** Blocked with "Drawing"
+`test_completed_blocked_by_item_photo_required`
 
-**24. test\_urgent\_completes\_without\_drawing**
+- **What it checks:** Photo Required on any item line counts the same as Drawing Required.
+- **Starting point:** An engineer review quotation with Drawing Required unticked but **Photo Required** ticked on an item.
+- **Steps:**
+  1. Click **Completed**.
+- **Expected result:**
+  - Blocked with a message about the **Drawing**.
 
-1. Pending Engineer Review, Priority Urgent, no drawing → Completed
+**24. Urgent quotations can complete without a drawing** · Positive
 
-- **Expected:** Sales User Review
+`test_urgent_completes_without_drawing`
 
-**25. test\_need\_more\_information\_not\_blocked**
+- **What it checks:** Urgent quotations are exempt from the drawing rule.
+- **Starting point:** An engineer review quotation with Priority **Urgent**.
+- **Steps:**
+  1. Click **Completed**.
+- **Expected result:**
+  - Allowed; state is **Sales User Review**.
 
-1. Pending Engineer Review, no drawing → Need More Information
+**25. Need More Information is not blocked by the drawing rule** · Positive
 
-- **Expected:** Draft (not blocked)
+`test_need_more_information_not_blocked`
 
-**26. test\_feasibility\_flag\_auto\_advances\_to\_production\_review**
+- **What it checks:** Only the forward action needs the drawing; sending the quotation back for more information is always allowed.
+- **Starting point:** An engineer review quotation.
+- **Steps:**
+  1. Click **Need More Information**.
+- **Expected result:**
+  - Allowed; state is **Draft**.
 
-1. Standard quotation in Sales User Review, tick Feasibility Test Required, save
+**26. Ticking Feasibility Test Required moves the quotation to Production Details Review** · Positive
 
-- **Expected:** Moves to Production Details Review
+`test_feasibility_flag_auto_advances_to_production_review`
 
-**27. test\_feasibility\_flag\_auto\_clears\_when\_cogs\_and\_shipping\_set**
+- **What it checks:** From Sales User Review, ticking the flag routes the quotation to the factory automatically.
+- **Starting point:** A standard quotation jumped to **Sales User Review**.
+- **Steps:**
+  1. Tick **Feasibility Test Required** and save.
+- **Expected result:**
+  - State changes to **Production Details Review**.
 
-1. In Production Details Review, tick Feasibility Test Required and Free Shipping (COGS already set), save
+**27. Ticking Feasibility Test Required in Inquiry goes straight to Production Details Review** · Positive
 
-- **Expected:** Feasibility Test Required clears
+`test_feasibility_flag_in_inquiry_skips_inquiry_approved`
 
-**28. test\_production\_review\_needs\_shipping\_unless\_free**
+- **What it checks:** From Inquiry, the flag skips Inquiry Approved and routes straight to the factory.
+- **Starting point:** A standard quotation in **Inquiry**.
+- **Steps:**
+  1. Tick **Feasibility Test Required** and save.
+- **Expected result:**
+  - State changes to **Production Details Review**.
 
-1. Production Details Review, no shipping → Feasibility Approve
-2. Tick Free Shipping, Feasibility Approve again
+**28. Feasibility flag clears itself once COGS and shipping are filled** · Positive
 
-- **Expected:** Blocked with "Shipping Charges", then Feasibility Approved
+`test_feasibility_flag_auto_clears_when_cogs_and_shipping_set`
 
-**29. test\_feasibility\_approve\_needs\_cogs\_whatever\_the\_target**
+- **What it checks:** When the factory has entered everything needed (COGS and shipping), the Feasibility Test Required flag is unticked automatically.
+- **Starting point:** A standard quotation (COGS 40) jumped to **Production Details Review**.
+- **Steps:**
+  1. Tick **Feasibility Test Required** and **Free Shipping**, and save.
+- **Expected result:**
+  - **Feasibility Test Required** is unticked.
 
-1. For rates 100 and 12,000: quotation with COGS 0 and free shipping in Production Details Review → Feasibility Approve
+**29. Feasibility Approve needs a shipping charge unless Free Shipping is ticked** · Negative
 
-- **Expected:** Both blocked with "Cost of Goods"
+`test_production_review_needs_shipping_unless_free`
 
-**30. test\_feasibility\_approve\_over\_10k\_goes\_to\_pending\_approval**
+- **What it checks:** The factory cannot approve feasibility without either a shipping charge or Free Shipping.
+- **Starting point:** A standard quotation in **Production Details Review** with no shipping charge.
+- **Steps:**
+  1. Click **Feasibility Approve**.
+  2. Tick **Free Shipping**, save, and click **Feasibility Approve** again.
+- **Expected result:**
+  - Step 1 is blocked with a message about **Shipping Charges**.
+  - Step 2: state is **Feasibility Approved**.
 
-1. 12,000 quotation with COGS and free shipping in Production Details Review → Feasibility Approve
+**30. Feasibility Approve always needs COGS** · Negative
 
-- **Expected:** Pending Approval
+`test_feasibility_approve_needs_cogs_whatever_the_target`
 
-**31. test\_photo\_required\_in\_production\_review\_routes\_back\_to\_engineer**
+- **What it checks:** COGS is required for Feasibility Approve whether the next state is Feasibility Approved (under 10,000) or Pending Approval (10,000+).
+- **Steps:**
+  1. Create two quotations with COGS 0 and Free Shipping, at rates 100 and 12,000, both in Production Details Review.
+  2. Click **Feasibility Approve** on each.
+- **Expected result:**
+  - Both are blocked with a message about **Cost of Goods**.
 
-1. In Production Details Review, tick Photo Required on an item, save
+**31. Feasibility Approve on a 10,000+ quotation goes to Pending Approval** · Positive
 
-- **Expected:** Moves back to Pending Engineer Review
+`test_feasibility_approve_over_10k_goes_to_pending_approval`
 
-**32. test\_request\_senior\_review\_only\_for\_custom\_orders**
+- **What it checks:** A large quotation skips Feasibility Approved and goes straight to approval.
+- **Starting point:** A 12,000 quotation (COGS 5,000) with Free Shipping, jumped to **Production Details Review**.
+- **Steps:**
+  1. Click **Feasibility Approve**.
+- **Expected result:**
+  - State is **Pending Approval**.
 
-1. Standard-type quotation in Pending Engineer Review → Request Senior Review
+**32. Photo Required in Production Details Review sends it back to the engineer** · Positive
 
-- **Expected:** Rejected (action not available for Standard orders)
+`test_photo_required_in_production_review_routes_back_to_engineer`
+
+- **What it checks:** If the factory asks for a photo, the quotation returns to the engineer.
+- **Starting point:** A standard quotation jumped to **Production Details Review**.
+- **Steps:**
+  1. Tick **Photo Required** on an item and save.
+- **Expected result:**
+  - State changes to **Pending Engineer Review**.
+
+**33. Senior Review is only for Custom orders** · Negative
+
+`test_request_senior_review_only_for_custom_orders`
+
+- **What it checks:** The Request Senior Review action is not available for Standard orders.
+- **Starting point:** An engineer review quotation whose Order Type is **Standard**.
+- **Steps:**
+  1. Click **Request Senior Review**.
+- **Expected result:**
+  - Rejected; the action is not available.
 
 #### RejectionBranchTest
 
-**33. test\_inquiry\_rejected\_needs\_reason**
+Rejecting an inquiry or marking it not feasible.
 
-1. Standard quotation → Inquiry Rejected with no reason
-2. Fill Inquiry Rejected Reason, try again
+**34. Inquiry Rejected needs a reason** · Negative
 
-- **Expected:** Blocked with "Rejected Reason", then Inquiry Rejected
+`test_inquiry_rejected_needs_reason`
 
-**34. test\_not\_feasible\_needs\_reason\_then\_cs\_review**
+- **What it checks:** An inquiry cannot be rejected without saying why.
+- **Starting point:** A standard quotation in Inquiry.
+- **Steps:**
+  1. Click **Inquiry Rejected** with the reason empty.
+  2. Fill Inquiry Rejected Reason ("Out of scope"), save, and click **Inquiry Rejected** again.
+- **Expected result:**
+  - Step 1 is blocked with a message about **Rejected Reason**.
+  - Step 2: state is **Inquiry Rejected**.
 
-1. Production Details Review → Not Feasible with no reason
-2. Fill Not Feasible Reason, try again
-3. CS Review
+**35. Not Feasible needs a reason, then goes to CS review** · Negative
 
-- **Expected:** Blocked with "Not Feasible Reason"; Not Feasible; Sales User Review
+`test_not_feasible_needs_reason_then_cs_review`
 
-**35. test\_not\_feasible\_reason\_locked\_to\_factory**
+- **What it checks:** The factory must give a reason for Not Feasible, and Customer Service can then pick it up.
+- **Starting point:** A standard quotation jumped to **Production Details Review**.
+- **Steps:**
+  1. Click **Not Feasible** with the reason empty.
+  2. Fill Not Feasible Reason ("Cannot machine"), save, and click **Not Feasible** again.
+  3. Click **CS Review**.
+- **Expected result:**
+  - Step 1 is blocked with a message about **Not Feasible Reason**.
+  - Step 2: state is **Not Feasible**.
+  - Step 3: state is **Sales User Review**.
 
-1. Quotation with Not Feasible Reason "original"
-2. As a Sales User (no Factory role), change it and save
+**36. Only the factory can change the Not Feasible Reason** · Negative
 
-- **Expected:** Reason stays "original"
+`test_not_feasible_reason_locked_to_factory`
+
+- **What it checks:** A sales user cannot overwrite the factory's Not Feasible Reason. Only Factory, System Manager and Super Admin can change it.
+- **Starting point:** A standard quotation with Not Feasible Reason "original".
+- **Steps:**
+  1. As a user with only the Sales User role, change the reason to "edited by sales" and save.
+- **Expected result:**
+  - The save goes through, but the reason stays **"original"**.
 
 #### BeforeWorkflowActionTest
 
-**36. test\_guards**
+The checks that run in the form when a user clicks a workflow button. The test calls these checks directly.
 
-Call the browser-path guard directly:
+**37. Workflow button checks in the form** · Negative
 
-1. Completed with Drawing Required
-2. Same with Priority Urgent
-3. Feasibility Approve with COGS 0
-4. Send for Approval with COGS 0
-5. Send Quotation to Client with Approval Required
-6. Lost
+`test_guards`
 
-- **Expected:** Blocked; allowed; blocked with "Cost of Goods"; allowed; blocked with "requires approval"; allowed
+- **What it checks:** Each forward action is blocked when its requirement is missing; closing actions are never blocked.
+- **Steps:**
+  1. Pending Engineer Review, Drawing Required, no drawing → **Completed**.
+  2. Same, with Priority Urgent → **Completed**.
+  3. Production Details Review, COGS 0, Priority Normal → **Feasibility Approve**.
+  4. Same → **Send for Approval**.
+  5. Approval Required ticked → **Send Quotation to Client**.
+  6. → **Lost**.
+- **Expected result:**
+  - Step 1: blocked (**Drawing**).
+  - Step 2: allowed (Urgent is exempt).
+  - Step 3: blocked (**Cost of Goods**).
+  - Step 4: allowed (no COGS check on Send for Approval).
+  - Step 5: blocked (**requires approval**).
+  - Step 6: allowed (closing actions are never checked).
 
 #### RevisionTest
 
-**37. test\_items\_change\_bumps\_revision\_and\_requeues\_shopify**
+When items change on a quotation that has already been sent, it becomes a new revision (Rev 1, Rev 2, Rev 3). A sent quotation is submitted, so these tests call the revision logic directly; the last test in this class proves a normal save cannot change items.
 
-1. Sent quotation with follow-up day 3 already sent
-2. Change an item rate to 90, run revision handling
+**38. Changing items creates a revision and refreshes the payment link** · Positive
 
-- **Expected:** Revision 1 ("Rev 1"), follow-up days reset, Shopify draft update queued
+`test_items_change_bumps_revision_and_requeues_shopify`
 
-**38. test\_no\_item\_change\_no\_revision**
+- **What it checks:** A change to the items of a sent quotation creates Rev 1, restarts the follow-up cycle and updates the Shopify payment link.
+- **Starting point:** A sent quotation whose day-3 follow-up has already been sent.
+- **Steps:**
+  1. Change the item rate from 100 to 90 and run the revision logic.
+- **Expected result:**
+  - Revision number is **1**, label **"Rev 1"**.
+  - Follow-up history is reset, so the revised quotation gets a fresh follow-up cycle.
+  - A Shopify draft order update is queued (the payment link shows the new amount).
 
-1. Sent quotation, run revision handling with no change
+**39. No item change, no revision** · Negative
 
-- **Expected:** No revision, no Shopify update
+`test_no_item_change_no_revision`
 
-**39. test\_rev3\_blocks\_further\_changes**
+- **What it checks:** Saving a sent quotation without changing its items does not create a revision.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Run the revision logic without changing anything.
+- **Expected result:**
+  - No revision number; no Shopify update queued.
 
-1. Sent quotation at revision 3, change item qty, run revision handling
+**40. No more changes after Rev 3** · Negative
 
-- **Expected:** Blocked with "revised 3 times"
+`test_rev3_blocks_further_changes`
 
-**40. test\_revision\_ignored\_outside\_sent\_to\_customer**
+- **What it checks:** A quotation can be revised at most 3 times.
+- **Starting point:** A sent quotation already at revision 3.
+- **Steps:**
+  1. Change the item qty to 5 and run the revision logic.
+- **Expected result:**
+  - Blocked with "revised 3 times".
 
-1. Unsent quotation, change item rate, run revision handling
+**41. Unsent quotations are not revised** · Negative
 
-- **Expected:** No revision
+`test_revision_ignored_outside_sent_to_customer`
 
-**41. test\_item\_edit\_after\_send\_is\_rejected**
+- **What it checks:** Only quotations that have been sent get revision numbers.
+- **Starting point:** A standard quotation in Inquiry (not sent).
+- **Steps:**
+  1. Change the item rate to 50 and run the revision logic.
+- **Expected result:**
+  - No revision number.
 
-1. Sent quotation, change item rate, save
+**42. Items cannot be edited with a normal save after sending** · Negative
 
-- **Expected:** Rejected (items cannot change after submit)
+`test_item_edit_after_send_is_rejected`
+
+- **What it checks:** Once sent (submitted), item lines are locked by ERPNext.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Change the item rate to 90 and save.
+- **Expected result:**
+  - Rejected by ERPNext: items cannot be changed after submit.
 
 #### ShopifyLinkTest
 
-**42. test\_changed\_shopify\_link\_enqueues\_linking**
+Linking an existing Shopify order to a quotation by pasting its link.
 
-1. Standard quotation, paste a Shopify admin order link, save
+**43. Pasting a Shopify order link starts the linking job** · Positive
 
-- **Expected:** Shopify order-link job queued
+`test_changed_shopify_link_enqueues_linking`
 
-**43. test\_invalid\_shopify\_link\_rejected**
+- **What it checks:** A valid Shopify admin order link is accepted and the order is linked in the background.
+- **Starting point:** A standard quotation.
+- **Steps:**
+  1. Paste `https://admin.shopify.com/store/x/orders/123` into **Shopify Order Link** and save.
+- **Expected result:**
+  - A job to link the Shopify order is queued.
 
-1. Standard quotation, paste a non-Shopify URL, save
+**44. A non-Shopify link is rejected** · Negative
 
-- **Expected:** Blocked with "Shopify Order Link"
+`test_invalid_shopify_link_rejected`
+
+- **What it checks:** Only Shopify admin order or draft-order links are accepted.
+- **Starting point:** A standard quotation.
+- **Steps:**
+  1. Paste `https://example.com/not-shopify` into **Shopify Order Link** and save.
+- **Expected result:**
+  - Blocked with a message about the **Shopify Order Link**.
 
 ### test\_payments (27)
 
+Payment schedule, processing fee, payment stages that hold the Lyfe Order, milestone statuses and payment reminders.
+
 #### PaymentScheduleTest
 
-**1. test\_amounts\_follow\_grand\_total**
+The payment schedule splits the total into stages (for example 40 / 30 / 30).
 
-1. Staged quotation at 1,000
-2. Change the item rate to 2,000, save
+**1. Schedule amounts follow the quotation total** · Positive
 
-- **Expected:** Amounts 400 / 300 / 300, then 800 / 600 / 600
+`test_amounts_follow_grand_total`
 
-**2. test\_zero\_portion\_rejected**
+- **What it checks:** When the total changes, every schedule row is recalculated from its percentage.
+- **Starting point:** A staged quotation at 1,000.
+- **Steps:**
+  1. Change the item rate from 1,000 to 2,000 and save.
+- **Expected result:**
+  - Before: amounts are **400 / 300 / 300**.
+  - After: amounts are **800 / 600 / 600**.
 
-1. Staged quotation, set row 2 portion to 0%, validate
+**2. A schedule row of 0% is rejected** · Negative
 
-- **Expected:** Blocked with "zero percentage"
+`test_zero_portion_rejected`
 
-**3. test\_row\_without\_stage\_rejected**
+- **What it checks:** Every schedule row must carry part of the total.
+- **Starting point:** A staged quotation.
+- **Steps:**
+  1. Set row 2 to 0% and validate the schedule.
+- **Expected result:**
+  - Blocked with "zero percentage".
 
-1. Staged quotation, untick Before Dispatch on row 3, save
+**3. A schedule row without a stage is rejected** · Negative
 
-- **Expected:** Blocked with "no trigger event"
+`test_row_without_stage_rejected`
 
-**4. test\_amounts\_must\_sum\_to\_total**
+- **What it checks:** Every schedule row must say when it is due (Advance, Photo Approval, Before Dispatch, Before Shipped or On Delivery).
+- **Starting point:** A staged quotation.
+- **Steps:**
+  1. Untick **Before Dispatch** on row 3 (so it has no stage) and save.
+- **Expected result:**
+  - Blocked with "no trigger event".
 
-1. Staged quotation, set row 3 amount to 250, validate
+**4. Schedule amounts must add up to the total** · Negative
 
-- **Expected:** Blocked with "sum to"
+`test_amounts_must_sum_to_total`
 
-**5. test\_stage\_checkboxes\_copied\_from\_template**
+- **What it checks:** The rows together must equal the quotation total.
+- **Starting point:** A staged quotation at 1,000.
+- **Steps:**
+  1. Change row 3 to 250 (rows now add up to 950, not 1,000) and validate the schedule.
+- **Expected result:**
+  - Blocked with "sum to".
 
-1. Create a Payment Terms Template with Before Dispatch ticked
-2. Create a quotation using it
-3. Untick Before Dispatch, tick On Delivery, save
+**5. Stage ticks come from the Payment Terms Template and can be changed** · Positive
 
-- **Expected:** Before Dispatch copied from the template; manual change kept after save
+`test_stage_checkboxes_copied_from_template`
+
+- **What it checks:** The stage ticked on a Payment Terms Template is copied onto the quotation, and a manual change on the quotation is kept.
+- **Steps:**
+  1. Create a Payment Terms Template with one 100% term and **Before Dispatch** ticked.
+  2. Create a quotation that uses this template.
+  3. On the schedule row, untick Before Dispatch, tick **On Delivery**, and save.
+- **Expected result:**
+  - Step 2: the schedule row has **Before Dispatch** ticked.
+  - Step 3: the manual change is kept (On Delivery ticked, Before Dispatch not).
 
 #### ProcessingFeeTest
 
-**6. test\_fee\_added\_removed\_and\_not\_compounded**
+The optional card processing fee added as a separate tax row.
 
-1. Set the processing fee to 3%, create a standard quotation
-2. Tick Apply Additional Charges, save
-3. Save again
-4. Untick, save
+**6. Processing fee is added once, not stacked, and removed cleanly** · Positive
 
-- **Expected:** No fee row; fee row = 3% of total; still 3% after re-save; fee row removed and total restored
+`test_fee_added_removed_and_not_compounded`
+
+- **What it checks:** Ticking Apply Additional Charges adds a fee row of the set percentage; saving again does not add the fee on top of the fee; unticking removes it.
+- **Steps:**
+  1. Set the processing fee to 3% in Payment Fee Settings and create a standard quotation.
+  2. Tick **Apply Additional Charges** and save.
+  3. Save again.
+  4. Untick **Apply Additional Charges** and save.
+- **Expected result:**
+  - Step 1: no fee row.
+  - Step 2: a Payment Processing Fee row of **3% of the total**; grand total goes up 3%.
+  - Step 3: the fee is still 3% (not 3% of the already-increased total).
+  - Step 4: the fee row is gone and the grand total is back to the original.
 
 #### StagePaymentEnforcementTest
 
-**7. test\_underpaid\_blocks\_and\_tracks\_on\_lyfe\_order**
+When a Lyfe Order reaches Factory Assignment, Approved or Ready for Dispatch, the payment for that stage must already be received. Amounts are cumulative: Before Dispatch on a 40 / 30 / 30 schedule needs 100% paid. The test calls this check directly, with Ready for Dispatch as the Lyfe Order step.
 
-1. Staged quotation at 1,000 with a linked Lyfe Order
-2. Record 400 (Advance only)
-3. Check the Before Dispatch stage (needs 1,000)
+**7. Unpaid stage blocks the Lyfe Order and sends a reminder** · Negative
 
-- **Expected:** Blocked with "Payment required"; Lyfe Order block stage and date set; block reminder queued
+`test_underpaid_blocks_and_tracks_on_lyfe_order`
 
-**8. test\_repeat\_block\_does\_not\_re\_notify**
+- **What it checks:** If the stage is not paid, the order step is blocked, the block is recorded on the Lyfe Order, and a reminder goes out.
+- **Starting point:** A staged quotation at 1,000 with a linked Lyfe Order.
+- **Steps:**
+  1. Record a payment of 400 (Advance only).
+  2. Check the **Before Dispatch** stage (needs 1,000 paid).
+- **Expected result:**
+  - Blocked with "Payment required".
+  - The Lyfe Order shows the block stage (Before Dispatch) and the block date.
+  - A payment reminder is queued for the Lyfe Order.
 
-1. Staged quotation with a linked Lyfe Order, no payment; check Before Dispatch twice
+**8. A repeated block does not send a second reminder** · Negative
 
-- **Expected:** Blocked both times, one reminder queued
+`test_repeat_block_does_not_re_notify`
 
-**9. test\_cumulative\_threshold\_met\_passes**
+- **What it checks:** Retrying a blocked step blocks again but does not spam the customer.
+- **Starting point:** A staged quotation with a linked Lyfe Order and no payment.
+- **Steps:**
+  1. Check the **Before Dispatch** stage twice.
+- **Expected result:**
+  - Blocked both times; only **one** reminder is queued.
 
-1. Staged quotation, record 700, check Photo Approval (needs 400 + 300)
+**9. Stage passes once the running total is paid** · Positive
 
-- **Expected:** Passes
+`test_cumulative_threshold_met_passes`
 
-**10. test\_non\_cs\_user\_gets\_generic\_message**
+- **What it checks:** Photo Approval needs Advance + Photo Approval (400 + 300 = 700) paid.
+- **Starting point:** A staged quotation at 1,000.
+- **Steps:**
+  1. Record a payment of 700 and check the **Photo Approval** stage.
+- **Expected result:**
+  - Allowed.
 
-1. Staged quotation, no payment; as a Factory user check Advance
+**10. Non-CS users see only a general payment message** · Negative
 
-- **Expected:** Blocked with generic "payment is pending"
+`test_non_cs_user_gets_generic_message`
 
-**11. test\_unconfigured\_stage\_is\_noop**
+- **What it checks:** Users outside Customer Service (for example Factory) see that payment is pending, without amounts or customer details.
+- **Starting point:** A staged quotation with no payment.
+- **Steps:**
+  1. As a Factory user, check the **Advance** stage.
+- **Expected result:**
+  - Blocked with the general message "payment is pending".
 
-1. Staged quotation, check On Delivery (not in the schedule)
+**11. A stage that is not in the schedule is never checked** · Negative
 
-- **Expected:** Passes
+`test_unconfigured_stage_is_noop`
+
+- **What it checks:** If the schedule has no row for a stage, that stage never blocks.
+- **Starting point:** A staged quotation (Advance / Photo Approval / Before Dispatch).
+- **Steps:**
+  1. Check the **On Delivery** stage (not in this schedule).
+- **Expected result:**
+  - Allowed; nothing happens.
 
 #### EnforcePaymentStateTest
 
-**12. test\_fully\_paid\_stays\_won**
+The check that runs when a quotation becomes Won. The test calls it directly.
 
-1. Standard quotation, record full payment, set Won, run the payment-state check
+**12. Fully paid quotation stays Won** · Positive
 
-- **Expected:** Stays Won
+`test_fully_paid_stays_won`
 
-**13. test\_underpaid\_becomes\_partially\_paid**
+- **What it checks:** A quotation paid in full keeps the Won state.
+- **Starting point:** A standard quotation.
+- **Steps:**
+  1. Record a payment for the full total, set the state to Won, and run the check.
+- **Expected result:**
+  - State stays **Won**.
 
-1. Same, recording only 10
+**13. Underpaid quotation is changed to Partially Paid** · Positive
 
-- **Expected:** Changed to Partially Paid, Total Received 10
+`test_underpaid_becomes_partially_paid`
 
-**14. test\_unpaid\_is\_rejected**
+- **What it checks:** If only part is paid, Won is corrected to Partially Paid and the received total is updated.
+- **Starting point:** A standard quotation.
+- **Steps:**
+  1. Record a payment of 10, set the state to Won, and run the check.
+- **Expected result:**
+  - State changes to **Partially Paid**; Total Received Amount is **10**.
 
-1. Same, no payment
+**14. Unpaid quotation cannot be Won** · Negative
 
-- **Expected:** Blocked with "no payment has been recorded"
+`test_unpaid_is_rejected`
+
+- **What it checks:** Won is refused when nothing is paid.
+- **Starting point:** A standard quotation.
+- **Steps:**
+  1. With no payment, set the state to Won and run the check.
+- **Expected result:**
+  - Blocked with "no payment has been recorded".
 
 #### PaymentGateReleaseTest
 
-**15. test\_lost\_or\_cancelled\_clears\_block**
+Releasing Lyfe Order payment blocks when a quotation closes. The test calls the release logic directly.
 
-1. For Lost and Cancelled: linked Lyfe Order with a block and 3 reminders; move the quotation from Sent to Customer to that state
+**15. Lost or Cancelled clears the order's block and reminder count** · Positive
 
-- **Expected:** Block stage cleared, reminder count 0
+`test_lost_or_cancelled_clears_block`
 
-**16. test\_non\_terminal\_state\_keeps\_block**
+- **What it checks:** Once a quotation is Lost or Cancelled, its Lyfe Order is not held for payment and reminders stop.
+- **Starting point:** A standard quotation with a linked Lyfe Order blocked at Before Dispatch, 3 reminders already sent.
+- **Steps:**
+  1. For **Lost** and then **Cancelled**: move the quotation from Sent to Customer to that state.
+- **Expected result:**
+  - The Lyfe Order block is cleared and its reminder count is **0**.
 
-1. Same, moving to Won
+**16. Other state changes keep the block** · Negative
 
-- **Expected:** Block stays
+`test_non_terminal_state_keeps_block`
+
+- **What it checks:** Only Lost and Cancelled release the block.
+- **Starting point:** A standard quotation with a linked Lyfe Order blocked at Before Dispatch.
+- **Steps:**
+  1. Move the quotation from Sent to Customer to **Won**.
+- **Expected result:**
+  - The Lyfe Order block stays.
 
 #### MilestoneStatusTest
 
-**17. test\_status\_progression**
+Each schedule row shows a status: **Upcoming** (not due yet), **Due** (payment expected now), **Paid**, **Overdue** (reminders sent, still unpaid) or **Escalated** (many reminders, still unpaid).
 
-1. Staged quotation, update milestone statuses
-2. Set Partially Paid, update
-3. Record 400, update with the Lyfe Order Approved
+**17. Milestone statuses move from Upcoming to Due to Paid** · Positive
 
-- **Expected:** Upcoming ×3; Due / Upcoming / Upcoming with Due notification queued; Paid / Due / Upcoming
+`test_status_progression`
 
-**18. test\_overdue\_and\_escalated\_follow\_reminder\_count**
+- **What it checks:** Statuses update as the quotation and Lyfe Order progress and as payments arrive.
+- **Starting point:** A staged quotation at 1,000.
+- **Steps:**
+  1. Update the statuses.
+  2. Set the quotation to Partially Paid and update.
+  3. Record 400 and update, with the Lyfe Order in Approved.
+- **Expected result:**
+  - Step 1: **Upcoming / Upcoming / Upcoming**.
+  - Step 2: **Due / Upcoming / Upcoming**, and a "payment due" notification is queued for Advance.
+  - Step 3: **Paid / Due / Upcoming**.
 
-1. Won staged quotation, linked Lyfe Order with 2 reminders, update
-2. Raise to 5 reminders, update
+**18. Overdue and Escalated follow the number of reminders sent** · Positive
 
-- **Expected:** First milestone Overdue, then Escalated
+`test_overdue_and_escalated_follow_reminder_count`
 
-**19. test\_due\_notification\_only\_on\_fresh\_due**
+- **What it checks:** An unpaid milestone becomes Overdue after reminders, then Escalated after more reminders.
+- **Starting point:** A staged quotation in Won with no payment, and a linked Lyfe Order.
+- **Steps:**
+  1. Update the statuses (Lyfe Order has 2 reminders sent).
+  2. Raise the reminder count to 5 and update.
+- **Expected result:**
+  - Step 1: the first milestone is **Overdue**.
+  - Step 2: the first milestone is **Escalated**.
 
-1. Won staged quotation, update statuses twice
+**19. The "payment due" notification is sent only once** · Positive
 
-- **Expected:** One Due notification queued
+`test_due_notification_only_on_fresh_due`
+
+- **What it checks:** Updating statuses twice does not repeat the Due notification.
+- **Starting point:** A staged quotation in Won.
+- **Steps:**
+  1. Update the statuses twice.
+- **Expected result:**
+  - Only **one** Due notification is queued.
 
 #### NoRemindersWhenClosedTest
 
-**20. test\_block\_reminder\_skipped\_and\_cleared\_for\_lost**
+No payment reminders for closed quotations. For these tests reminders really run: email is captured instead of sent, and Slack is replaced by a stand-in.
 
-1. Staged quotation, linked Lyfe Order blocked at Before Dispatch
-2. Set the quotation Lost directly (as the follow-up scheduler does)
-3. Send the block reminder
+**20. No block reminder for a Lost quotation** · Negative
 
-- **Expected:** No email sent; block and reminder count cleared
+`test_block_reminder_skipped_and_cleared_for_lost`
 
-**21. test\_block\_reminder\_still\_sent\_for\_open\_quotation**
+- **What it checks:** Even when a quotation is closed by the follow-up scheduler (which skips the normal save rules), the customer gets no more reminders.
+- **Starting point:** A staged quotation with a linked Lyfe Order blocked at Before Dispatch, 2 reminders sent.
+- **Steps:**
+  1. Set the quotation to **Lost** directly (as the follow-up scheduler does).
+  2. Send the payment block reminder.
+- **Expected result:**
+  - No email is sent.
+  - The Lyfe Order block and reminder count are cleared.
 
-1. Same, with the quotation left open
+**21. Block reminder still goes out for an open quotation** · Positive
 
-- **Expected:** One email sent (control)
+`test_block_reminder_still_sent_for_open_quotation`
 
-**22. test\_due\_and\_stage\_notifications\_skipped\_for\_cancelled**
+- **What it checks:** Control test: the reminder works when the quotation is still open, so the test above proves something real.
+- **Starting point:** Same as above, quotation left open.
+- **Steps:**
+  1. Send the payment block reminder.
+- **Expected result:**
+  - **One** email is sent.
 
-1. Staged quotation with a Before Shipped stage and a linked Lyfe Order
-2. Set Cancelled
-3. Send the Due and Before Shipped notifications
+**22. No Due or Before Shipped notification for a Cancelled quotation** · Negative
 
-- **Expected:** No email sent
+`test_due_and_stage_notifications_skipped_for_cancelled`
+
+- **What it checks:** Cancelled quotations get no payment notifications of any kind.
+- **Starting point:** A staged quotation (Advance / Before Dispatch / Before Shipped) with a linked Lyfe Order.
+- **Steps:**
+  1. Set the quotation to **Cancelled**.
+  2. Send the Advance Due notification and the Before Shipped notification.
+- **Expected result:**
+  - No email is sent.
 
 #### PartialPaymentDueTest
 
-**23. test\_partial\_payment\_marks\_advance\_due\_and\_reminds**
+Customer Service records a bank transfer through the **Confirm Payment** dialog.
 
-1. Staged quotation → sent → Bank Transfer Selected
-2. Confirm Payment dialog: 200, Partial Payment
+**23. Part payment marks Advance as Due and reminds the customer** · Positive
 
-- **Expected:** Partially Paid; Due / Upcoming / Upcoming; Advance Due notification queued
+`test_partial_payment_marks_advance_due_and_reminds`
 
-**24. test\_full\_payment\_marks\_all\_paid**
+- **What it checks:** A partial bank transfer moves the quotation to Partially Paid and starts the Advance reminder.
+- **Starting point:** A staged quotation at 1,000 with contact and address, sent, then Bank Transfer Selected.
+- **Steps:**
+  1. In the Confirm Payment dialog, enter **200** as a **Partial Payment** (not confirmed in Shopify).
+- **Expected result:**
+  - State is **Partially Paid**.
+  - Milestones are **Due / Upcoming / Upcoming**.
+  - An Advance Due notification is queued.
 
-1. Same, confirming the full total as Full Payment
+**24. Full payment marks every milestone Paid** · Positive
 
-- **Expected:** Won; all milestones Paid
+`test_full_payment_marks_all_paid`
+
+- **What it checks:** Paying the whole amount wins the quotation and marks all stages Paid.
+- **Starting point:** Same as above.
+- **Steps:**
+  1. In the Confirm Payment dialog, enter the full total as a **Full Payment**.
+- **Expected result:**
+  - State is **Won**; all milestones are **Paid**.
 
 #### ReminderOnlyStagesTest
 
-**25. test\_unpaid\_shipped\_stage\_does\_not\_block\_dispatch**
+**Before Shipped** and **On Delivery** stages only send reminders; they must never block the Lyfe Order.
 
-1. Staged quotation Advance / Before Dispatch / Before Shipped, record 700, check Before Dispatch
+**25. Unpaid Before Shipped does not block dispatch** · Negative
 
-- **Expected:** Passes even though Before Shipped is unpaid
+`test_unpaid_shipped_stage_does_not_block_dispatch`
 
-**26. test\_unpaid\_shipped\_stage\_sends\_reminder**
+- **What it checks:** Dispatch is allowed once Advance and Before Dispatch are paid, even if Before Shipped is not.
+- **Starting point:** A staged quotation: Advance 400 / Before Dispatch 300 / Before Shipped 300.
+- **Steps:**
+  1. Record 700 and check the **Before Dispatch** stage.
+- **Expected result:**
+  - Allowed, even though Before Shipped (300) is unpaid.
 
-1. Same, with a linked Lyfe Order; send the Before Shipped notification
+**26. Unpaid Before Shipped sends a reminder but sets no block** · Negative
 
-- **Expected:** One email sent; no payment block set
+`test_unpaid_shipped_stage_sends_reminder`
 
-**27. test\_order\_code\_never\_hard\_blocks\_reminder\_only\_stages**
+- **What it checks:** The customer is reminded about the Before Shipped payment, but the order is not held.
+- **Starting point:** Same staged quotation, with a linked Lyfe Order.
+- **Steps:**
+  1. Record 700 and send the Before Shipped notification.
+- **Expected result:**
+  - **One** email is sent; the Lyfe Order has **no** payment block.
 
-1. Scan the Lyfe Order code for every stage-payment gate
+**27. Lyfe Order never checks the reminder-only stages** · Negative
 
-- **Expected:** Gates exist, and none use Before Shipped or On Delivery
+`test_order_code_never_hard_blocks_reminder_only_stages`
 
-### test\_integrations (26)
+- **What it checks:** A safety check on the Lyfe Order code: none of its payment checks use Before Shipped or On Delivery.
+- **Steps:**
+  1. Scan the Lyfe Order code for every payment check.
+- **Expected result:**
+  - Payment checks are found, and **none** of them use Before Shipped or On Delivery.
+
+### test\_integrations (30)
+
+Quotation email, email-open tracking, the customer approval link, the Shopify payment link and payment checks, follow-ups, SLA, the COGS benchmark, list permissions and the dashboard.
 
 #### SendQuotationEmailTest
 
-**1. test\_no\_outgoing\_account\_skips**
+Sending the quotation email. Outgoing email is switched on for these tests; nothing is actually sent.
 
-1. Disable the outgoing email account, send the quotation email for a sent quotation
+**1. No email is sent when there is no outgoing email account** · Negative
 
-- **Expected:** Returns "no\_email\_account"; nothing sent
+`test_no_outgoing_account_skips`
 
-**2. test\_sends\_branded\_email\_and\_tracks**
+- **What it checks:** If the site has no working outgoing email account, the send is skipped cleanly.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Disable the outgoing email account and send the quotation email.
+- **Expected result:**
+  - Result is **"no_email_account"**; nothing is sent.
 
-1. Sent quotation, payment link on, send the email
+**2. Quotation email is sent with the payment link and tracking** · Positive
 
-- **Expected:** "sent"; card pay link included; email to the contact; Email Sent, Sent At and tracking token stored; Shopify payment poll queued
+`test_sends_branded_email_and_tracks`
 
-**3. test\_bank\_transfer\_never\_gets\_card\_link**
+- **What it checks:** The email goes to the customer with the card payment link, and the quotation records that it was sent.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. With the payment link on, send the quotation email.
+- **Expected result:**
+  - Result is **"sent"** and the email includes the **card payment link**.
+  - The email goes to the contact's email and is linked to the quotation.
+  - **Email Sent**, **Email Sent At** and the tracking token are saved.
+  - A Shopify payment check is queued.
 
-1. Sent quotation with Payment via Bank Transfer, send the email
+**3. Bank transfer quotations never get a card link** · Negative
 
-- **Expected:** Bank-transfer link included, no card link
+`test_bank_transfer_never_gets_card_link`
 
-**4. test\_requires\_contact\_email**
+- **What it checks:** If the customer pays by bank transfer, the email shows only the bank transfer link.
+- **Starting point:** A sent quotation with **Payment via Bank Transfer** ticked.
+- **Steps:**
+  1. With the payment link on, send the quotation email.
+- **Expected result:**
+  - The **bank transfer** link is included; **no card link**.
 
-1. Standard quotation with no contact, send the email
+**4. Email cannot be sent without a contact email** · Negative
 
-- **Expected:** Blocked with "No contact email"
+`test_requires_contact_email`
+
+- **What it checks:** The send is refused when there is no customer email to send to.
+- **Starting point:** A standard quotation with no contact.
+- **Steps:**
+  1. Send the quotation email.
+- **Expected result:**
+  - Blocked with "No contact email".
 
 #### EmailOpenTrackingTest
 
-**5. test\_pixel\_records\_first\_open\_only**
+The email contains an invisible 1×1 image (tracking pixel). When the customer opens the email, the image loads and the quotation records the open.
 
-1. Sent quotation, open the tracking pixel with a valid token
-2. Open it again
+**5. Email open is recorded once** · Positive
 
-- **Expected:** Email Opened set, GIF returned; Opened At unchanged on the second open
+`test_pixel_records_first_open_only`
 
-**6. test\_bad\_token\_records\_nothing**
+- **What it checks:** The first open is recorded; later opens do not change the time.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Load the tracking image with a valid token.
+  2. Load it again.
+- **Expected result:**
+  - Step 1: **Email Opened** is ticked, **Opened At** is set, and an image is returned.
+  - Step 2: **Opened At** does not change.
 
-1. Sent quotation, open the pixel with an invalid token
+**6. An invalid tracking token records nothing** · Negative
 
-- **Expected:** Email Opened stays unset
+`test_bad_token_records_nothing`
+
+- **What it checks:** A wrong or made-up link cannot mark the email as opened.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Load the tracking image with an invalid token.
+- **Expected result:**
+  - **Email Opened** stays unticked.
 
 #### CustomerApprovalLinkTest
 
-**7. test\_valid\_token\_marks\_won**
+The **Approve Quotation** button in the customer email. Each link carries a secret token for that quotation.
 
-1. Sent quotation, open the approval link with a valid token
-2. Open it again
+**7. Customer approves with a valid link** · Positive
 
-- **Expected:** "Approved" page and state Won; then "Already Approved"
+`test_valid_token_marks_won`
 
-**8. test\_bad\_or\_missing\_token\_rejected**
+- **What it checks:** Clicking the approval link marks the quotation Won; clicking again just says it is already approved.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Open the approval link with the correct token.
+  2. Open it again.
+- **Expected result:**
+  - Step 1: an **"Approved"** page; state is **Won**.
+  - Step 2: an **"Already Approved"** page.
 
-1. Sent quotation, open the link with a forged token, then with none
+**8. Forged or missing approval link is rejected** · Negative
 
-- **Expected:** "Invalid or Expired Link", "Invalid Link"; state stays Sent to Customer
+`test_bad_or_missing_token_rejected`
 
-**9. test\_closed\_quotation\_not\_approved**
+- **What it checks:** Nobody can approve a quotation without the correct link.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Open the approval link with a made-up token.
+  2. Open it with no token.
+- **Expected result:**
+  - Step 1: **"Invalid or Expired Link"** page.
+  - Step 2: **"Invalid Link"** page.
+  - State stays **Sent to Customer**.
 
-1. For Lost, Cancelled and Expired: sent quotation moved to that state, open the approval link with a valid token
+**9. Approval link does not work on a Lost, Cancelled or Expired quotation** · Negative
 
-- **Expected:** "Quotation No Longer Valid"; state unchanged (not Won)
+`test_closed_quotation_not_approved`
 
-**10. test\_cancelled\_docstatus\_not\_approved**
+- **What it checks:** A customer cannot revive a closed quotation by clicking an old approval link.
+- **Steps:**
+  1. For **Lost**, **Cancelled** and **Expired**: move a sent quotation to that state, then open the approval link with the correct token.
+- **Expected result:**
+  - **"Quotation No Longer Valid"** page.
+  - State is unchanged (not Won).
 
-1. Sent quotation cancelled at document level (docstatus 2), open the approval link with a valid token
+**10. Approval link does not work on a cancelled document** · Negative
 
-- **Expected:** "Quotation No Longer Valid"; state not changed to Won
+`test_cancelled_docstatus_not_approved`
+
+- **What it checks:** Even if the state label was not updated, a cancelled document cannot be approved.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Cancel the quotation document (state left as Sent to Customer), then open the approval link with the correct token.
+- **Expected result:**
+  - **"Quotation No Longer Valid"** page; state is not changed to Won.
+
+#### PaymentLinkRetryTest
+
+Creating or updating the Shopify payment link. If Shopify fails, the system waits 3 seconds and tries again, up to 5 attempts in total. Shopify's replies are simulated and the waits are skipped in the test.
+
+**11. Payment link is retried until it succeeds** · Positive
+
+`test_retries_until_link_generated`
+
+- **What it checks:** A temporary Shopify problem does not stop the payment link from being created.
+- **Steps:**
+  1. Shopify times out, then returns a server error (500), then succeeds.
+- **Expected result:**
+  - The successful reply is used on the **3rd** attempt.
+  - There is a **3-second** wait before each retry.
+
+**12. Payment link stops after 5 failed attempts** · Negative
+
+`test_gives_up_after_5_failed_attempts`
+
+- **What it checks:** If Shopify keeps refusing, the system stops after 5 attempts and reports the error.
+- **Steps:**
+  1. Shopify rejects the request (422) every time.
+- **Expected result:**
+  - Stops after **5** attempts with **4** waits of 3 seconds; the error is returned.
+
+**13. Payment link stops after 5 network errors** · Negative
+
+`test_network_error_every_attempt_raises`
+
+- **What it checks:** If Shopify cannot be reached at all, the system stops after 5 attempts and shows the error.
+- **Steps:**
+  1. Shopify times out every time.
+- **Expected result:**
+  - Stops after **5** attempts; the timeout error is raised.
+
+**14. Generate Payment Link saves the link after retrying** · Positive
+
+`test_create_draft_order_stores_link_after_retry`
+
+- **What it checks:** The full Generate Payment Link action saves the link on the quotation even when Shopify fails at first, and no failure alert goes out.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. With the payment link on, generate the payment link while Shopify returns 503, then 429 (rate limit), then a draft order with a payment URL.
+- **Expected result:**
+  - The payment URL is returned and saved on the quotation.
+  - No failure alert is sent.
 
 #### ShopifyPollingTest
 
-**11. test\_paid\_draft\_records\_payment\_and\_wins**
+A scheduled job checks each sent quotation's Shopify draft order to see if the customer has paid. Shopify's replies are simulated. Each test starts from a sent quotation with Shopify draft order 555.
 
-1. Sent quotation with a Shopify draft; poll returns a completed draft whose order is paid in full
+**15. Paid Shopify order records the payment and wins the quotation** · Positive
 
-- **Expected:** Won; Shopify order name stored; one payment row for the full total
+`test_paid_draft_records_payment_and_wins`
 
-**12. test\_partially\_paid\_order**
+- **What it checks:** When the customer pays in full by card, the payment is recorded and the quotation is Won.
+- **Steps:**
+  1. The job runs; Shopify says the draft is completed and order #1001 is **paid** in full.
+- **Expected result:**
+  - State is **Won**.
+  - Shopify Order Name is **#1001**.
+  - **One** payment row for the full total.
 
-1. Same, order partially paid at half the total
+**16. Partly paid Shopify order makes the quotation Partially Paid** · Positive
 
-- **Expected:** Partially Paid
+`test_partially_paid_order`
 
-**13. test\_open\_draft\_changes\_nothing**
+- **What it checks:** A partial card payment is recorded as such.
+- **Steps:**
+  1. The job runs; Shopify says the order is **partially paid** (half the total).
+- **Expected result:**
+  - State is **Partially Paid**.
 
-1. Same, draft still open
+**17. Unpaid Shopify draft changes nothing** · Negative
 
-- **Expected:** Stays Sent to Customer; no payment rows
+`test_open_draft_changes_nothing`
 
-**14. test\_pending\_bank\_transfer\_order\_not\_recorded**
+- **What it checks:** If the customer has not paid yet, nothing changes.
+- **Steps:**
+  1. The job runs; Shopify says the draft is still **open**.
+- **Expected result:**
+  - State stays **Sent to Customer**; no payment rows.
 
-1. Same, order status pending (bank transfer)
+**18. Pending bank transfer order is not recorded as paid** · Negative
 
-- **Expected:** No payment rows
+`test_pending_bank_transfer_order_not_recorded`
+
+- **What it checks:** A Shopify order waiting for a bank transfer is not counted as money received.
+- **Steps:**
+  1. The job runs; Shopify says the order is **pending** (bank transfer not yet received).
+- **Expected result:**
+  - No payment rows.
 
 #### FollowupSchedulerTest
 
-**15. test\_followup\_days**
+A daily job creates follow-up tasks for sales on business days 3, 10, 25 and 30 after the quotation email was sent. Each test starts from a sent quotation with Email Sent At set and no Valid Till date; the number of business days is simulated and tasks are not really created.
 
-1. Emailed sent quotation, run the scheduler at business day 2, 3, 10 and 25
+**19. Follow-up tasks are created on days 3, 10 and 25** · Positive
 
-- **Expected:** No task on day 2; follow-up tasks on days 3, 10 and 25
+`test_followup_days`
 
-**16. test\_day\_already\_sent\_is\_skipped**
+- **What it checks:** Follow-ups happen on the right days and not before.
+- **Steps:**
+  1. Run the job at business day 2, 3, 10 and 25.
+- **Expected result:**
+  - Day 2: no task.
+  - Days 3, 10 and 25: one follow-up task each.
 
-1. Day 3 already recorded as sent, run at day 4
+**20. A follow-up already sent is not repeated** · Negative
 
-- **Expected:** No task
+`test_day_already_sent_is_skipped`
 
-**17. test\_day\_30\_final\_task\_then\_lost**
+- **What it checks:** The same follow-up day never creates two tasks.
+- **Steps:**
+  1. Record day 3 as already sent, then run the job at day 4.
+- **Expected result:**
+  - No task.
 
-1. Run at day 30
+**21. Day 30: final follow-up, then Lost** · Positive
 
-- **Expected:** Final day-30 task created; quotation Lost
+`test_day_30_final_task_then_lost`
 
-**18. test\_valid\_till\_passed\_expires**
+- **What it checks:** After 30 business days without a result, a final task is created and the quotation is closed as Lost.
+- **Steps:**
+  1. Run the job at day 30.
+- **Expected result:**
+  - A final day-30 task is created; state is **Lost**.
 
-1. Valid Till set to yesterday, run at day 3
+**22. Quotation past its Valid Till date expires** · Negative
 
-- **Expected:** No task; quotation Expired
+`test_valid_till_passed_expires`
 
-**19. test\_never\_emailed\_is\_skipped**
+- **What it checks:** A quotation past its Valid Till date gets no more follow-ups and is marked Expired.
+- **Steps:**
+  1. Set Valid Till to yesterday and run the job at day 3.
+- **Expected result:**
+  - No task; state is **Expired**.
 
-1. Sent quotation with no Email Sent At, run at day 30
+**23. A quotation that was never emailed gets no follow-up** · Negative
 
-- **Expected:** No task
+`test_never_emailed_is_skipped`
+
+- **What it checks:** Follow-ups only start after the quotation email was sent.
+- **Steps:**
+  1. Clear Email Sent At and run the job at day 30.
+- **Expected result:**
+  - No task.
 
 #### SlaAndCogsWiringTest
 
-**20. test\_sla\_close\_check\_runs\_on\_update\_and\_submit**
+Connections to the LH Project SLA system and the COGS benchmark check.
 
-1. Quotation with an active SLA Task Link
-2. Save, Inquiry Approved, Send Quotation to Client
+**24. SLA close check runs at every step** · Positive
 
-- **Expected:** SLA close check runs at least 3 times (save, workflow save, submit)
+`test_sla_close_check_runs_on_update_and_submit`
 
-**21. test\_cogs\_deviation\_enqueues\_alert\_only\_when\_cogs\_changes**
+- **What it checks:** Open SLA tasks for a quotation are checked for closing whenever the quotation is saved, moved or sent.
+- **Starting point:** A standard quotation with contact and address, and an active SLA Task Link.
+- **Steps:**
+  1. Save the quotation, click **Inquiry Approved**, then **Send Quotation to Client**.
+- **Expected result:**
+  - The SLA close check runs at least **3** times (save, workflow step, send).
 
-1. Benchmark returns a large deviation, save without changing COGS
-2. Change item COGS to 999, save
+**25. COGS benchmark alert only when COGS changes** · Negative
 
-- **Expected:** No alert; then deviation alert email queued
+`test_cogs_deviation_enqueues_alert_only_when_cogs_changes`
+
+- **What it checks:** The alert about COGS far from the usual price is sent only when someone changes COGS, not on every save.
+- **Starting point:** A standard quotation; the benchmark is set to report a large difference (999 vs a usual 40).
+- **Steps:**
+  1. Save without changing COGS.
+  2. Change the item COGS to 999 and save.
+- **Expected result:**
+  - Step 1: no alert.
+  - Step 2: the COGS deviation alert email is queued.
 
 #### PermissionQueryTest
 
-**22. test\_admins\_see\_everything**
+The filter that limits which quotations a user sees in the list.
 
-1. Get the list filter for System Manager, and for Super Admin + Senior Engineer
+**26. Admins see every quotation** · Positive
 
-- **Expected:** No filter
+`test_admins_see_everything`
 
-**23. test\_senior\_engineer\_scoped\_to\_assigned\_review\_states**
+- **What it checks:** System Manager and Super Admin are never filtered.
+- **Steps:**
+  1. Get the list filter for System Manager, then for Super Admin + Senior Engineer.
+- **Expected result:**
+  - No filter in both cases.
 
-1. Get the filter for Senior Engineer + Sales User, run it as SQL
+**27. Senior Engineers see only their review quotations** · Positive
 
-- **Expected:** Filter names the user and Senior Review Pending / Pending Engineer Review; SQL is valid
+`test_senior_engineer_scoped_to_assigned_review_states`
 
-**24. test\_other\_roles\_unrestricted**
+- **What it checks:** A Senior Engineer sees quotations assigned to them in Senior Review Pending or Pending Engineer Review.
+- **Steps:**
+  1. Get the list filter for a user with Senior Engineer + Sales User, and run it against the database.
+- **Expected result:**
+  - The filter names the user and the states **Senior Review Pending** and **Pending Engineer Review**; it runs without error.
 
-1. Get the filter for Sales User
+**28. Other roles are not filtered** · Positive
 
-- **Expected:** No filter
+`test_other_roles_unrestricted`
+
+- **What it checks:** Sales users see the normal list.
+- **Steps:**
+  1. Get the list filter for Sales User.
+- **Expected result:**
+  - No filter.
 
 #### LinkedOrdersAndDashboardTest
 
-**25. test\_linked\_lyfe\_orders**
+Links shown on the quotation form.
 
-1. Standard quotation with a linked Lyfe Order, fetch linked orders
+**29. Linked Lyfe Orders are listed** · Positive
 
-- **Expected:** Returns that Lyfe Order
+`test_linked_lyfe_orders`
 
-**26. test\_dashboard\_shows\_timesheets**
+- **What it checks:** The quotation shows the Lyfe Orders created from it.
+- **Starting point:** A standard quotation with a linked Lyfe Order.
+- **Steps:**
+  1. Fetch the linked Lyfe Orders.
+- **Expected result:**
+  - Returns that Lyfe Order.
 
-1. Read the Quotation dashboard config
+**30. Timesheets appear in the quotation's Connections** · Positive
 
-- **Expected:** Timesheet listed, linked via the custom Quotation field
+`test_dashboard_shows_timesheets`
+
+- **What it checks:** The Connections panel lists Timesheets, linked through the Quotation field on Timesheet.
+- **Steps:**
+  1. Read the Quotation dashboard (Connections) settings.
+- **Expected result:**
+  - **Timesheet** is listed, linked through the custom Quotation field.
 
 ### test\_validate (24)
 
+Rules that run every time a quotation is saved.
+
 #### OrderTypeDetectionTest
 
-**1. test\_plain\_item\_is\_standard**
+The quotation's Order Type is set automatically to Standard or Custom.
 
-1. Create a standard quotation
+**1. Normal item → Standard** · Positive
 
-- **Expected:** Order Type Standard
+`test_plain_item_is_standard`
 
-**2. test\_custom\_prefix\_in\_item\_name\_is\_custom**
+- **What it checks:** A quotation for a normal catalogue item is Standard.
+- **Steps:**
+  1. Create a standard quotation.
+- **Expected result:**
+  - Order Type is **Standard**.
 
-1. Create a quotation for an item named "CSTM Bracket" (custom prefixes "cstm", "custom")
+**2. Item name starting with a custom prefix → Custom** · Positive
 
-- **Expected:** Order Type Custom
+`test_custom_prefix_in_item_name_is_custom`
 
-**3. test\_is\_custom\_order\_checkbox\_is\_custom**
+- **What it checks:** Items whose name starts with a custom prefix (here "cstm" or "custom") make the quotation Custom.
+- **Steps:**
+  1. Create a quotation for an item named **"CSTM Bracket"**.
+- **Expected result:**
+  - Order Type is **Custom**.
 
-1. Create a quotation with Is Custom Order ticked on the item
+**3. Is Custom Order ticked on the item → Custom** · Positive
 
-- **Expected:** Order Type Custom
+`test_is_custom_order_checkbox_is_custom`
+
+- **What it checks:** Ticking Is Custom Order on an item line makes the quotation Custom.
+- **Steps:**
+  1. Create a quotation with **Is Custom Order** ticked on the item.
+- **Expected result:**
+  - Order Type is **Custom**.
 
 #### ItemDimensionTest
 
-**4. test\_dims\_from\_item\_master**
+Box size and weight on each item line, used for shipping.
 
-1. Item master box 30 x 20 x 10 cm, weight 2; create a quotation
+**4. Box size and weight come from the Item master** · Positive
 
-- **Expected:** Row box 30 / 20 / 10, weight 2, not flagged
+`test_dims_from_item_master`
 
-**5. test\_manual\_row\_dims\_are\_kept**
+- **What it checks:** If the item has a box size, the line is filled from it.
+- **Steps:**
+  1. Item master box size **30 × 20 × 10 cm**, weight **2 kg**; create a quotation.
+- **Expected result:**
+  - Line box size **30 / 20 / 10**, weight **2**, not flagged.
 
-1. Same item, row box sizes entered as 5 x 5 x 5
+**5. Box size typed on the line is kept** · Positive
 
-- **Expected:** Row keeps 5
+`test_manual_row_dims_are_kept`
 
-**6. test\_bom\_with\_missing\_child\_dims\_is\_flagged**
+- **What it checks:** A size entered by hand on the line is not overwritten by the Item master.
+- **Steps:**
+  1. Same item; type **5 × 5 × 5** on the line and save.
+- **Expected result:**
+  - The line keeps **5**.
 
-1. Item with no box size and a BOM whose child CHILD-1 has no sizes; create a quotation
+**6. Missing box size on a BOM part is flagged** · Negative
 
-- **Expected:** Row flagged with CHILD-1 in the reason; no partial size applied
+`test_bom_with_missing_child_dims_is_flagged`
+
+- **What it checks:** If the box size has to come from a BOM and a part has no size, the line is flagged instead of getting a wrong size.
+- **Steps:**
+  1. Item with no box size, using a BOM whose part **CHILD-1** has no size; create a quotation.
+- **Expected result:**
+  - The line is **flagged**, and the reason mentions **CHILD-1**.
+  - No partial box size is filled in.
 
 #### CombinedBoxTest
 
-**7. test\_combined\_box\_and\_parcels\_from\_catalogue**
+Packing all items into boxes for shipping. Each test uses an item of 30 × 20 × 10 cm, 2 kg, qty 2. Packing can come from 3D Bin Packing, Paccurate, or the built-in packer.
 
-1. 3D bin packing and Paccurate off; quotation for 2 × a 30 x 20 x 10 item
+**7. Built-in packer picks a box from the Box Catalogue** · Positive
 
-- **Expected:** Combined box set, Box Catalogue match selected, "Best fit" suggestion, single-box size on the row, parcel plan built
+`test_combined_box_and_parcels_from_catalogue`
 
-**8. test\_3dbinpacking\_takes\_priority\_when\_enabled**
+- **What it checks:** With both outside services off, the built-in packer still produces a box and parcel plan.
+- **Steps:**
+  1. Turn 3D Bin Packing and Paccurate off; create the quotation.
+- **Expected result:**
+  - A combined box size is set on the quotation.
+  - A Box Catalogue box is selected and the suggestions include **"Best fit"**.
+  - The line's Single Box Size is filled.
+  - A parcel plan is built.
 
-1. Same with 3D bin packing on (returns one 40 cm parcel)
+**8. 3D Bin Packing is used first when switched on** · Positive
 
-- **Expected:** 3D bin packing called; parcels = one 40 cm box
+`test_3dbinpacking_takes_priority_when_enabled`
 
-**9. test\_paccurate\_used\_when\_3dbin\_off**
+- **What it checks:** When 3D Bin Packing is on, its result is used.
+- **Steps:**
+  1. Turn 3D Bin Packing on (it returns one 40 cm box); create the quotation.
+- **Expected result:**
+  - 3D Bin Packing is called; the parcel plan is **one 40 cm box**.
 
-1. Same with only Paccurate on (returns two 50 cm parcels and an SVG)
+**9. Paccurate is used when 3D Bin Packing is off** · Positive
 
-- **Expected:** Parcels = two 50 cm boxes; Paccurate SVG stored
+`test_paccurate_used_when_3dbin_off`
+
+- **What it checks:** When only Paccurate is on, its result and its packing picture are used.
+- **Steps:**
+  1. Turn only Paccurate on (it returns two 50 cm boxes and a picture); create the quotation.
+- **Expected result:**
+  - The parcel plan is **two 50 cm boxes**; the Paccurate picture is saved.
 
 #### ApprovalAndCogsFlagTest
 
-**10. test\_missing\_cogs\_sets\_cogs\_pending**
+The COGS Pending and Approval Required flags.
 
-1. Create a quotation with item COGS 0
+**10. Missing COGS ticks COGS Pending** · Negative
 
-- **Expected:** COGS Pending set
+`test_missing_cogs_sets_cogs_pending`
 
-**11. test\_grand\_total\_over\_10k\_requires\_approval**
+- **What it checks:** A line without COGS is flagged so the factory fills it in.
+- **Steps:**
+  1. Create a quotation with item COGS **0**.
+- **Expected result:**
+  - **COGS Pending** is ticked.
 
-1. Create a quotation at rate 12,000
+**11. Total of 10,000+ ticks Approval Required** · Positive
 
-- **Expected:** Approval Required set
+`test_grand_total_over_10k_requires_approval`
 
-**12. test\_approval\_not\_reraised\_once\_approved**
+- **What it checks:** Large quotations are flagged for manager approval.
+- **Steps:**
+  1. Create a quotation at rate **12,000**.
+- **Expected result:**
+  - **Approval Required** is ticked.
 
-1. 12,000 quotation, jump to Approved – Pending Send, save
+**12. Approval is not asked again once approved** · Positive
 
-- **Expected:** Approval Required stays 0
+`test_approval_not_reraised_once_approved`
+
+- **What it checks:** Saving an approved quotation does not tick Approval Required again.
+- **Steps:**
+  1. Jump a 12,000 quotation to **Approved – Pending Send** and save.
+- **Expected result:**
+  - **Approval Required** stays unticked.
 
 #### QtyAndRateTest
 
-**13. test\_zero\_rate\_is\_allowed**
+Limits on item quantity and rate.
 
-1. Create a quotation with an item at rate 0 (no COGS)
+**13. Rate 0 is allowed** · Positive
 
-- **Expected:** Saved; row rate 0
+`test_zero_rate_is_allowed`
 
-**14. test\_negative\_rate\_rejected**
+- **What it checks:** Fee-only quotations need items at rate 0.
+- **Steps:**
+  1. Create a quotation with an item at rate **0** (no COGS).
+- **Expected result:**
+  - Saved; the line rate is **0**.
 
-1. Create a quotation with one item at 100 and one at -50 (grand total stays positive, so ERPNext core does not catch it)
+**14. Negative rate is rejected** · Negative
 
-- **Expected:** Blocked with "cannot be negative"
+`test_negative_rate_rejected`
 
-**15. test\_zero\_qty\_rejected**
+- **What it checks:** No item line may have a negative price. ERPNext itself only stops a negative grand total, so a negative line next to a positive one needs this rule.
+- **Steps:**
+  1. Create a quotation with one item at **100** and one at **-50** (total stays positive).
+- **Expected result:**
+  - Blocked with "cannot be negative".
 
-1. Create a quotation with an item at qty 0
+**15. Quantity 0 is rejected** · Negative
 
-- **Expected:** Blocked with "cannot be zero"
+`test_zero_qty_rejected`
+
+- **What it checks:** Every item line needs a quantity (rule from ERPNext).
+- **Steps:**
+  1. Create a quotation with an item at qty **0**.
+- **Expected result:**
+  - Blocked with "cannot be zero".
 
 #### DiscountViolationE2ETest
 
-**16. test\_card\_payment\_over\_5pct\_needs\_approval**
+A discount above the allowed limit ticks Approval Required. Limits: card payment **5%**, bank transfer **8%**, unless the Item or Item Group sets its own limit (the Item limit wins over the Item Group).
 
-1. Item and Item Group with no discount limit; 6% discount, card payment
+**16. Card payment: discount over 5% needs approval** · Negative
 
-- **Expected:** Approval Required set (over the 5% card cap)
+`test_card_payment_over_5pct_needs_approval`
 
-**17. test\_bank\_transfer\_allows\_up\_to\_8pct**
+- **What it checks:** A 6% discount on a card-paid quotation needs approval.
+- **Steps:**
+  1. Item and Item Group with no limit; item at 100 with **6%** discount; card payment.
+- **Expected result:**
+  - **Approval Required** is ticked.
 
-1. Same with Payment via Bank Transfer
+**17. Bank transfer: up to 8% discount is allowed** · Positive
 
-- **Expected:** Approval Required stays 0 (under the 8% cap)
+`test_bank_transfer_allows_up_to_8pct`
 
-**18. test\_item\_group\_limit\_applies\_when\_item\_has\_none**
+- **What it checks:** The same 6% discount is fine when paid by bank transfer.
+- **Steps:**
+  1. Same quotation with **Payment via Bank Transfer** ticked.
+- **Expected result:**
+  - **Approval Required** stays unticked.
 
-1. Item has no limit, Item Group allows 15%; check 12% then 16%
+**18. Item Group limit is used when the Item has none** · Negative
 
-- **Expected:** 12% allowed, 16% a violation
+`test_item_group_limit_applies_when_item_has_none`
 
-**19. test\_item\_limit\_beats\_item\_group**
+- **What it checks:** If the Item has no limit, the Item Group's limit applies.
+- **Steps:**
+  1. Item has no limit, Item Group allows **15%**; check a **12%** discount, then **16%**.
+- **Expected result:**
+  - 12% is allowed; 16% is over the limit.
 
-1. Item allows 20%, Item Group 5%; check 15%
+**19. Item limit wins over the Item Group limit** · Positive
 
-- **Expected:** Allowed (Item limit wins)
+`test_item_limit_beats_item_group`
+
+- **What it checks:** The Item's own limit is used even when the Item Group's is lower.
+- **Steps:**
+  1. Item allows **20%**, Item Group **5%**; check a **15%** discount.
+- **Expected result:**
+  - Allowed (the Item limit wins).
 
 #### AutoClearAndCleanupTest
 
-**20. test\_drawing\_clears\_drawing\_and\_photo\_required**
+Fields and rows the system fills or clears automatically.
 
-1. Quotation with Drawing Required and item Photo Required; attach the drawing with details, save
+**20. Attaching the drawing clears Drawing Required and Photo Required** · Positive
 
-- **Expected:** Both flags cleared
+`test_drawing_clears_drawing_and_photo_required`
 
-**21. test\_igst\_row\_is\_stripped**
+- **What it checks:** Once the drawing is attached, the request flags are cleared.
+- **Steps:**
+  1. Quotation with Drawing Required and an item with Photo Required; attach the drawing with change details and save.
+- **Expected result:**
+  - Both flags are unticked.
 
-1. Add an IGST Payable tax row, save
+**21. IGST tax row is removed** · Positive
 
-- **Expected:** IGST row removed
+`test_igst_row_is_stripped`
 
-**22. test\_defaults\_terms\_template**
+- **What it checks:** IGST (Indian tax) never applies to these quotations and is removed if added.
+- **Steps:**
+  1. Add an **IGST Payable** tax row and save.
+- **Expected result:**
+  - The IGST row is removed.
 
-1. Create a standard quotation
+**22. Default payment terms and T&C are filled** · Positive
 
-- **Expected:** Payment terms "100 % Advance"; T&C "Terms and Conditions template"
+`test_defaults_terms_template`
 
-**23. test\_after\_insert\_rows\_added\_once**
+- **What it checks:** New quotations get the standard payment terms and terms and conditions.
+- **Steps:**
+  1. Create a standard quotation.
+- **Expected result:**
+  - Payment terms **"100 % Advance"**; T&C **"Terms and Conditions template"**.
 
-1. Create a standard quotation, save again
+**23. Shipping and Custom Fee rows are added only once** · Positive
 
-- **Expected:** One Shipping Charges row and one Custom Fee row
+`test_after_insert_rows_added_once`
 
-**24. test\_after\_insert\_clears\_copied\_shopify\_and\_email\_fields**
+- **What it checks:** Saving again does not add duplicate rows.
+- **Steps:**
+  1. Create a standard quotation and save it again.
+- **Expected result:**
+  - One Shipping Charges row and one Custom Fee row.
 
-1. Create a quotation carrying a Shopify draft ID, payment URL and Email Sent (as a duplicate would)
+**24. A duplicated quotation does not keep the old payment link** · Positive
 
-- **Expected:** All three cleared
+`test_after_insert_clears_copied_shopify_and_email_fields`
+
+- **What it checks:** When a quotation is copied, the Shopify draft, payment link and Email Sent flag are cleared so the copy gets its own.
+- **Steps:**
+  1. Create a quotation carrying a Shopify draft ID, payment URL and Email Sent (as a duplicate would).
+- **Expected result:**
+  - All three are cleared.
 
 ### test\_drawings (17)
 
+Order Drawing upload rules, removing the BOM page from drawings, the Drawing Change Details popup, and Senior Drawing Review.
+
 #### DrawingUploadGateTest
 
-**1. test\_engineer\_without\_timesheet\_is\_blocked**
+Who can upload an Order Drawing.
 
-1. As an Engineer with no Timesheet, attach a PDF to Order Drawing
+**1. Engineer must log a Timesheet before uploading** · Negative
 
-- **Expected:** Blocked with "log a Timesheet"
+`test_engineer_without_timesheet_is_blocked`
 
-**2. test\_engineer\_with\_timesheet\_is\_allowed**
+- **What it checks:** An Engineer cannot upload a drawing without logging time on the quotation.
+- **Starting point:** A standard quotation.
+- **Steps:**
+  1. As an Engineer with no Timesheet, attach a PDF to **Order Drawing**.
+- **Expected result:**
+  - Blocked with "log a Timesheet".
 
-1. Same, with a Timesheet logged
+**2. Engineer with a Timesheet can upload** · Positive
 
-- **Expected:** File attached
+`test_engineer_with_timesheet_is_allowed`
 
-**3. test\_customer\_service\_upload\_queues\_engineering\_task**
+- **What it checks:** Once time is logged, the upload is allowed.
+- **Starting point:** A standard quotation.
+- **Steps:**
+  1. Same, with a Timesheet logged.
+- **Expected result:**
+  - The file is attached.
 
-1. As Customer Service, attach a PDF to Order Drawing
+**3. Customer Service upload creates an engineering task** · Positive
 
-- **Expected:** Engineering Task created for the quotation
+`test_customer_service_upload_queues_engineering_task`
 
-**4. test\_other\_fields\_are\_not\_gated**
+- **What it checks:** When Customer Service uploads a drawing, an engineer is given a task to review it.
+- **Starting point:** A standard quotation.
+- **Steps:**
+  1. As Customer Service, attach a PDF to **Order Drawing**.
+- **Expected result:**
+  - An engineering Task is created for the quotation.
 
-1. As an Engineer with no Timesheet, attach a PDF to Order Drawing with BOM
+**4. Other attachment fields are not restricted** · Positive
 
-- **Expected:** File attached
+`test_other_fields_are_not_gated`
+
+- **What it checks:** The Timesheet rule applies only to Order Drawing.
+- **Starting point:** A standard quotation.
+- **Steps:**
+  1. As an Engineer with no Timesheet, attach a PDF to **Order Drawing with BOM**.
+- **Expected result:**
+  - The file is attached.
 
 #### PdfBomStripperTest
 
-**5. test\_bom\_page\_stripped**
+If a drawing PDF contains a BOM page, the system removes it from the Order Drawing (which the customer sees) and keeps the full PDF in **Order Drawing with BOM**. "Upload" below means: attach the PDF as Order Drawing with change details "first upload", and save.
 
-1. Upload a 2-page PDF (drawing + "BOM / Breakdown of Components") as Order Drawing, save
+**5. BOM page is removed from the drawing** · Positive
 
-- **Expected:** Uploaded file keeps only the drawing page; Order Drawing with BOM filled
+`test_bom_page_stripped`
 
-**6. test\_original\_with\_bom\_kept**
+- **What it checks:** The customer-facing drawing has no BOM page.
+- **Steps:**
+  1. Upload a 2-page PDF: page 1 "Assembly drawing", page 2 "BOM / Breakdown of Components".
+- **Expected result:**
+  - The Order Drawing file has **only page 1**.
+  - **Order Drawing with BOM** is filled.
 
-1. Same upload, open the Order Drawing with BOM file
+**6. Full PDF is kept in Order Drawing with BOM** · Expected failure
 
-- **Expected:** **Expected failure**: should keep both pages, but on local storage the copy shares the upload's file and is stripped too (S3 hides this)
+`test_original_with_bom_kept`
 
-**7. test\_pdf\_without\_bom\_left\_alone**
+- **What it checks:** The Order Drawing with BOM file keeps both pages.
+- **Steps:**
+  1. Upload the same 2-page PDF and open the Order Drawing with BOM file.
+- **Expected result:**
+  - Should have **both pages**.
+- **Note:** **Expected failure (known issue, local file storage only).** On the local site the copy points at the same file as the upload, so it is stripped too and has 1 page. On production, files are stored on S3 and the copy gets its own file, so the issue does not appear there.
 
-1. Upload a 1-page PDF with no BOM page
+**7. PDF without a BOM page is not changed** · Negative
 
-- **Expected:** Untouched; Order Drawing with BOM stays empty
+`test_pdf_without_bom_left_alone`
 
-**8. test\_unchanged\_drawing\_not\_reprocessed**
+- **What it checks:** Drawings with no BOM page are left as they are.
+- **Steps:**
+  1. Upload a 1-page PDF with no BOM page.
+- **Expected result:**
+  - The file is unchanged; Order Drawing with BOM stays empty.
 
-1. After the BOM upload, save again without changing the drawing
+**8. Unchanged drawing is not processed again** · Negative
 
-- **Expected:** Stripper not called
+`test_unchanged_drawing_not_reprocessed`
+
+- **What it checks:** Saving without changing the drawing does not run the BOM removal again.
+- **Steps:**
+  1. After the BOM upload, save again without changing the drawing.
+- **Expected result:**
+  - The BOM removal does not run.
 
 #### DrawingChangeDetailsTest
 
-**9. test\_first\_upload\_needs\_details\_then\_notifies**
+Every new or changed Order Drawing needs a note in **Drawing Change Details**. In the form, a popup asks for this note right after upload.
 
-1. Set Order Drawing with no change details, save
-2. Add details "rev A", save
+**9. First drawing needs change details, then the factory is notified** · Negative
 
-- **Expected:** Blocked with "Drawing Change Details is mandatory"; then one notification email to support@chandakbrothers.net
+`test_first_upload_needs_details_then_notifies`
 
-**10. test\_clear\_then\_reattach\_counts\_as\_replacement**
+- **What it checks:** A drawing cannot be saved without a note; once saved, the factory gets an email.
+- **Starting point:** A standard quotation.
+- **Steps:**
+  1. Attach an Order Drawing with no change details and save.
+  2. Add change details "rev A" and save.
+- **Expected result:**
+  - Step 1 is blocked with "Drawing Change Details is mandatory".
+  - Step 2: **one** notification email goes to support@chandakbrothers.net.
 
-1. Attach a drawing with details
-2. Clear it, save
-3. Attach a new drawing with no details, save
+**10. Removing and re-attaching a drawing counts as a replacement** · Negative
 
-- **Expected:** Replacement Pending set; save blocked with "Drawing Change Details is mandatory"
+`test_clear_then_reattach_counts_as_replacement`
 
-**11. test\_popup\_flow\_mark\_pending\_then\_submit\_details**
+- **What it checks:** Clearing the drawing and attaching a new one still needs a change note.
+- **Starting point:** A standard quotation.
+- **Steps:**
+  1. Attach a drawing with change details and save.
+  2. Clear the drawing and save.
+  3. Attach a new drawing with no change details and save.
+- **Expected result:**
+  - Step 2: **Replacement Pending** is ticked.
+  - Step 3 is blocked with "Drawing Change Details is mandatory".
 
-1. Mark change pending, attach a drawing, save
-2. Submit blank details
-3. Submit "moved holes 5mm"
+**11. Upload popup: save first, then add the note** · Negative
 
-- **Expected:** Save goes through with Pending set; blank rejected ("cannot be empty"); details stored, Pending cleared, Comment added
+`test_popup_flow_mark_pending_then_submit_details`
 
-**12. test\_cancel\_upload\_reverts\_drawing**
+- **What it checks:** In the form, the upload saves straight away and the popup collects the note afterwards; a blank note is refused.
+- **Starting point:** A standard quotation.
+- **Steps:**
+  1. The user attaches a drawing; the system marks the change as pending, and the form saves.
+  2. The user submits a blank note in the popup.
+  3. The user submits "moved holes 5mm".
+- **Expected result:**
+  - Step 1: the save goes through without a note; **Change Pending** is ticked.
+  - Step 2: refused with "cannot be empty".
+  - Step 3: the note is saved, Change Pending is unticked, and a Comment with the note is added.
 
-1. Mark change pending, set a drawing, Cancel Upload
+**12. Cancel in the popup removes the new drawing** · Positive
 
-- **Expected:** Drawing removed, Pending cleared
+`test_cancel_upload_reverts_drawing`
 
-**13. test\_endpoints\_reject\_unknown\_quotation**
+- **What it checks:** If the user cancels the popup, the upload is undone.
+- **Starting point:** A standard quotation.
+- **Steps:**
+  1. Mark the change as pending, set a drawing, then click **Cancel** in the popup.
+- **Expected result:**
+  - The drawing is removed and Change Pending is unticked.
 
-1. Call Mark Pending and Cancel Upload for a quotation that doesn't exist
+**13. Popup actions refuse a quotation that does not exist** · Negative
 
-- **Expected:** Both rejected with "does not exist"
+`test_endpoints_reject_unknown_quotation`
+
+- **What it checks:** The popup's server actions cannot be used with a wrong quotation name.
+- **Steps:**
+  1. Call **Mark Pending** and **Cancel Upload** for a quotation name that does not exist.
+- **Expected result:**
+  - Both are refused with "does not exist".
 
 #### GraceSweepTest
 
-**14. test\_sweep**
+A scheduled job tidies up uploads whose popup was never answered (for example the browser was closed).
 
-1. Three pending uploads: 20 min old with no details, 5 min old, 20 min old with details filled; run the grace sweep
+**14. Unanswered uploads are undone after the waiting time** · Negative
 
-- **Expected:** 20-min unanswered: drawing reverted with an "automatically reverted" Comment; 5-min: untouched; answered: drawing kept, flag cleared
+`test_sweep`
+
+- **What it checks:** An upload left without a note is undone after the waiting time; recent ones and answered ones are left alone.
+- **Steps:**
+  1. Create three pending uploads: 20 minutes old with no note, 5 minutes old, and 20 minutes old with the note already filled.
+  2. Run the job.
+- **Expected result:**
+  - 20 minutes, no note: the drawing is removed and a Comment says it was **automatically reverted**.
+  - 5 minutes: untouched (still within the waiting time).
+  - 20 minutes with a note: the drawing is kept and the pending flag is cleared.
 
 #### SeniorReviewTest
 
-**15. test\_request\_and\_complete\_senior\_review**
+Senior Drawing Review for Custom orders, and the lock on approved items.
 
-1. Custom-order quotation in Pending Engineer Review
-2. Request Senior Review with no Reason Code
-3. Request with "New geometry"
-4. Request again
-5. Submit the review "Approved as-is"
+**15. Request and complete a Senior Review** · Negative
 
-- **Expected:** Blocked ("Reason Code"); Senior Review Pending with the log linked; second request blocked; back to Pending Engineer Review. Skipped if the site has no Product Finish
+`test_request_and_complete_senior_review`
 
-**16. test\_spec\_change\_after\_approval\_routes\_back**
+- **What it checks:** An engineer can ask a senior engineer to review a Custom order; a reason is required, it cannot be requested twice, and completing it returns the quotation to the engineer.
+- **Starting point:** A Custom-order quotation (item has Is Custom Order ticked) in Pending Engineer Review.
+- **Steps:**
+  1. Click **Request Senior Review** without a Reason Code.
+  2. Request it with Reason Code "New geometry", a note and a Product Finish.
+  3. Request it again.
+  4. The senior engineer submits the review as "Approved as-is".
+- **Expected result:**
+  - Step 1 is blocked with a message about the **Reason Code**.
+  - Step 2: state is **Senior Review Pending** and the Senior Review Log is linked.
+  - Step 3 is blocked ("can only be requested").
+  - Step 4: state is back to **Pending Engineer Review**.
+- **Note:** Skipped automatically if the site has no Product Finish records.
 
-1. Quotation in Pending Approval → Approve
-2. Change item qty to 3, save
+**16. Changing items after approval sends the quotation back for review** · Positive
 
-- **Expected:** Spec hash stored on approval; then Pending Engineer Review with the hash cleared
+`test_spec_change_after_approval_routes_back`
 
-**17. test\_non\_spec\_change\_keeps\_approval**
+- **What it checks:** Approval covers the exact items approved; changing them cancels the approval.
+- **Starting point:** A standard quotation jumped to Pending Approval.
+- **Steps:**
+  1. Click **Approve**.
+  2. Change the item qty to 3 and save.
+- **Expected result:**
+  - Step 1: a snapshot of the approved items (spec hash) is saved.
+  - Step 2: state goes back to **Pending Engineer Review** and the snapshot is cleared.
 
-1. Approved quotation, change Priority to VIP, save
+**17. Changing non-item fields keeps the approval** · Positive
 
-- **Expected:** Stays Approved – Pending Send
+`test_non_spec_change_keeps_approval`
+
+- **What it checks:** Fields that do not affect the items (like Priority) can change without losing approval.
+- **Starting point:** An approved quotation (Approved – Pending Send).
+- **Steps:**
+  1. Change Priority to **VIP** and save.
+- **Expected result:**
+  - State stays **Approved – Pending Send**.
 
 ## How to run
 
