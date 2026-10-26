@@ -2,7 +2,7 @@
 
 Oct 21, 2026 · @Viral kansodiya
 
-132 automated end-to-end tests now cover every LH Quotation customisation: 131 pass and 1 is marked as an expected failure. Nothing is committed or deployed to production yet.
+137 automated end-to-end tests now cover every LH Quotation customisation: 136 pass and 1 is marked as an expected failure. Nothing is committed or deployed to production yet.
 
 ## Results
 
@@ -12,10 +12,10 @@ All five modules pass on lyfelocal.com (Frappe 15.121, ERPNext 15.121). A full r
 | --- | --- | --- | --- | --- |
 | test\_lifecycle | Workflow walks, transition guards, approval, revisions | 43 | 43 | 0 |
 | test\_payments | Payment schedule, fee, stage blocks, milestones, reminders | 27 | 27 | 0 |
-| test\_integrations | Email, approval link, Shopify, follow-up, SLA, COGS benchmark, permissions | 24 | 24 | 0 |
-| test\_validate | Order type, box sizes, discounts, approval / COGS flags | 21 | 21 | 0 |
+| test\_integrations | Email, approval link, Shopify, follow-up, SLA, COGS benchmark, permissions | 26 | 26 | 0 |
+| test\_validate | Order type, box sizes, qty / rate, discounts, approval / COGS flags | 24 | 24 | 0 |
 | test\_drawings | Upload gate, PDF BOM stripper, change details, Senior Review | 17 | 16 | 1 |
-| **Total** |  | **132** | **131** | **1** |
+| **Total** |  | **137** | **136** | **1** |
 
 Every test runs inside one database transaction that is rolled back at the end. Outbound effects (background jobs, email, Slack, Shopify, S3, PDF rendering) are stubbed, so a run sends nothing. Quotation, Lyfe Order, File and Comment counts were identical before and after a full run.
 
@@ -34,6 +34,9 @@ The tests check these business rules.
 | Production Details Review → Not Feasible | COGS not required |
 | Entering Pending Approval, from any route | Slack approval card posted once, after the save commits |
 | Pending Engineer Review → Completed with Drawing Required or Photo Required | Order Drawing required, except Urgent quotations |
+| Item rate | 0 allowed (fee-only quotes); negative rejected |
+| Item qty | 0 rejected (ERPNext core) |
+| Customer approval link on a Lost, Cancelled or Expired quotation | Rejected ("Quotation No Longer Valid"); state unchanged |
 
 ## Coverage
 
@@ -42,6 +45,7 @@ Every item in the Asana scope is covered by at least one test class.
 | Asana scope item | Test classes |
 | --- | --- |
 | Custom-quotation detection | OrderTypeDetectionTest |
+| Item qty / rate limits | QtyAndRateTest |
 | Item dimension fill | ItemDimensionTest |
 | Combined box update | CombinedBoxTest |
 | Order value change check | PaymentScheduleTest (amounts follow the total) |
@@ -67,7 +71,7 @@ Every item in the Asana scope is covered by at least one test class.
 
 ## Test case catalogue
 
-All 132 test cases, grouped by module and test class. Each test lists the steps it performs and what it expects. All pass unless marked Expected failure.
+All 137 test cases, grouped by module and test class. Each test lists the steps it performs and what it expects. All pass unless marked Expected failure.
 
 ### Common setup
 
@@ -595,7 +599,7 @@ Call the browser-path guard directly:
 
 - **Expected:** Gates exist, and none use Before Shipped or On Delivery
 
-### test\_integrations (24)
+### test\_integrations (26)
 
 #### SendQuotationEmailTest
 
@@ -653,27 +657,39 @@ Call the browser-path guard directly:
 
 - **Expected:** "Invalid or Expired Link", "Invalid Link"; state stays Sent to Customer
 
+**9. test\_closed\_quotation\_not\_approved**
+
+1. For Lost, Cancelled and Expired: sent quotation moved to that state, open the approval link with a valid token
+
+- **Expected:** "Quotation No Longer Valid"; state unchanged (not Won)
+
+**10. test\_cancelled\_docstatus\_not\_approved**
+
+1. Sent quotation cancelled at document level (docstatus 2), open the approval link with a valid token
+
+- **Expected:** "Quotation No Longer Valid"; state not changed to Won
+
 #### ShopifyPollingTest
 
-**9. test\_paid\_draft\_records\_payment\_and\_wins**
+**11. test\_paid\_draft\_records\_payment\_and\_wins**
 
 1. Sent quotation with a Shopify draft; poll returns a completed draft whose order is paid in full
 
 - **Expected:** Won; Shopify order name stored; one payment row for the full total
 
-**10. test\_partially\_paid\_order**
+**12. test\_partially\_paid\_order**
 
 1. Same, order partially paid at half the total
 
 - **Expected:** Partially Paid
 
-**11. test\_open\_draft\_changes\_nothing**
+**13. test\_open\_draft\_changes\_nothing**
 
 1. Same, draft still open
 
 - **Expected:** Stays Sent to Customer; no payment rows
 
-**12. test\_pending\_bank\_transfer\_order\_not\_recorded**
+**14. test\_pending\_bank\_transfer\_order\_not\_recorded**
 
 1. Same, order status pending (bank transfer)
 
@@ -681,31 +697,31 @@ Call the browser-path guard directly:
 
 #### FollowupSchedulerTest
 
-**13. test\_followup\_days**
+**15. test\_followup\_days**
 
 1. Emailed sent quotation, run the scheduler at business day 2, 3, 10 and 25
 
 - **Expected:** No task on day 2; follow-up tasks on days 3, 10 and 25
 
-**14. test\_day\_already\_sent\_is\_skipped**
+**16. test\_day\_already\_sent\_is\_skipped**
 
 1. Day 3 already recorded as sent, run at day 4
 
 - **Expected:** No task
 
-**15. test\_day\_30\_final\_task\_then\_lost**
+**17. test\_day\_30\_final\_task\_then\_lost**
 
 1. Run at day 30
 
 - **Expected:** Final day-30 task created; quotation Lost
 
-**16. test\_valid\_till\_passed\_expires**
+**18. test\_valid\_till\_passed\_expires**
 
 1. Valid Till set to yesterday, run at day 3
 
 - **Expected:** No task; quotation Expired
 
-**17. test\_never\_emailed\_is\_skipped**
+**19. test\_never\_emailed\_is\_skipped**
 
 1. Sent quotation with no Email Sent At, run at day 30
 
@@ -713,14 +729,14 @@ Call the browser-path guard directly:
 
 #### SlaAndCogsWiringTest
 
-**18. test\_sla\_close\_check\_runs\_on\_update\_and\_submit**
+**20. test\_sla\_close\_check\_runs\_on\_update\_and\_submit**
 
 1. Quotation with an active SLA Task Link
 2. Save, Inquiry Approved, Send Quotation to Client
 
 - **Expected:** SLA close check runs at least 3 times (save, workflow save, submit)
 
-**19. test\_cogs\_deviation\_enqueues\_alert\_only\_when\_cogs\_changes**
+**21. test\_cogs\_deviation\_enqueues\_alert\_only\_when\_cogs\_changes**
 
 1. Benchmark returns a large deviation, save without changing COGS
 2. Change item COGS to 999, save
@@ -729,19 +745,19 @@ Call the browser-path guard directly:
 
 #### PermissionQueryTest
 
-**20. test\_admins\_see\_everything**
+**22. test\_admins\_see\_everything**
 
 1. Get the list filter for System Manager, and for Super Admin + Senior Engineer
 
 - **Expected:** No filter
 
-**21. test\_senior\_engineer\_scoped\_to\_assigned\_review\_states**
+**23. test\_senior\_engineer\_scoped\_to\_assigned\_review\_states**
 
 1. Get the filter for Senior Engineer + Sales User, run it as SQL
 
 - **Expected:** Filter names the user and Senior Review Pending / Pending Engineer Review; SQL is valid
 
-**22. test\_other\_roles\_unrestricted**
+**24. test\_other\_roles\_unrestricted**
 
 1. Get the filter for Sales User
 
@@ -749,19 +765,19 @@ Call the browser-path guard directly:
 
 #### LinkedOrdersAndDashboardTest
 
-**23. test\_linked\_lyfe\_orders**
+**25. test\_linked\_lyfe\_orders**
 
 1. Standard quotation with a linked Lyfe Order, fetch linked orders
 
 - **Expected:** Returns that Lyfe Order
 
-**24. test\_dashboard\_shows\_timesheets**
+**26. test\_dashboard\_shows\_timesheets**
 
 1. Read the Quotation dashboard config
 
 - **Expected:** Timesheet listed, linked via the custom Quotation field
 
-### test\_validate (21)
+### test\_validate (24)
 
 #### OrderTypeDetectionTest
 
@@ -843,27 +859,47 @@ Call the browser-path guard directly:
 
 - **Expected:** Approval Required stays 0
 
+#### QtyAndRateTest
+
+**13. test\_zero\_rate\_is\_allowed**
+
+1. Create a quotation with an item at rate 0 (no COGS)
+
+- **Expected:** Saved; row rate 0
+
+**14. test\_negative\_rate\_rejected**
+
+1. Create a quotation with one item at 100 and one at -50 (grand total stays positive, so ERPNext core does not catch it)
+
+- **Expected:** Blocked with "cannot be negative"
+
+**15. test\_zero\_qty\_rejected**
+
+1. Create a quotation with an item at qty 0
+
+- **Expected:** Blocked with "cannot be zero"
+
 #### DiscountViolationE2ETest
 
-**13. test\_card\_payment\_over\_5pct\_needs\_approval**
+**16. test\_card\_payment\_over\_5pct\_needs\_approval**
 
 1. Item and Item Group with no discount limit; 6% discount, card payment
 
 - **Expected:** Approval Required set (over the 5% card cap)
 
-**14. test\_bank\_transfer\_allows\_up\_to\_8pct**
+**17. test\_bank\_transfer\_allows\_up\_to\_8pct**
 
 1. Same with Payment via Bank Transfer
 
 - **Expected:** Approval Required stays 0 (under the 8% cap)
 
-**15. test\_item\_group\_limit\_applies\_when\_item\_has\_none**
+**18. test\_item\_group\_limit\_applies\_when\_item\_has\_none**
 
 1. Item has no limit, Item Group allows 15%; check 12% then 16%
 
 - **Expected:** 12% allowed, 16% a violation
 
-**16. test\_item\_limit\_beats\_item\_group**
+**19. test\_item\_limit\_beats\_item\_group**
 
 1. Item allows 20%, Item Group 5%; check 15%
 
@@ -871,31 +907,31 @@ Call the browser-path guard directly:
 
 #### AutoClearAndCleanupTest
 
-**17. test\_drawing\_clears\_drawing\_and\_photo\_required**
+**20. test\_drawing\_clears\_drawing\_and\_photo\_required**
 
 1. Quotation with Drawing Required and item Photo Required; attach the drawing with details, save
 
 - **Expected:** Both flags cleared
 
-**18. test\_igst\_row\_is\_stripped**
+**21. test\_igst\_row\_is\_stripped**
 
 1. Add an IGST Payable tax row, save
 
 - **Expected:** IGST row removed
 
-**19. test\_defaults\_terms\_template**
+**22. test\_defaults\_terms\_template**
 
 1. Create a standard quotation
 
 - **Expected:** Payment terms "100 % Advance"; T&C "Terms and Conditions template"
 
-**20. test\_after\_insert\_rows\_added\_once**
+**23. test\_after\_insert\_rows\_added\_once**
 
 1. Create a standard quotation, save again
 
 - **Expected:** One Shipping Charges row and one Custom Fee row
 
-**21. test\_after\_insert\_clears\_copied\_shopify\_and\_email\_fields**
+**24. test\_after\_insert\_clears\_copied\_shopify\_and\_email\_fields**
 
 1. Create a quotation carrying a Shopify draft ID, payment URL and Email Sent (as a duplicate would)
 
