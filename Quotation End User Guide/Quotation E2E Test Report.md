@@ -69,6 +69,83 @@ Every item in the Asana scope is covered by at least one test class.
 | Linked Lyfe Orders, dashboard data | LinkedOrdersAndDashboardTest |
 | Full lifecycle | HappyPathTest, RejectionBranchTest |
 
+## Negative test cases
+
+63 of the 137 tests are negative tests: they feed in bad data or a disallowed action, or check that something does not happen. Numbers match the test case catalogue below.
+
+### Blocked, rejected or flagged (41)
+
+| Module | # | Test | Negative case |
+| --- | --- | --- | --- |
+| test\_lifecycle | 3 | test\_sent\_to\_customer\_needs\_email\_and\_address | Send to customer without email, then without address |
+| test\_lifecycle | 6 | test\_won\_with\_no\_payment\_is\_blocked | Won with no payment recorded |
+| test\_lifecycle | 19 | test\_slack\_approve\_rejected\_by\_erp\_replies\_in\_thread | Slack Approve rejected by ERPNext |
+| test\_lifecycle | 21 | test\_completed\_blocked\_without\_drawing | Completed without drawing |
+| test\_lifecycle | 22 | test\_completed\_to\_production\_review\_blocked\_without\_drawing | Completed → Production Details Review without drawing |
+| test\_lifecycle | 23 | test\_completed\_blocked\_by\_item\_photo\_required | Completed with an item Photo Required and no drawing |
+| test\_lifecycle | 28 | test\_production\_review\_needs\_shipping\_unless\_free | Feasibility Approve without shipping |
+| test\_lifecycle | 29 | test\_feasibility\_approve\_needs\_cogs\_whatever\_the\_target | Feasibility Approve with COGS 0 |
+| test\_lifecycle | 32 | test\_request\_senior\_review\_only\_for\_custom\_orders | Senior Review on a Standard order |
+| test\_lifecycle | 33 | test\_inquiry\_rejected\_needs\_reason | Inquiry Rejected without a reason |
+| test\_lifecycle | 34 | test\_not\_feasible\_needs\_reason\_then\_cs\_review | Not Feasible without a reason |
+| test\_lifecycle | 35 | test\_not\_feasible\_reason\_locked\_to\_factory | Sales User edits Not Feasible Reason |
+| test\_lifecycle | 36 | test\_guards | Browser-path guards: missing drawing, COGS 0, approval required |
+| test\_lifecycle | 39 | test\_rev3\_blocks\_further\_changes | Change after Rev 3 |
+| test\_lifecycle | 41 | test\_item\_edit\_after\_send\_is\_rejected | Item edit after submit |
+| test\_lifecycle | 43 | test\_invalid\_shopify\_link\_rejected | Non-Shopify URL as Shopify Order Link |
+| test\_payments | 2 | test\_zero\_portion\_rejected | 0% schedule row |
+| test\_payments | 3 | test\_row\_without\_stage\_rejected | Schedule row with no stage |
+| test\_payments | 4 | test\_amounts\_must\_sum\_to\_total | Schedule amounts not adding up to the total |
+| test\_payments | 7 | test\_underpaid\_blocks\_and\_tracks\_on\_lyfe\_order | Underpaid stage on the Lyfe Order step |
+| test\_payments | 8 | test\_repeat\_block\_does\_not\_re\_notify | Repeat block (no second reminder) |
+| test\_payments | 10 | test\_non\_cs\_user\_gets\_generic\_message | Non-CS user sees only the generic message |
+| test\_payments | 14 | test\_unpaid\_is\_rejected | Unpaid quotation marked Won |
+| test\_integrations | 1 | test\_no\_outgoing\_account\_skips | No outgoing email account |
+| test\_integrations | 4 | test\_requires\_contact\_email | Send email with no contact email |
+| test\_integrations | 6 | test\_bad\_token\_records\_nothing | Tracking pixel with a bad token |
+| test\_integrations | 8 | test\_bad\_or\_missing\_token\_rejected | Approval link with a forged or missing token |
+| test\_integrations | 9 | test\_closed\_quotation\_not\_approved | Approval link on Lost, Cancelled or Expired |
+| test\_integrations | 10 | test\_cancelled\_docstatus\_not\_approved | Approval link on a cancelled (docstatus 2) quotation |
+| test\_validate | 6 | test\_bom\_with\_missing\_child\_dims\_is\_flagged | BOM child with missing box sizes (flagged) |
+| test\_validate | 10 | test\_missing\_cogs\_sets\_cogs\_pending | Missing COGS (COGS Pending flagged) |
+| test\_validate | 14 | test\_negative\_rate\_rejected | Negative item rate |
+| test\_validate | 15 | test\_zero\_qty\_rejected | Zero qty |
+| test\_validate | 16 | test\_card\_payment\_over\_5pct\_needs\_approval | Card discount over 5% (approval flagged) |
+| test\_validate | 18 | test\_item\_group\_limit\_applies\_when\_item\_has\_none | Discount over the Item Group limit (approval flagged) |
+| test\_drawings | 1 | test\_engineer\_without\_timesheet\_is\_blocked | Engineer upload without a Timesheet |
+| test\_drawings | 9 | test\_first\_upload\_needs\_details\_then\_notifies | Drawing saved without change details |
+| test\_drawings | 10 | test\_clear\_then\_reattach\_counts\_as\_replacement | Clear and re-attach without change details |
+| test\_drawings | 11 | test\_popup\_flow\_mark\_pending\_then\_submit\_details | Blank change details |
+| test\_drawings | 13 | test\_endpoints\_reject\_unknown\_quotation | Endpoints called for a quotation that doesn't exist |
+| test\_drawings | 15 | test\_request\_and\_complete\_senior\_review | Senior Review without a Reason Code, and a duplicate request |
+
+### Must not happen (22)
+
+| Module | # | Test | Negative case |
+| --- | --- | --- | --- |
+| test\_lifecycle | 11 | test\_slack\_card\_off\_when\_setting\_disabled | No Slack card when the setting is off |
+| test\_lifecycle | 16 | test\_no\_second\_card\_while\_already\_pending | No second Slack card |
+| test\_lifecycle | 18 | test\_slack\_approve\_does\_not\_double\_close\_card | Slack card not closed twice |
+| test\_lifecycle | 38 | test\_no\_item\_change\_no\_revision | No revision without an item change |
+| test\_lifecycle | 40 | test\_revision\_ignored\_outside\_sent\_to\_customer | No revision outside Sent to Customer |
+| test\_payments | 11 | test\_unconfigured\_stage\_is\_noop | Unconfigured stage does nothing |
+| test\_payments | 16 | test\_non\_terminal\_state\_keeps\_block | Non-terminal state keeps the block |
+| test\_payments | 20 | test\_block\_reminder\_skipped\_and\_cleared\_for\_lost | No block reminder for Lost |
+| test\_payments | 22 | test\_due\_and\_stage\_notifications\_skipped\_for\_cancelled | No Due or stage notification for Cancelled |
+| test\_payments | 25 | test\_unpaid\_shipped\_stage\_does\_not\_block\_dispatch | Unpaid Before Shipped doesn't block dispatch |
+| test\_payments | 26 | test\_unpaid\_shipped\_stage\_sends\_reminder | Before Shipped reminder sets no payment block |
+| test\_payments | 27 | test\_order\_code\_never\_hard\_blocks\_reminder\_only\_stages | No hard block for Before Shipped / On Delivery |
+| test\_integrations | 3 | test\_bank\_transfer\_never\_gets\_card\_link | No card link for bank transfer |
+| test\_integrations | 13 | test\_open\_draft\_changes\_nothing | Open Shopify draft records nothing |
+| test\_integrations | 14 | test\_pending\_bank\_transfer\_order\_not\_recorded | Pending bank-transfer order not recorded |
+| test\_integrations | 16 | test\_day\_already\_sent\_is\_skipped | Follow-up day already sent is skipped |
+| test\_integrations | 18 | test\_valid\_till\_passed\_expires | Expired quotation gets no follow-up task |
+| test\_integrations | 19 | test\_never\_emailed\_is\_skipped | Never-emailed quotation is skipped |
+| test\_integrations | 21 | test\_cogs\_deviation\_enqueues\_alert\_only\_when\_cogs\_changes | No COGS alert when COGS is unchanged |
+| test\_drawings | 7 | test\_pdf\_without\_bom\_left\_alone | PDF without a BOM page left untouched |
+| test\_drawings | 8 | test\_unchanged\_drawing\_not\_reprocessed | Unchanged drawing not reprocessed |
+| test\_drawings | 14 | test\_sweep | Unanswered upload reverted by the grace sweep |
+
 ## Test case catalogue
 
 All 137 test cases, grouped by module and test class. Each test lists the steps it performs and what it expects. All pass unless marked Expected failure.
