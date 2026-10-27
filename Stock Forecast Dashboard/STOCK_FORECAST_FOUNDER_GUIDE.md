@@ -237,18 +237,68 @@ Orders are taken **oldest order date first**. Stock is handed out in that order:
 Priority is order date, not promised ship date, and the allocation is simple first-come.
 
 ### 4.8 Restock List
-**Question answered:** "What do we need to buy?" One list in one place.
+**Questions answered:** "What do we need to buy?" and "Which items have enough stock for the next N days?" One list in one place.
+
+**Cover for next N days:** type any number of days in the tile's filter (funnel icon), for example 14. Left blank, each item uses its target cover (30 days, unless the Item has its own). The line at the top then says how many items have **not enough** and **enough** stock for those days. **Show the items with enough stock** opens the second list.
+
+**How "enough" is decided:** the item's average daily use over the last 30 days × N days, compared with its free stock (on hand minus what open orders already need). Example: an item uses 1.5 a day; for 14 days it needs 21. With 32 on hand and 20 promised to open orders, only 12 are free, so it is short by 9 and goes on the list.
 
 **What is included** (most urgent first):
-- **Items**: Critical, High or Medium items with a suggested quantity above zero (uses target cover, MOQ and the backlog setting).
+- **Items** that are short for those days, with the quantity to order (MOQ and the backlog setting applied).
 - **Tube**: pipes that need at least one rod, quantity in **rods**, with the feet short shown beside it.
-- **Acrylic**: diameter/length classes at risk, in **inches** to order = daily inches x target cover - inches on hand.
+- **Acrylic**: diameter/length classes that are short, in **inches**.
 
-**Columns:** Item, Type, Risk, On Hand, Available, Days Left, Order Qty, Unit, and **Last Received**.
+**Columns:** Item, Type, Risk, On Hand, Available, Days Left, Order Qty, Unit, **Why** and **Last Received**.
+
+**Why** explains each row in plain words, for example: *"Uses 1.5/day, so needs 21 for the next 14 days. 32 on hand, 20 already promised to open orders: short 9, order 10 (minimum order 10)."*
 
 **Last Received** = the date the item last came into stock. Restocking is recorded only when the goods arrive, so an order already placed is invisible until delivery. The page has **no supplier or purchase order information**. Use Last Received as a hint, and check with whoever placed the order before buying twice. Acrylic rows have no Last Received.
 
-**Filters:** column boxes and Export.
+**Filters:** Cover for next N days, column boxes and Export.
+
+### 4.8a Demand Trends
+**Questions answered:** "Which categories are we using more or less of?" and "Which items are suddenly in demand?"
+
+Everything compares the **last N days** with the **N days before**, counting stock issued to orders. Type the days (for example 14 or 60) and how many items to show (**Top N**) in the tile's filter. Defaults: 30 days, top 10.
+
+**Categories:** a line chart shows each big category's use week by week (day by day for short periods), and a table lists every category with its use now, before, and the change: **↑** using more (over 10% up), **↓** using less (over 10% down), **→** about the same.
+
+**Rising items:** the items whose use went up the most, with a small trend line each. Example: UHRB-150 used 50 in the last 30 days against 6 in the 30 days before, ↑ +733%, with 4 days of stock left.
+
+An item needs at least 3 separate issues in the period and 25% more use than before. One big one-off order does not count as a trend. Finishes of one product count as one row.
+
+**Use it to:** spot demand picking up early and check that rising items have enough stock; see which categories are slowing down before over-stocking them.
+
+If the tile says the history is incomplete, the "before" period goes back further than our records (May 2026), so rises look bigger than they are.
+
+### 4.8b Demand Forecast (next N days)
+**Question answered:** "How much will each product need over the next N days, and will our stock last?"
+
+Type the number of days (for example 14 or 60) and how many products to show in the tile's filter. Defaults: 30 days, top 10, biggest need first.
+
+**How the numbers are made, with an example (CMBR-200, next 30 days):**
+- **Per day:** average use over the last 30 days = 7.7.
+- **Forecast:** 7.7 × 30 days = 231.
+- **On open orders:** units already promised to orders not yet issued = 16.
+- **Expected:** forecast + open orders = 247.
+- **Left after 30 days:** 51 on hand − 247 = **−196**, shown in red: the product will run short, and the Restock List orders it.
+
+The line in each row shows the last 12 weeks of real use (grey) and the forecast continuing as a dashed line. The forecast is a steady rate, so the dashed part is flat; it does not guess at peaks.
+
+The line at the top sums it up: for example "Expected 2,043 units across 103 products … 82 products will run short." That count always matches the Restock List for the same days.
+
+### 4.8c Forecast vs Actual
+**Question answered:** "How close was our forecast to what we really used?"
+
+For each of the last N complete weeks (default 12; type another number in the filter), the tile works out what the forecast said at the start of that week (average daily use over the 30 days before × 7) and compares it with what was really issued. It rebuilds this from our records, so it works from day one.
+
+**Two numbers to read:**
+- **In total:** for example "forecast 5,075, used 5,407, so the forecast was 6.1% too low". Across all products the forecast is close.
+- **Product by product, week by week:** for example "off by 93.8%". Each product's use jumps around from week to week (one week 0, the next 20), so single weeks are hard to predict. This is why safety stock matters more than the formula.
+
+**The chart** shows each week's real use (bars) against the forecast (line). **Biggest misses** lists the products the forecast got most wrong, with "over" (forecast too high) or "under" (too low).
+
+The history starts in May 2026 and each week needs the 30 days before it, so the tile can look back about 19 weeks for now; it says so when that limit applies.
 
 ### 4.9 Material Not In Stock - Total Required
 **Question answered:** "For everything we still have to build, which materials are short in total?"
@@ -296,7 +346,8 @@ The aim is to keep this at zero. The count is the number of lines that are not O
 
 | Control | What it does |
 |---|---|
-| **Category filter** | Limits Stockout Risk and the Category view to one Item Group and its sub-groups. |
+| **Category and Item Code (bar at the top of the page)** | Narrows the whole page at once: the summary cards, Stockout Risk, the Category view, Material Usage, Buildable Orders, the Restock List and both Not In Stock tables. Pick any category, including a main category: it then covers all its sub-categories (for example *Railings* includes Handrail Brackets, Flanges, End Caps and the rest). Pick an item code to see just that item; picking one finish shows the product's combined "×N finishes" row. Use both together to combine them, and clear a box to remove it. Buildable Orders then lists only the orders that need a matching part, and each order's Ready / Partial / Short status stays the same as without the filter. The Tube and Acrylic tiles are not affected, and acrylic rows in the Restock List show only when nothing is selected. |
+| **Category filter (on a tile)** | The funnel on Stockout Risk and the Category view limits just that tile to one category and its sub-categories. It takes priority over the bar at the top for that tile. |
 | **Trailing days filter** | On Stockout Risk, Tube, Acrylic and Material Usage. Sets how many days of history define "daily use". |
 | **Refresh** | The main button reloads every tile. Each tile also has its own refresh arrow. A tile that fails shows "Data unavailable" with a **Retry** button; the others keep working. |
 | **Column filters** | On the Restock List, Buildable Orders and both Not In Stock tiles: type in the box under a heading to hide rows that do not contain that text. All boxes combine. |
@@ -317,6 +368,9 @@ The aim is to keep this at zero. The count is the number of lines that are not O
 | **Stockout Risk** | "Which items will run out soon?" | n/a (uses daily use) | Units |
 | **Category-wise** | "Which product groups are in trouble?" | n/a | Item counts or dollars |
 | **Restock List** | "What should I buy, and how much?" | n/a | Units, rods, inches |
+| **Demand Trends** | "Which categories and items are we using more or less of?" | n/a | Units, % change |
+| **Demand Forecast** | "How much will each product need over the next N days, and will stock last?" | Adds open orders | Units |
+| **Forecast vs Actual** | "How close was the forecast to what we used?" | n/a | Units, % off |
 | **Buildable Orders** | "Which orders can we build today?" | **Yes**, oldest first; only Ready orders take stock | Orders and dollars |
 | **Material Not In Stock - Total** | "Which materials are short for all active orders together?" | No (adds all orders, compares once) | Units |
 | **Active Orders - Not In Stock** | "Which single order alone is short?" | **No**, each order sees full stock | Units |

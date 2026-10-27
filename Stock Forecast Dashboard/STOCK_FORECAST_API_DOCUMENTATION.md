@@ -68,27 +68,32 @@ interactions
 Stock-mode specifics:
 
 - `get_tile_config` (founder-gated) and `get_filter_options` are NOT called in stock mode (see section 12). Layout comes from `get_stock_forecast_page`, which applies the same Tile Config visibility server-side.
-- `STOCK_PAGE_TILES` (JS) mirrors `STOCK_PAGE_TILES` (Python): `stock_summary, stockout_risk, category_forecast, tube_stock, acrylic_stock, material_usage, buildable_orders, restock_list, material_shortfall, order_stock_shortfall, data_quality`.
-- Fixed grid (`STOCK_PAGE_GRID`, col-span of 12): stockout_risk 6, material_usage 6, category_forecast 12, tube_stock 6, acrylic_stock 6, buildable_orders 12, restock_list 12, material_shortfall 5, order_stock_shortfall 7. `stock_summary` is the KPI strip above the grid (rendered by `renderStockKpis`, not `renderStockSummary`, in stock mode), `data_quality` is a hidden block toggled from the header.
+- `STOCK_PAGE_TILES` (JS) mirrors `STOCK_PAGE_TILES` (Python): `stock_summary, stockout_risk, category_forecast, tube_stock, acrylic_stock, material_usage, buildable_orders, restock_list, trending_items, material_shortfall, order_stock_shortfall, data_quality`.
+- Fixed grid (`STOCK_PAGE_GRID`, col-span of 12): stockout_risk 6, material_usage 6, category_forecast 12, tube_stock 6, acrylic_stock 6, buildable_orders 12, restock_list 12, trending_items 12, material_shortfall 5, order_stock_shortfall 7. `stock_summary` is the KPI strip above the grid (rendered by `renderStockKpis`, not `renderStockSummary`, in stock mode), `data_quality` is a hidden block toggled from the header.
 - `refreshTile` falls back to the full `load()` for a tile without a `TILE_ENDPOINTS` entry; every stock tile has an entry.
 
 ### Tile to endpoint map (`TILE_ENDPOINTS`, `TILE_SUPPORTED_FIELDS`)
 
 | Tile key | Endpoint | Fields `resolveTileFilters` may send | Filter UI (`TILE_FILTER_FIELDS`) |
 |---|---|---|---|
-| stock_summary | get_tile_stock_summary | none (`[]`) | none (refresh only) |
-| stockout_risk | get_tile_stockout_risk | `item_group`, `days` | Category select, Trailing days (number) |
-| category_forecast | get_tile_category_forecast | `item_group` | Category select |
+| stock_summary | get_tile_stock_summary | `item_group`, `item_code` (page bar) | none (refresh only) |
+| stockout_risk | get_tile_stockout_risk | `item_group`, `days`, `item_code` | Category select, Trailing days (number); page bar |
+| category_forecast | get_tile_category_forecast | `item_group`, `item_code` | Category select; page bar |
 | tube_stock | get_tile_tube_stock | `days` | Trailing days (number) |
 | acrylic_stock | get_tile_acrylic_stock | `days` | Trailing days (number) |
-| material_usage | get_tile_material_usage | `period_days` | Trailing days (number, "default 30") |
-| buildable_orders | get_tile_buildable_orders | none | none |
-| restock_list | get_tile_restock_list | none | none |
-| material_shortfall | get_tile_material_shortfall | none | none |
-| order_stock_shortfall | get_tile_order_stock_shortfall | none | none |
+| material_usage | get_tile_material_usage | `period_days`, `item_group`, `item_code` | Trailing days (number, "default 30"); page bar |
+| buildable_orders | get_tile_buildable_orders | `item_group`, `item_code` | page bar |
+| restock_list | get_tile_restock_list | `item_group`, `item_code`, `days` | Cover for next N days (number); page bar |
+| demand_forecast | get_tile_demand_forecast | `item_group`, `item_code`, `days`, `top` | Next N days, Top N items (numbers); page bar |
+| forecast_accuracy | get_tile_forecast_accuracy | `item_group`, `item_code`, `weeks`, `top` | Last N weeks, Top N items (numbers); page bar |
+| trending_items | get_tile_trending_items | `item_group`, `item_code`, `days`, `top` | Last N days, Top N items (numbers); page bar |
+| material_shortfall | get_tile_material_shortfall | `item_group`, `item_code` | page bar |
+| order_stock_shortfall | get_tile_order_stock_shortfall | `item_group`, `item_code` | page bar |
 | data_quality | get_tile_data_quality | none | none |
 
-Filter resolution (`resolveTileFilters`): tile-specific override first, then global rail value only for the four standard fields (`period/channel/order_type/category`) when a tile does not declare its own list. Because every stock tile declares an explicit `TILE_SUPPORTED_FIELDS` list (none of which contains a standard field), the global filter rail never reaches a stock endpoint; the rail is hidden in stock mode (`$("#fd-filters").hide()`). Only fields in the tile's declared list are sent, so the server never sees an unexpected kwarg.
+Filter resolution (`resolveTileFilters`): tile-specific override first, then global rail value only for the four standard fields (`period/channel/order_type/category`) when a tile does not declare its own list. Because every stock tile declares an explicit `TILE_SUPPORTED_FIELDS` list (none of which contains a standard field), the global filter rail never reaches a stock endpoint. In stock mode `#fd-filters` holds the **page filter bar** instead (`renderStockFilters()`: Link controls for Item Group and Item); its values (`stockFilters`) fill `item_group` / `item_code` for every tile that lists them and has no own value. Only fields in the tile's declared list are sent, so the server never sees an unexpected kwarg.
+
+**Page filter arguments (2026-10-26), all optional, blank = none.** `item_group`: an Item Group, including all its descendant groups (a parent group covers every child group). `item_code`: one Item; a merged finish family row is kept when any of its finishes matches. Both together = intersection. Accepted by `get_tile_stock_summary` (also scopes its `short_orders`/`short_value`/`ready_orders`/`reorder_count`), `get_tile_stockout_risk`, `get_tile_category_forecast`, `get_category_forecast_children`, `get_tile_material_usage`, `get_tile_buildable_orders` (keeps orders with at least one matching component; statuses and the oldest-first allocation are always over every order), `get_tile_restock_list` (Item rows and Tube rows by pipe item; Acrylic rows only when neither is set), `get_tile_material_shortfall`, `get_tile_order_stock_shortfall`; `get_stockout_risk_drilldown` takes `item_code`. An unknown group or code returns empty lists / zero counts, not an error. Example: `frappe.call("lh.lyfe_hardware.page.founder_dashboard.founder_dashboard.get_tile_stock_summary", {item_group: "Railings"})` returns the KPI numbers for the 73 items of Railings' 12 sub-groups (local copy, 26 Oct 2026). The matching MCP tools (section 9) take the same two arguments.
 
 ---
 
@@ -287,7 +292,7 @@ bench --site lyfelocal.com execute lh.lyfe_hardware.page.founder_dashboard.found
 ```json
 {
   "tiles": ["stock_summary", "stockout_risk", "category_forecast", "tube_stock", "acrylic_stock",
-            "material_usage", "buildable_orders", "restock_list", "material_shortfall",
+            "material_usage", "buildable_orders", "restock_list", "trending_items", "material_shortfall",
             "order_stock_shortfall", "data_quality"],
   "categories": ["ACCESSORIES", "ACRYLIC ROD", "..."]
 }
@@ -599,8 +604,8 @@ bench --site lyfelocal.com execute lh.lyfe_hardware.page.founder_dashboard.found
 
 - **Kind / path:** Desk whitelisted, `.../get_tile_restock_list`.
 - **Purpose:** one buy list: every Critical/High/Medium item with `suggested_qty > 0` (from the include_all stockout rows, deduplicated), plus tube pipes with `order_rods > 0` and acrylic classes with inches to order (`max(inches_per_day x target_cover - inches_on_hand, 0)`), in the unit they are bought. Restocking is booked as a Purchase Receipt (Lyfe PO "Add to Stock") or, historically, a Stock Entry (Material Receipt), so there is no "on order" signal; `last_received` shows the latest receipt of either kind instead.
-- **Parameters:** none. **Filters:** none (tube/acrylic use the default window).
-- **Sort:** `(available_qty >= 0, Critical < High < Medium, days_of_stock)`: open orders already above stock first.
+- **Parameters:** `item_group`, `item_code` (page filter bar) and `days` = cover for the next N days (1-365, typed in the tile filter; blank or invalid = each item's target cover, i.e. today's `suggested_qty`). With `days`, an item is listed when `metrics.suggested_qty(avg_daily_outflow, available_qty, N, MOQ, on_hand, backlog_aware) > 0`; tube: `ft_per_day x N - feet_on_hand > 0` (pipe-linked only); acrylic: `inches_per_day x N - inches_on_hand > 0`. Items with usage that are not listed go to `enough[]`. The risk filter was dropped (2026-10-26): a Low-risk item whose free stock is short is listed too.
+- **Sort:** `(available_qty >= 0, Critical < High < Medium < Low, days_of_stock)`: open orders already above stock first.
 - **Response:**
 
 | Field | Type | Meaning |
@@ -608,15 +613,19 @@ bench --site lyfelocal.com execute lh.lyfe_hardware.page.founder_dashboard.found
 | `rows[].item_code` | string | Item code; for Acrylic a label `<diameter> · <class>"`. |
 | `rows[].item_name` | string | Name (Acrylic: "Acrylic rod (diameter and stick-length class)"). |
 | `rows[].kind` | string | `Item`, `Tube`, `Acrylic`. |
-| `rows[].risk_level` | string | Critical/High/Medium. |
+| `rows[].risk_level` | string | Critical/High/Medium/Low. |
 | `rows[].on_hand` | float | Units / feet / inches by kind. |
 | `rows[].available_qty` | float | On hand minus committed (Tube/Acrylic: equals on hand). |
 | `rows[].days_of_stock` | float/null | Cover. |
 | `rows[].order_qty` | float | Units (MOQ applied) / rods / inches. |
 | `rows[].unit` | string | `units`, `rods (100 ft; N ft short)`, `inches`. |
+| `rows[].reason` | string | Plain-words why, from the same numbers as `metrics.shortfall()`: daily use, need for the days, stock (and units promised to open orders), shortfall, order (and minimum order when it rounded up). |
 | `rows[].last_received` | string | Latest submitted Purchase Receipt (non-return) or Material Receipt Stock Entry date, `""` if none (always `""` for Acrylic). |
 | `total` | int | Row count. |
-| `target_cover_days` | int | Settings value used. |
+| `target_cover_days` | int | Settings value. |
+| `cover_days` | int/null | N when `days` was given, else null. |
+| `short_count` / `enough_count` | int | Items with usage that do not / do have enough stock for those days. |
+| `enough[]` | list | `{item_code, item_name, kind, variant_count, risk_level, on_hand, available_qty, days_of_stock, available_days}`, least cover first. |
 
 - **Errors:** `_log_and_reraise("restock_list")`.
 - **Example response (real, 168 rows, trimmed):**
@@ -629,6 +638,40 @@ bench --site lyfelocal.com execute lh.lyfe_hardware.page.founder_dashboard.found
 ```
 
 - **Page usage:** `restock_list`; `renderRestockList` (with Export button `.fd-sf-export`); count shown as the "Items to reorder" KPI.
+
+### 8.10a `get_tile_trending_items`
+
+- **Kind / path:** Desk whitelisted, `.../get_tile_trending_items` (`_check_stock_permission`).
+- **Purpose:** Demand Trends: use (Material Issue units, finishes pooled, tube / acrylic / not-stocked left out) in the last N days against the N days before, per category and for the top rising items.
+- **Parameters:** `item_group`, `item_code` (page filter bar; with `item_group` the categories are that group's own sub-groups), `days` = N (1-365, default 30 = demand window), `top` (1-100, default 10). Invalid values fall back to the defaults.
+- **Response:** `window_days`, `top`, `bucket_days` (1 / 7 / 30), `bucket_ends[]` (date of each period's last day), `min_pct` (25), `min_issues` (3), `history_short` (bool: Material Issue history starts after today - 2N), `history_from`, `categories[]` = `{category, now, prev, items, series[], change_pct (null = new), direction: up / down / steady / new}` largest first, `items[]` = `{key, members[], item_name, item_group, category, variant_count, now, prev, series[], change_pct, change_units, days_of_stock, risk_level}` ranked by `change_units`.
+- **Rules:** item listed when issues in the last N days >= 3, `now > prev`, `_is_unexpected_order(per-issue units)` false and change >= 25% (or prev = 0). Direction: change > +10% up, < -10% down, else steady.
+- **Errors:** `_log_and_reraise("trending_items")`.
+- **Example (real, local copy of production, 26 Oct 2026, N = 30):** categories Railings 1,558 vs 1,590 (steady -2%), ACRYLIC / LUCITE 100 vs 234 (down -57%); top item FEC-200 162 vs 88 (+84%), UHRB-150 50 vs 6 (+733%, Critical).
+- **Page usage:** `trending_items`; `renderTrendingItems` + `renderTrendCategoryChart`; filter = two number boxes.
+
+### 8.10b `get_tile_demand_forecast`
+
+- **Kind / path:** Desk whitelisted, `.../get_tile_demand_forecast` (`_check_stock_permission`).
+- **Purpose:** expected use per product over the next N days and whether stock lasts. Built on the same rows as Stockout Risk / Restock List (`_stockout_rows(include_all=True)`), so the numbers agree.
+- **Parameters:** `item_group`, `item_code` (page filter bar), `days` = N (1-365, default 30), `top` (1-100, default 10). Invalid values fall back to the defaults.
+- **Formulas:** `forecast = avg_daily_outflow x N`; `expected = forecast + committed_qty` (`max(forecast, committed_qty)` when Stock Forecast Settings is backlog-aware); `left_after = current_qty - expected`; `short = left_after < 0` (unrounded). `short_items` equals the Restock List's Item rows for the same N.
+- **Response:** `days`, `top`, `backlog_aware`, `history_ends[]` (12 week end dates), `total_items`, `short_items`, `totals {forecast, committed, expected}` over all products, `items[]` (largest `expected` first) = `{item_code, item_name, item_group, variant_count, daily, forecast, committed, expected, on_hand, left_after, short, risk_level, confidence, history[] (units per week, last 12 weeks, from trends.family_series(84)), per_week}`.
+- **Errors:** `_log_and_reraise("demand_forecast")`.
+- **Example (real, 26 Oct 2026, N = 30):** CMBR-200 daily 7.7, forecast 231, committed 16, expected 247, on hand 51, left_after -196; totals expected 2,043 over 103 products, 82 short.
+- **Page usage:** `demand_forecast`; `renderDemandForecast`, `forecastLine()` (inline SVG: history grey, forecast dashed).
+
+### 8.10c `get_tile_forecast_accuracy`
+
+- **Kind / path:** Desk whitelisted, `.../get_tile_forecast_accuracy` (`_check_stock_permission`).
+- **Purpose:** forecast vs actual for the last N complete weeks, rebuilt from Material Issues (no stored snapshots needed).
+- **Parameters:** `item_group`, `item_code`, `weeks` (1-52, default 12; capped so every week has 30 days of history before it), `top` (1-100, default 10).
+- **Formulas:** week k covers the 7 days ending yesterday minus 7k; forecast = Material Issue units (same exclusions and finish pooling as Demand Trends) in the 30 days before the week / 30 x 7; actual = units issued in the week. `error_pct` = sum |forecast - actual| / sum actual over product-weeks; `bias_pct` = (sum forecast - sum actual) / sum actual (+ = too high). Item `miss` = sum of weekly |forecast - actual|.
+- **Response:** `weeks`, `limited_by_history`, `history_from`, `top`, `overall {forecast, actual, error_pct, bias_pct, items}`, `week_rows[] {week_start, forecast, actual, error_pct, bias_pct}` oldest first, `items[] {item_code, variant_count, forecast, actual, diff, miss, error_pct}` biggest miss first.
+- **Errors:** `_log_and_reraise("forecast_accuracy")`.
+- **Example (real, 26 Oct 2026, 12 weeks):** overall forecast 5,075 vs actual 5,407 (bias -6.1%), error 93.8% over 169 products; biggest miss CMBR-200 508 vs 581. Maximum weeks today: 19.
+- **Page usage:** `forecast_accuracy`; `renderForecastAccuracy` + `renderAccuracyChart` (`frappe.Chart`: Used bars, Forecast line).
+- **Note:** the weekly `Stock Forecast Accuracy` table (from the nightly snapshots) is separate and not shown on the page; once snapshots cover several weeks the two can be compared.
 
 ### 8.11 `get_tile_material_shortfall`
 
@@ -818,20 +861,23 @@ All tools: `@mcp.tool()` + `@audited_tool`; first `require_dashboard_role("found
 
 | MCP tool | Arguments (type, default) | Delegates to | Response = |
 |---|---|---|---|
-| `get_founder_tile_stock_summary` | `item_group: str\|None = None` | `get_tile_stock_summary` (8.2) | 8.2 |
-| `get_founder_tile_stockout_risk` | `item_group: str\|None = None`, `days: int\|None = None` (1-365; custom = live) | `get_tile_stockout_risk` (8.3) | 8.3 |
-| `get_founder_tile_category_forecast` | `item_group: str\|None = None` | `get_tile_category_forecast` (8.7) | 8.7 |
-| `get_founder_category_forecast_children` | `group: str` (required) | `get_category_forecast_children` (8.8) | 8.8 |
-| `get_founder_tile_material_usage` | `period_days: int = 30` | `get_tile_material_usage` (8.4) | 8.4 |
+| `get_founder_tile_stock_summary` | `item_group: str\|None = None`, `item_code: str\|None = None` | `get_tile_stock_summary` (8.2) | 8.2 |
+| `get_founder_tile_stockout_risk` | `item_group: str\|None = None`, `days: int\|None = None` (1-365; custom = live), `item_code: str\|None = None` | `get_tile_stockout_risk` (8.3) | 8.3 |
+| `get_founder_tile_category_forecast` | `item_group: str\|None = None`, `item_code: str\|None = None` | `get_tile_category_forecast` (8.7) | 8.7 |
+| `get_founder_category_forecast_children` | `group: str` (required), `item_group: str\|None = None`, `item_code: str\|None = None` | `get_category_forecast_children` (8.8) | 8.8 |
+| `get_founder_tile_material_usage` | `period_days: int = 30`, `item_group: str\|None = None`, `item_code: str\|None = None` | `get_tile_material_usage` (8.4) | 8.4 |
 | `get_founder_tile_tube_stock` | `days: int\|None = None` | `get_tile_tube_stock` (8.5) | 8.5 |
 | `get_founder_tile_acrylic_stock` | `days: int\|None = None` | `get_tile_acrylic_stock` (8.6) | 8.6 |
-| `get_founder_tile_restock_list` | none | `get_tile_restock_list` (8.10) | 8.10 |
-| `get_founder_tile_buildable_orders` | none | `get_tile_buildable_orders` (8.9) | 8.9 |
-| `get_founder_tile_material_shortfall` | none | `get_tile_material_shortfall` (8.11) | 8.11 |
-| `get_founder_tile_order_stock_shortfall` | none | `get_tile_order_stock_shortfall` (8.12) | 8.12 |
+| `get_founder_tile_restock_list` | `item_group: str\|None = None`, `item_code: str\|None = None`, `days: int\|None = None` | `get_tile_restock_list` (8.10) | 8.10 |
+| `get_founder_tile_demand_forecast` | `item_group`, `item_code`, `days: int\|None`, `top: int\|None` | `get_tile_demand_forecast` (8.10b) | 8.10b |
+| `get_founder_tile_forecast_accuracy` | `item_group`, `item_code`, `weeks: int\|None`, `top: int\|None` | `get_tile_forecast_accuracy` (8.10c) | 8.10c |
+| `get_founder_tile_trending_items` | `item_group: str\|None = None`, `item_code: str\|None = None`, `days: int\|None = None`, `top: int\|None = None` | `get_tile_trending_items` (8.10a) | 8.10a |
+| `get_founder_tile_buildable_orders` | `item_group: str\|None = None`, `item_code: str\|None = None` | `get_tile_buildable_orders` (8.9) | 8.9 |
+| `get_founder_tile_material_shortfall` | `item_group: str\|None = None`, `item_code: str\|None = None` | `get_tile_material_shortfall` (8.11) | 8.11 |
+| `get_founder_tile_order_stock_shortfall` | `item_group: str\|None = None`, `item_code: str\|None = None` | `get_tile_order_stock_shortfall` (8.12) | 8.12 |
 | `get_founder_tile_data_quality` | none | `get_tile_data_quality` (8.13) | 8.13 |
 | `get_founder_data_quality_detail` | `key: str` (required) | `get_data_quality_detail` (8.14) | 8.14 |
-| `get_founder_stockout_risk_drilldown` | `item_group: str\|None`, `include_all: int = 0`, `exact: int = 0`, `days: int\|None` | `get_stockout_risk_drilldown` (8.15) | 8.15 (array) |
+| `get_founder_stockout_risk_drilldown` | `item_group: str\|None`, `include_all: int = 0`, `exact: int = 0`, `days: int\|None`, `item_code: str\|None` | `get_stockout_risk_drilldown` (8.15) | 8.15 (array) |
 | `get_founder_tube_stock_drilldown` | none | `get_tube_stock_drilldown` (8.16) | array |
 | `get_founder_acrylic_stock_drilldown` | none | `get_acrylic_stock_drilldown` (8.17) | array |
 | `get_founder_material_usage_drilldown` | `period_days: int = 30` | `get_material_usage_drilldown` (8.17) | array |
