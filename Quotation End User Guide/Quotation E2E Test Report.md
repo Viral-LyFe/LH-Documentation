@@ -2,22 +2,22 @@
 
 Oct 21, 2026 · updated Oct 27, 2026 · @Viral kansodiya
 
-149 automated end-to-end tests cover every LH Quotation customisation. On the latest run (Oct 27) 148 pass and 1 is a known expected failure. Nothing is deployed to production yet.
+179 automated end-to-end tests cover every LH Quotation customisation. On the latest run (Oct 27) 178 pass and 1 is a known expected failure. Nothing is deployed to production yet.
 
 ## Results
 
-Run on lyfelocal.com (Frappe 15.121, ERPNext 15.121) on Oct 26; test\_integrations (per-attempt logging change) and test\_lifecycle (Sales User Review approval tests) were re-run on Oct 27. A full run takes about 80 seconds and leaves the database and disk exactly as it found them.
+Full run on lyfelocal.com (Frappe 15.121, ERPNext 15.121) on Tuesday, Oct 27 (see **Test run result** at the end). A full run takes about 2 minutes and leaves the database and disk exactly as it found them.
 
 | Module | Area | Tests | Pass | Fail | Expected failure |
 | --- | --- | --- | --- | --- | --- |
-| test\_lifecycle | Workflow walks, transition guards, approval, revisions | 45 | 45 | 0 | 0 |
-| test\_payments | Payment schedule, fee, stage blocks, milestones, reminders | 27 | 27 | 0 | 0 |
-| test\_integrations | Email, approval link, payment link retry, Shopify, follow-up, SLA, COGS benchmark, permissions | 36 | 36 | 0 | 0 |
+| test\_lifecycle | Workflow walks, transition guards, role checks, approval, revisions | 49 | 49 | 0 | 0 |
+| test\_payments | Payment schedule, fee, stage blocks, milestones, reminders, payment recording and Confirm Payment guards | 35 | 35 | 0 | 0 |
+| test\_integrations | Email, approval and tracking links, payment link guards and retry, Shopify webhooks, Slack approval security, follow-up, SLA, COGS benchmark, permissions | 50 | 50 | 0 | 0 |
 | test\_validate | Order type, box sizes, qty / rate, discounts, approval / COGS flags | 24 | 24 | 0 | 0 |
-| test\_drawings | Upload gate, PDF BOM stripper, change details, Senior Review | 17 | 16 | 0 | 1 |
-| **Total** |  | **149** | **148** | **0** | **1** |
+| test\_drawings | Upload gate, Engineering Task gate, PDF BOM stripper, change details, Senior Review | 21 | 20 | 0 | 1 |
+| **Total** |  | **179** | **178** | **0** | **1** |
 
-The expected failure is drawings test 6, a local-storage-only issue described in that test.
+The expected failure is drawings test 8, a local-storage-only issue described in that test.
 
 Every test runs inside one database transaction that is rolled back at the end. Outbound effects (background jobs, email, Slack, Shopify, S3, PDF rendering) are stubbed, so a run sends nothing. Quotation, Lyfe Order, File and Comment counts were identical before and after a full run.
 
@@ -85,6 +85,17 @@ The tests check these business rules.
 | Payment link generation fails on a developer-mode (local) site | The Slack alert goes only to LH Slack Settings → 1Click Slack Webhook URL, never to the urgent channel |
 | Shopify times out on every attempt | Each attempt waits at most 20 seconds. Generate Payment Link shows the error and alerts Slack; a revision update clears the old link and alerts the owner; the payment check job moves on to the next quotation |
 | Customer approval link on a Lost, Cancelled or Expired quotation | Rejected ("Quotation No Longer Valid"); state unchanged |
+| Workflow buttons by role | Inquiry Approved and Confirm Payment: Customer Service / System Manager only. Approve: not Customer Service. Feasibility Approve / Not Feasible: Factory / System Manager only |
+| Payment amount 0 or negative (any route) | Refused; nothing recorded |
+| Payment on a cancelled quotation (manual or Shopify) | Not recorded; urgent Slack alert so someone checks whether money was taken |
+| Payment on a Won quotation | New payment refused; a repeat of an already-recorded payment (same reference) is skipped quietly |
+| Confirm Payment | Customer Service / System Manager only, only from Bank Transfer Selected or Partially Paid, amount more than 0 |
+| Generate Payment Link | Refused when switched off in Shopify Tax Settings, or when a link already exists; Shopify is not called |
+| Shopify webhook | Only accepted with a valid Shopify signature. No payment recorded for: cancelled or Won quotations, bank transfers CS already recorded, unpaid orders, orders with no captured money, normal shop orders |
+| Slack approval | Only genuine, recent Slack requests; only users with the approver role; a card that is out of date does nothing |
+| Email button links (Pay by Card, Bank Transfer, View PDF) | Refused without the genuine signed link |
+| Engineering drawing Task | Cannot be completed until a Drawing Timesheet is logged |
+| Senior Review | Needs a reason and a note; outcome must be Approved as-is, Changed or Returned; cannot be submitted twice |
 
 ## Coverage
 
@@ -104,7 +115,7 @@ Every item in the Asana scope is covered by at least one test class.
 | Item discount violation (incl. bank transfer) | DiscountViolationE2ETest |
 | Workflow: before\_workflow\_action, urgent flag | BeforeWorkflowActionTest, EngineeringBranchTest, ApprovalPathTest |
 | Payment gates released on cancel | PostSubmitHooksTest, PaymentGateReleaseTest |
-| Slack approval card | ApprovalPathTest |
+| Slack approval card | ApprovalPathTest, SlackApprovalGuardTest |
 | Stage payment enforcement, milestone statuses | StagePaymentEnforcementTest, EnforcePaymentStateTest, MilestoneStatusTest, PartialPaymentDueTest, ReminderOnlyStagesTest, NoRemindersWhenClosedTest |
 | Drawing upload, PDF BOM stripper, drawing change pending, grace sweep, cancel upload | DrawingUploadGateTest, PdfBomStripperTest, DrawingChangeDetailsTest, GraceSweepTest |
 | Senior Drawing Review (approval binding, spec lock) | SeniorReviewTest |
@@ -112,16 +123,18 @@ Every item in the Asana scope is covered by at least one test class.
 | COGS benchmark check | SlaAndCogsWiringTest |
 | Permission query conditions | PermissionQueryTest |
 | Email: send, open tracking, approval token + approve\_quotation | SendQuotationEmailTest, EmailOpenTrackingTest, CustomerApprovalLinkTest |
-| Shopify payment link + payment status polling | ShopifyLinkTest, PaymentLinkRetryTest, ShopifyPollingTest |
+| Shopify payment link + payment status polling | ShopifyLinkTest, PaymentLinkRetryTest, PaymentLinkGuardTest, ShopifyPollingTest, ShopifyWebhookGuardTest |
+| Payment recording and Confirm Payment | PaymentRecordingGuardTest, ConfirmPaymentGuardTest |
+| Workflow role permissions | WorkflowRoleGuardTest |
 | Follow-up scheduler | FollowupSchedulerTest |
 | Linked Lyfe Orders, dashboard data | LinkedOrdersAndDashboardTest |
 | Full lifecycle | HappyPathTest, RejectionBranchTest |
 
 ## Negative test cases
 
-69 of the 149 tests are negative tests: they feed in bad data or a disallowed action, or check that something does not happen. Numbers match the test case catalogue below.
+99 of the 179 tests are negative tests: they feed in bad data or a disallowed action, or check that something does not happen. Numbers match the test case catalogue below.
 
-### Blocked, rejected or flagged (46)
+### Blocked, rejected or flagged (68)
 
 | Module | # | Test | Negative case |
 | --- | --- | --- | --- |
@@ -135,13 +148,17 @@ Every item in the Asana scope is covered by at least one test class.
 | test\_lifecycle | 30 | test\_production\_review\_needs\_shipping\_unless\_free | Feasibility Approve without shipping |
 | test\_lifecycle | 31 | test\_feasibility\_approve\_needs\_cogs\_whatever\_the\_target | Feasibility Approve with COGS 0 |
 | test\_lifecycle | 34 | test\_request\_senior\_review\_only\_for\_custom\_orders | Senior Review on a Standard order |
-| test\_lifecycle | 35 | test\_inquiry\_rejected\_needs\_reason | Inquiry Rejected without a reason |
-| test\_lifecycle | 36 | test\_not\_feasible\_needs\_reason\_then\_cs\_review | Not Feasible without a reason |
-| test\_lifecycle | 37 | test\_not\_feasible\_reason\_locked\_to\_factory | Sales User edits Not Feasible Reason |
-| test\_lifecycle | 38 | test\_guards | Form button checks: missing drawing, COGS 0, approval required |
-| test\_lifecycle | 41 | test\_rev3\_blocks\_further\_changes | Change after Rev 3 |
-| test\_lifecycle | 43 | test\_item\_edit\_after\_send\_is\_rejected | Item edit after submit |
-| test\_lifecycle | 45 | test\_invalid\_shopify\_link\_rejected | Non-Shopify URL as Shopify Order Link |
+| test\_lifecycle | 35 | test\_factory\_cannot\_approve\_inquiry | Factory user clicks Inquiry Approved |
+| test\_lifecycle | 36 | test\_customer\_service\_cannot\_approve\_pending\_approval | Customer Service clicks Approve |
+| test\_lifecycle | 37 | test\_customer\_service\_cannot\_decide\_feasibility | Customer Service clicks Feasibility Approve / Not Feasible |
+| test\_lifecycle | 38 | test\_factory\_cannot\_confirm\_payment | Factory user clicks Confirm Payment |
+| test\_lifecycle | 39 | test\_inquiry\_rejected\_needs\_reason | Inquiry Rejected without a reason |
+| test\_lifecycle | 40 | test\_not\_feasible\_needs\_reason\_then\_cs\_review | Not Feasible without a reason |
+| test\_lifecycle | 41 | test\_not\_feasible\_reason\_locked\_to\_factory | Sales User edits Not Feasible Reason |
+| test\_lifecycle | 42 | test\_guards | Form button checks: missing drawing, COGS 0, approval required |
+| test\_lifecycle | 45 | test\_rev3\_blocks\_further\_changes | Change after Rev 3 |
+| test\_lifecycle | 47 | test\_item\_edit\_after\_send\_is\_rejected | Item edit after submit |
+| test\_lifecycle | 49 | test\_invalid\_shopify\_link\_rejected | Non-Shopify URL as Shopify Order Link |
 | test\_payments | 2 | test\_zero\_portion\_rejected | 0% schedule row |
 | test\_payments | 3 | test\_row\_without\_stage\_rejected | Schedule row with no stage |
 | test\_payments | 4 | test\_amounts\_must\_sum\_to\_total | Schedule amounts not adding up to the total |
@@ -149,16 +166,30 @@ Every item in the Asana scope is covered by at least one test class.
 | test\_payments | 8 | test\_repeat\_block\_does\_not\_re\_notify | Repeat block (no second reminder) |
 | test\_payments | 10 | test\_non\_cs\_user\_gets\_generic\_message | Non-CS user sees only the general message |
 | test\_payments | 14 | test\_unpaid\_is\_rejected | Unpaid quotation marked Won |
+| test\_payments | 28 | test\_zero\_or\_negative\_amount\_rejected | Payment of 0 or a negative amount |
+| test\_payments | 29 | test\_payment\_on\_cancelled\_quotation\_rejected\_and\_alerted | Payment on a cancelled quotation |
+| test\_payments | 30 | test\_new\_payment\_on\_won\_quotation\_rejected | New payment on a Won quotation |
+| test\_payments | 32 | test\_only\_customer\_service\_or\_system\_manager | Confirm Payment by a Sales User |
+| test\_payments | 33 | test\_already\_won\_rejected | Confirm Payment on a Won quotation |
+| test\_payments | 34 | test\_only\_from\_bank\_transfer\_selected\_or\_partially\_paid | Confirm Payment from Sent to Customer, Lost or Expired |
+| test\_payments | 35 | test\_zero\_received\_amount\_rejected | Confirm Payment with Received Amount 0 |
 | test\_integrations | 1 | test\_no\_outgoing\_account\_skips | No outgoing email account |
 | test\_integrations | 4 | test\_requires\_contact\_email | Send email with no contact email |
 | test\_integrations | 6 | test\_bad\_token\_records\_nothing | Tracking image with a bad token |
-| test\_integrations | 8 | test\_bad\_or\_missing\_token\_rejected | Approval link with a forged or missing token |
-| test\_integrations | 9 | test\_closed\_quotation\_not\_approved | Approval link on Lost, Cancelled or Expired |
-| test\_integrations | 10 | test\_cancelled\_docstatus\_not\_approved | Approval link on a cancelled document |
-| test\_integrations | 12 | test\_gives\_up\_after\_5\_failed\_attempts | Shopify fails all 5 attempts: stops and reports the error |
-| test\_integrations | 13 | test\_network\_error\_every\_attempt\_raises | Network error on all 5 attempts: error shown |
-| test\_integrations | 16 | test\_generate\_link\_all\_timeouts\_alerts\_and\_saves\_nothing | Generate Payment Link: Shopify times out on all 5 attempts |
-| test\_integrations | 17 | test\_revision\_update\_all\_timeouts\_clears\_link\_and\_alerts\_owner | Revision update: Shopify times out on all 5 attempts |
+| test\_integrations | 7 | test\_email\_button\_link\_with\_bad\_or\_missing\_token\_rejected | Email button link with a forged or missing token |
+| test\_integrations | 9 | test\_bad\_or\_missing\_token\_rejected | Approval link with a forged or missing token |
+| test\_integrations | 10 | test\_closed\_quotation\_not\_approved | Approval link on Lost, Cancelled or Expired |
+| test\_integrations | 11 | test\_cancelled\_docstatus\_not\_approved | Approval link on a cancelled document |
+| test\_integrations | 13 | test\_gives\_up\_after\_5\_failed\_attempts | Shopify fails all 5 attempts: stops and reports the error |
+| test\_integrations | 14 | test\_network\_error\_every\_attempt\_raises | Network error on all 5 attempts: error shown |
+| test\_integrations | 17 | test\_generate\_link\_all\_timeouts\_alerts\_and\_saves\_nothing | Generate Payment Link: Shopify times out on all 5 attempts |
+| test\_integrations | 18 | test\_revision\_update\_all\_timeouts\_clears\_link\_and\_alerts\_owner | Revision update: Shopify times out on all 5 attempts |
+| test\_integrations | 21 | test\_disabled\_in\_settings | Generate Payment Link while it is switched off |
+| test\_integrations | 22 | test\_second\_link\_for\_same\_quotation\_rejected | Generate Payment Link when a link already exists |
+| test\_integrations | 23 | test\_shopify\_rejects\_all\_5\_attempts | Shopify refuses the order on all 5 attempts |
+| test\_integrations | 24 | test\_unsigned\_or\_wrongly\_signed\_webhook\_rejected | Shopify webhook unsigned, wrongly signed, or no secret set |
+| test\_integrations | 31 | test\_unsigned\_stale\_or\_forged\_slack\_request\_rejected | Slack request old, unsigned or forged |
+| test\_integrations | 32 | test\_slack\_user\_without\_approver\_role\_cannot\_act | Approve clicked in Slack by a non-approver |
 | test\_validate | 6 | test\_bom\_with\_missing\_child\_dims\_is\_flagged | BOM part with missing box size (flagged) |
 | test\_validate | 10 | test\_missing\_cogs\_sets\_cogs\_pending | Missing COGS (COGS Pending flagged) |
 | test\_validate | 14 | test\_negative\_rate\_rejected | Negative item rate |
@@ -166,21 +197,25 @@ Every item in the Asana scope is covered by at least one test class.
 | test\_validate | 16 | test\_card\_payment\_over\_5pct\_needs\_approval | Card discount over 5% (approval flagged) |
 | test\_validate | 18 | test\_item\_group\_limit\_applies\_when\_item\_has\_none | Discount over the Item Group limit (approval flagged) |
 | test\_drawings | 1 | test\_engineer\_without\_timesheet\_is\_blocked | Engineer upload without a Timesheet |
-| test\_drawings | 9 | test\_first\_upload\_needs\_details\_then\_notifies | Drawing saved without change details |
-| test\_drawings | 10 | test\_clear\_then\_reattach\_counts\_as\_replacement | Clear and re-attach without change details |
-| test\_drawings | 11 | test\_popup\_flow\_mark\_pending\_then\_submit\_details | Blank change details |
-| test\_drawings | 13 | test\_endpoints\_reject\_unknown\_quotation | Popup actions called for a quotation that does not exist |
-| test\_drawings | 15 | test\_request\_and\_complete\_senior\_review | Senior Review without a Reason Code, and a duplicate request |
+| test\_drawings | 5 | test\_timesheet\_check\_rejects\_unknown\_doctype | Drawing timesheet check on a non-drawing document type |
+| test\_drawings | 6 | test\_engineering\_task\_cannot\_complete\_without\_timesheet | Engineering drawing Task completed without a Timesheet |
+| test\_drawings | 11 | test\_first\_upload\_needs\_details\_then\_notifies | Drawing saved without change details |
+| test\_drawings | 12 | test\_clear\_then\_reattach\_counts\_as\_replacement | Clear and re-attach without change details |
+| test\_drawings | 13 | test\_popup\_flow\_mark\_pending\_then\_submit\_details | Blank change details |
+| test\_drawings | 15 | test\_endpoints\_reject\_unknown\_quotation | Popup actions called for a quotation that does not exist |
+| test\_drawings | 17 | test\_request\_and\_complete\_senior\_review | Senior Review without a Reason Code, and a duplicate request |
+| test\_drawings | 18 | test\_senior\_review\_needs\_a\_note | Senior Review requested with no note |
+| test\_drawings | 19 | test\_senior\_review\_bad\_outcome\_or\_second\_submit\_rejected | Senior Review with an invalid outcome, or submitted twice |
 
-### Must not happen (23)
+### Must not happen (31)
 
 | Module | # | Test | Negative case |
 | --- | --- | --- | --- |
 | test\_lifecycle | 11 | test\_slack\_card\_off\_when\_setting\_disabled | No Slack card when the setting is off |
 | test\_lifecycle | 17 | test\_no\_second\_card\_while\_already\_pending | No second Slack card |
 | test\_lifecycle | 19 | test\_slack\_approve\_does\_not\_double\_close\_card | Slack card not closed twice |
-| test\_lifecycle | 40 | test\_no\_item\_change\_no\_revision | No revision without an item change |
-| test\_lifecycle | 42 | test\_revision\_ignored\_outside\_sent\_to\_customer | No revision outside Sent to Customer |
+| test\_lifecycle | 44 | test\_no\_item\_change\_no\_revision | No revision without an item change |
+| test\_lifecycle | 46 | test\_revision\_ignored\_outside\_sent\_to\_customer | No revision outside Sent to Customer |
 | test\_payments | 11 | test\_unconfigured\_stage\_is\_noop | Stage not in the schedule does nothing |
 | test\_payments | 16 | test\_non\_terminal\_state\_keeps\_block | Non-closing state keeps the block |
 | test\_payments | 20 | test\_block\_reminder\_skipped\_and\_cleared\_for\_lost | No block reminder for Lost |
@@ -188,17 +223,33 @@ Every item in the Asana scope is covered by at least one test class.
 | test\_payments | 25 | test\_unpaid\_shipped\_stage\_does\_not\_block\_dispatch | Unpaid Before Shipped does not block dispatch |
 | test\_payments | 26 | test\_unpaid\_shipped\_stage\_sends\_reminder | Before Shipped reminder sets no payment block |
 | test\_payments | 27 | test\_order\_code\_never\_hard\_blocks\_reminder\_only\_stages | No hard block for Before Shipped / On Delivery |
+| test\_payments | 31 | test\_same\_reference\_never\_recorded\_twice | Same payment reference recorded twice |
 | test\_integrations | 3 | test\_bank\_transfer\_never\_gets\_card\_link | No card link for bank transfer |
-| test\_integrations | 22 | test\_open\_draft\_changes\_nothing | Open Shopify draft records nothing |
-| test\_integrations | 23 | test\_timeout\_on\_one\_quotation\_does\_not\_stop\_others | Shopify timeout on one quotation stops the others |
-| test\_integrations | 24 | test\_pending\_bank\_transfer\_order\_not\_recorded | Pending bank-transfer order not recorded |
-| test\_integrations | 26 | test\_day\_already\_sent\_is\_skipped | Follow-up day already sent is skipped |
-| test\_integrations | 28 | test\_valid\_till\_passed\_expires | Expired quotation gets no follow-up task |
-| test\_integrations | 29 | test\_never\_emailed\_is\_skipped | Never-emailed quotation is skipped |
-| test\_integrations | 31 | test\_cogs\_deviation\_enqueues\_alert\_only\_when\_cogs\_changes | No COGS alert when COGS is unchanged |
-| test\_drawings | 7 | test\_pdf\_without\_bom\_left\_alone | PDF without a BOM page left untouched |
-| test\_drawings | 8 | test\_unchanged\_drawing\_not\_reprocessed | Unchanged drawing not reprocessed |
-| test\_drawings | 14 | test\_sweep | Unanswered upload undone by the scheduled job |
+| test\_integrations | 25 | test\_cancelled\_quotation\_not\_recorded\_and\_alerted | Paid webhook for a cancelled quotation |
+| test\_integrations | 26 | test\_already\_won\_not\_recorded\_again | Paid webhook for a Won quotation |
+| test\_integrations | 27 | test\_bank\_transfer\_already\_recorded\_by\_cs\_not\_double\_counted | Webhook after CS recorded a bank transfer |
+| test\_integrations | 28 | test\_unpaid\_order\_not\_recorded | Webhook for an order that is pending, authorized or voided |
+| test\_integrations | 29 | test\_paid\_but\_no\_successful\_transaction\_not\_recorded | Paid webhook with no successful transaction |
+| test\_integrations | 30 | test\_storefront\_order\_not\_matched\_to\_any\_quotation | Normal storefront order webhook |
+| test\_integrations | 33 | test\_out\_of\_date\_card\_does\_not\_act | Approve clicked on an out-of-date Slack card |
+| test\_integrations | 36 | test\_open\_draft\_changes\_nothing | Open Shopify draft records nothing |
+| test\_integrations | 37 | test\_timeout\_on\_one\_quotation\_does\_not\_stop\_others | Shopify timeout on one quotation stops the others |
+| test\_integrations | 38 | test\_pending\_bank\_transfer\_order\_not\_recorded | Pending bank-transfer order not recorded |
+| test\_integrations | 40 | test\_day\_already\_sent\_is\_skipped | Follow-up day already sent is skipped |
+| test\_integrations | 42 | test\_valid\_till\_passed\_expires | Expired quotation gets no follow-up task |
+| test\_integrations | 43 | test\_never\_emailed\_is\_skipped | Never-emailed quotation is skipped |
+| test\_integrations | 45 | test\_cogs\_deviation\_enqueues\_alert\_only\_when\_cogs\_changes | No COGS alert when COGS is unchanged |
+| test\_drawings | 9 | test\_pdf\_without\_bom\_left\_alone | PDF without a BOM page left untouched |
+| test\_drawings | 10 | test\_unchanged\_drawing\_not\_reprocessed | Unchanged drawing not reprocessed |
+| test\_drawings | 16 | test\_sweep | Unanswered upload undone by the scheduled job |
+
+### Not covered by a test, and why
+
+| Item | Why there is no test |
+| --- | --- |
+| "Order Type must be set before saving a High / Urgent / VIP quotation" | Cannot happen: the system always sets the Order Type (Standard, Custom or Export) just before this check runs, so the error can never be shown. |
+| Generate Payment Link / Track Payment Status by a user without the right role | There is no role rule to test: these buttons' server calls do not check the user's role (anyone who can open the quotation can call them). Add a rule first if this should be restricted. |
+| Shipping Charges required before Send Quotation to Client | The check is switched off in the code (commented out), so there is nothing to test. Feasibility Approve still requires shipping (lifecycle test 30). |
 
 ## Terms used in this report
 
@@ -237,9 +288,9 @@ Each test lists **What it checks** (the business rule in one sentence), the **St
 
 ## Test case catalogue
 
-All 149 test cases, grouped by module and test class. Each test is labelled **Positive** (the normal case works), **Negative** (bad input or a disallowed action is stopped, or something must not happen) or **Expected failure**.
+All 179 test cases, grouped by module and test class. Each test is labelled **Positive** (the normal case works), **Negative** (bad input or a disallowed action is stopped, or something must not happen) or **Expected failure**.
 
-### test\_lifecycle (45)
+### test\_lifecycle (49)
 
 Walks quotations through the Quotation-3 workflow and checks every rule that allows or blocks a workflow action.
 
@@ -665,11 +716,63 @@ Quotations that need a drawing or a feasibility check from the engineer / factor
 - **Expected result:**
   - Rejected; the action is not available.
 
+#### WorkflowRoleGuardTest
+
+Each workflow button is offered only to the roles the Quotation-3 workflow lists for it. Each test logs in as a user with only the named roles.
+
+**35. Factory cannot approve an inquiry** · Negative
+
+`test_factory_cannot_approve_inquiry`
+
+- **What it checks:** Only Customer Service (or System Manager) can approve an inquiry.
+- **Starting point:** A standard quotation with contact and address, in **Inquiry**.
+- **Steps:**
+  1. As a Factory user, click **Inquiry Approved**.
+  2. As a Customer Service user, click **Inquiry Approved**.
+- **Expected result:**
+  - Step 1: blocked with **Not a valid Workflow Action**; state stays **Inquiry**.
+  - Step 2 (control): state is **Inquiry Approved**.
+
+**36. Customer Service cannot approve a quotation** · Negative
+
+`test_customer_service_cannot_approve_pending_approval`
+
+- **What it checks:** Approve on a quotation in Pending Approval is not available to Customer Service.
+- **Starting point:** A 12,000 quotation sent for approval (**Pending Approval**).
+- **Steps:**
+  1. As a Customer Service user, click **Approve**.
+- **Expected result:**
+  - Blocked with **Not a valid Workflow Action**; state stays **Pending Approval**.
+
+**37. Customer Service cannot decide feasibility** · Negative
+
+`test_customer_service_cannot_decide_feasibility`
+
+- **What it checks:** Feasibility Approve and Not Feasible are Factory decisions.
+- **Starting point:** A 12,000 quotation with Free Shipping, jumped to **Production Details Review**.
+- **Steps:**
+  1. As a Customer Service user, click **Feasibility Approve**.
+  2. As a Customer Service user, click **Not Feasible**.
+- **Expected result:**
+  - Both blocked with **Not a valid Workflow Action**; state stays **Production Details Review**.
+
+**38. Factory cannot confirm a payment** · Negative
+
+`test_factory_cannot_confirm_payment`
+
+- **What it checks:** Only Customer Service (or System Manager) can confirm a bank transfer.
+- **Starting point:** A sent quotation jumped to **Bank Transfer Selected**.
+- **Steps:**
+  1. Record a payment for the full total.
+  2. As a Factory user, click **Confirm Payment**.
+- **Expected result:**
+  - Blocked with **Not a valid Workflow Action**; state stays **Bank Transfer Selected**.
+
 #### RejectionBranchTest
 
 Rejecting an inquiry or marking it not feasible.
 
-**35. Inquiry Rejected needs a reason** · Negative
+**39. Inquiry Rejected needs a reason** · Negative
 
 `test_inquiry_rejected_needs_reason`
 
@@ -682,7 +785,7 @@ Rejecting an inquiry or marking it not feasible.
   - Step 1 is blocked with a message about **Rejected Reason**.
   - Step 2: state is **Inquiry Rejected**.
 
-**36. Not Feasible needs a reason, then goes to CS review** · Negative
+**40. Not Feasible needs a reason, then goes to CS review** · Negative
 
 `test_not_feasible_needs_reason_then_cs_review`
 
@@ -697,7 +800,7 @@ Rejecting an inquiry or marking it not feasible.
   - Step 2: state is **Not Feasible**.
   - Step 3: state is **Sales User Review**.
 
-**37. Only the factory can change the Not Feasible Reason** · Negative
+**41. Only the factory can change the Not Feasible Reason** · Negative
 
 `test_not_feasible_reason_locked_to_factory`
 
@@ -712,7 +815,7 @@ Rejecting an inquiry or marking it not feasible.
 
 The checks that run in the form when a user clicks a workflow button. The test calls these checks directly.
 
-**38. Workflow button checks in the form** · Negative
+**42. Workflow button checks in the form** · Negative
 
 `test_guards`
 
@@ -736,7 +839,7 @@ The checks that run in the form when a user clicks a workflow button. The test c
 
 When items change on a quotation that has already been sent, it becomes a new revision (Rev 1, Rev 2, Rev 3). A sent quotation is submitted, so these tests call the revision logic directly; the last test in this class proves a normal save cannot change items.
 
-**39. Changing items creates a revision and refreshes the payment link** · Positive
+**43. Changing items creates a revision and refreshes the payment link** · Positive
 
 `test_items_change_bumps_revision_and_requeues_shopify`
 
@@ -749,7 +852,7 @@ When items change on a quotation that has already been sent, it becomes a new re
   - Follow-up history is reset, so the revised quotation gets a fresh follow-up cycle.
   - A Shopify draft order update is queued (the payment link shows the new amount).
 
-**40. No item change, no revision** · Negative
+**44. No item change, no revision** · Negative
 
 `test_no_item_change_no_revision`
 
@@ -760,7 +863,7 @@ When items change on a quotation that has already been sent, it becomes a new re
 - **Expected result:**
   - No revision number; no Shopify update queued.
 
-**41. No more changes after Rev 3** · Negative
+**45. No more changes after Rev 3** · Negative
 
 `test_rev3_blocks_further_changes`
 
@@ -771,7 +874,7 @@ When items change on a quotation that has already been sent, it becomes a new re
 - **Expected result:**
   - Blocked with "revised 3 times".
 
-**42. Unsent quotations are not revised** · Negative
+**46. Unsent quotations are not revised** · Negative
 
 `test_revision_ignored_outside_sent_to_customer`
 
@@ -782,7 +885,7 @@ When items change on a quotation that has already been sent, it becomes a new re
 - **Expected result:**
   - No revision number.
 
-**43. Items cannot be edited with a normal save after sending** · Negative
+**47. Items cannot be edited with a normal save after sending** · Negative
 
 `test_item_edit_after_send_is_rejected`
 
@@ -797,7 +900,7 @@ When items change on a quotation that has already been sent, it becomes a new re
 
 Linking an existing Shopify order to a quotation by pasting its link.
 
-**44. Pasting a Shopify order link starts the linking job** · Positive
+**48. Pasting a Shopify order link starts the linking job** · Positive
 
 `test_changed_shopify_link_enqueues_linking`
 
@@ -808,7 +911,7 @@ Linking an existing Shopify order to a quotation by pasting its link.
 - **Expected result:**
   - A job to link the Shopify order is queued.
 
-**45. A non-Shopify link is rejected** · Negative
+**49. A non-Shopify link is rejected** · Negative
 
 `test_invalid_shopify_link_rejected`
 
@@ -819,7 +922,7 @@ Linking an existing Shopify order to a quotation by pasting its link.
 - **Expected result:**
   - Blocked with a message about the **Shopify Order Link**.
 
-### test\_payments (27)
+### test\_payments (35)
 
 Payment schedule, processing fee, payment stages that hold the Lyfe Order, milestone statuses and payment reminders.
 
@@ -1177,7 +1280,116 @@ Customer Service records a bank transfer through the **Confirm Payment** dialog.
 - **Expected result:**
   - Payment checks are found, and **none** of them use Before Shipped or On Delivery.
 
-### test\_integrations (36)
+#### PaymentRecordingGuardTest
+
+Every way a payment is recorded (Confirm Payment, Shopify webhook, payment status check) goes through one function. These tests check what it refuses.
+
+**28. A payment of zero or less is refused** · Negative
+
+`test_zero_or_negative_amount_rejected`
+
+- **What it checks:** No payment row with a zero or negative amount can be recorded, whatever the route.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Record a payment of **0**.
+  2. Record a payment of **-50**.
+- **Expected result:**
+  - Both blocked with **Payment Amount must be greater than zero**.
+  - No payment row is added.
+
+**29. A payment on a cancelled quotation is refused and flagged** · Negative
+
+`test_payment_on_cancelled_quotation_rejected_and_alerted`
+
+- **What it checks:** Money arriving for a cancelled quotation is not recorded, and the team is told so they can check it.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Cancel the quotation.
+  2. Record a payment of 50.
+- **Expected result:**
+  - Blocked with **This quotation has been cancelled**.
+  - The urgent Slack alert is sent **once** ("Payment NOT recorded — please verify if money was captured").
+  - No payment row is added.
+
+**30. A new payment on a Won quotation is refused** · Negative
+
+`test_new_payment_on_won_quotation_rejected`
+
+- **What it checks:** Once a quotation is Won (fully paid), no further payment can be added.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Jump the quotation to **Won**.
+  2. Record a payment with a new reference.
+- **Expected result:**
+  - Blocked with **This quotation is already Won**.
+  - No payment row is added.
+
+**31. The same payment is never recorded twice** · Negative
+
+`test_same_reference_never_recorded_twice`
+
+- **What it checks:** A repeated Shopify webhook or status check for the same payment (same reference) does not double-count, before or after Won.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Record 40 with reference REF-1.
+  2. Record 40 with REF-1 again.
+  3. Jump to **Won**, then record 40 with REF-1 again.
+- **Expected result:**
+  - Step 1: recorded.
+  - Steps 2 and 3: skipped as a duplicate, no error.
+  - One payment row of 40; Total Received Amount is **40**.
+
+#### ConfirmPaymentGuardTest
+
+The **Confirm Payment** / **Confirm Remaining Payment** button for bank transfers.
+
+**32. Only Customer Service or System Manager can confirm a payment** · Negative
+
+`test_only_customer_service_or_system_manager`
+
+- **What it checks:** The Confirm Payment server call itself checks the role, not just the button.
+- **Starting point:** A sent quotation jumped to **Bank Transfer Selected**.
+- **Steps:**
+  1. As a user with only the Sales User role, call Confirm Payment for 50.
+- **Expected result:**
+  - Refused with a permission error.
+  - No payment row is added; state stays **Bank Transfer Selected**.
+
+**33. Confirm Payment on a Won quotation is refused** · Negative
+
+`test_already_won_rejected`
+
+- **What it checks:** A quotation that is already Won cannot be confirmed again.
+- **Steps:**
+  1. Jump to **Won**, then confirm a payment of 50.
+- **Expected result:**
+  - Blocked with **This quotation is already Won**.
+  - No payment row is added.
+
+**34. Confirm Payment only from Bank Transfer Selected or Partially Paid** · Negative
+
+`test_only_from_bank_transfer_selected_or_partially_paid`
+
+- **What it checks:** A payment cannot be confirmed on a quotation where the customer has not chosen bank transfer, or that is closed.
+- **Steps:**
+  1. For each of **Sent to Customer**, **Lost** and **Expired**: jump to that state and confirm a payment of 50.
+- **Expected result:**
+  - Each blocked with **Payment can only be confirmed from Bank Transfer Selected or Partially Paid**.
+  - No payment row is added; the state is unchanged.
+
+**35. Confirm Payment with a zero amount is refused** · Negative
+
+`test_zero_received_amount_rejected`
+
+- **What it checks:** The Received Amount in the Confirm Payment dialog must be more than zero.
+- **Starting point:** A sent quotation jumped to **Bank Transfer Selected**.
+- **Steps:**
+  1. Confirm a payment of **0**.
+- **Expected result:**
+  - Blocked with **Received Amount must be greater than zero**.
+  - No payment row is added; state stays **Bank Transfer Selected**.
+
+### test\_integrations (50)
 
 Quotation email, email-open tracking, the customer approval link, the Shopify payment link and payment checks, follow-ups, SLA, the COGS benchmark, list permissions and the dashboard.
 
@@ -1260,11 +1472,25 @@ The email contains an invisible 1×1 image (tracking pixel). When the customer o
 - **Expected result:**
   - **Email Opened** stays unticked.
 
+**7. Email button links with a bad or missing token are refused** · Negative
+
+`test_email_button_link_with_bad_or_missing_token_rejected`
+
+- **What it checks:** The Pay by Card / Bank Transfer / View PDF buttons in the email only work with the genuine signed link.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Open the button link with no token.
+  2. Open it with no button reference.
+  3. Open it with a forged token.
+- **Expected result:**
+  - Each refused with **Invalid or expired link**.
+  - The quotation stays **Sent to Customer** and no click is recorded.
+
 #### CustomerApprovalLinkTest
 
 The **Approve Quotation** button in the customer email. Each link carries a secret token for that quotation.
 
-**7. Customer approves with a valid link** · Positive
+**8. Customer approves with a valid link** · Positive
 
 `test_valid_token_marks_won`
 
@@ -1277,7 +1503,7 @@ The **Approve Quotation** button in the customer email. Each link carries a secr
   - Step 1: an **"Approved"** page; state is **Won**.
   - Step 2: an **"Already Approved"** page.
 
-**8. Forged or missing approval link is rejected** · Negative
+**9. Forged or missing approval link is rejected** · Negative
 
 `test_bad_or_missing_token_rejected`
 
@@ -1291,7 +1517,7 @@ The **Approve Quotation** button in the customer email. Each link carries a secr
   - Step 2: **"Invalid Link"** page.
   - State stays **Sent to Customer**.
 
-**9. Approval link does not work on a Lost, Cancelled or Expired quotation** · Negative
+**10. Approval link does not work on a Lost, Cancelled or Expired quotation** · Negative
 
 `test_closed_quotation_not_approved`
 
@@ -1302,7 +1528,7 @@ The **Approve Quotation** button in the customer email. Each link carries a secr
   - **"Quotation No Longer Valid"** page.
   - State is unchanged (not Won).
 
-**10. Approval link does not work on a cancelled document** · Negative
+**11. Approval link does not work on a cancelled document** · Negative
 
 `test_cancelled_docstatus_not_approved`
 
@@ -1317,7 +1543,7 @@ The **Approve Quotation** button in the customer email. Each link carries a secr
 
 Creating or updating the Shopify payment link. If Shopify fails, the system waits 3 seconds and tries again, up to 5 attempts in total. Shopify's replies are simulated and the waits are skipped in the test.
 
-**11. Payment link is retried until it succeeds** · Positive
+**12. Payment link is retried until it succeeds** · Positive
 
 `test_retries_until_link_generated`
 
@@ -1328,7 +1554,7 @@ Creating or updating the Shopify payment link. If Shopify fails, the system wait
   - The successful reply is used on the **3rd** attempt.
   - There is a **3-second** wait before each retry.
 
-**12. Payment link stops after 5 failed attempts** · Negative
+**13. Payment link stops after 5 failed attempts** · Negative
 
 `test_gives_up_after_5_failed_attempts`
 
@@ -1338,7 +1564,7 @@ Creating or updating the Shopify payment link. If Shopify fails, the system wait
 - **Expected result:**
   - Stops after **5** attempts with **4** waits of 3 seconds; the error is returned.
 
-**13. Payment link stops after 5 network errors** · Negative
+**14. Payment link stops after 5 network errors** · Negative
 
 `test_network_error_every_attempt_raises`
 
@@ -1348,7 +1574,7 @@ Creating or updating the Shopify payment link. If Shopify fails, the system wait
 - **Expected result:**
   - Stops after **5** attempts; the timeout error is raised.
 
-**14. Generate Payment Link saves the link after retrying** · Positive
+**15. Generate Payment Link saves the link after retrying** · Positive
 
 `test_create_draft_order_stores_link_after_retry`
 
@@ -1360,7 +1586,7 @@ Creating or updating the Shopify payment link. If Shopify fails, the system wait
   - The payment URL is returned and saved on the quotation.
   - No failure alert is sent.
 
-**15. Each Shopify attempt waits at most 20 seconds** · Positive
+**16. Each Shopify attempt waits at most 20 seconds** · Positive
 
 `test_each_attempt_waits_at_most_20s`
 
@@ -1370,7 +1596,7 @@ Creating or updating the Shopify payment link. If Shopify fails, the system wait
 - **Expected result:**
   - The request to Shopify is sent with a **20-second** time limit.
 
-**16. Generate Payment Link: Shopify times out on all 5 attempts** · Negative
+**17. Generate Payment Link: Shopify times out on all 5 attempts** · Negative
 
 `test_generate_link_all_timeouts_alerts_and_saves_nothing`
 
@@ -1383,7 +1609,7 @@ Creating or updating the Shopify payment link. If Shopify fails, the system wait
   - The urgent Slack alert is sent **once**.
   - No payment link is saved on the quotation.
 
-**17. Revision update: Shopify times out on all 5 attempts** · Negative
+**18. Revision update: Shopify times out on all 5 attempts** · Negative
 
 `test_revision_update_all_timeouts_clears_link_and_alerts_owner`
 
@@ -1397,7 +1623,7 @@ Creating or updating the Shopify payment link. If Shopify fails, the system wait
   - The quotation owner gets an alert.
 - **Note:** Before Oct 26 a timeout here crashed the background job: the old link stayed on the quotation and nobody was told. Fixed on Oct 26.
 
-**18. Each payment link attempt is logged separately** · Positive
+**19. Each payment link attempt is logged separately** · Positive
 
 `test_each_attempt_logs_its_own_integration_request`
 
@@ -1408,7 +1634,7 @@ Creating or updating the Shopify payment link. If Shopify fails, the system wait
 - **Expected result:**
   - **5** Integration Requests linked to the quotation, named **Shopify Payment Link - Attempt 1/5** to **5/5**, all **Failed**.
 
-**19. On a developer-mode site the failure alert goes to the 1Click webhook** · Positive
+**20. On a developer-mode site the failure alert goes to the 1Click webhook** · Positive
 
 `test_failed_link_alert_goes_to_1click_webhook_in_developer_mode`
 
@@ -1420,11 +1646,188 @@ Creating or updating the Shopify payment link. If Shopify fails, the system wait
   - The "Payment Link Generation Failed" message is sent to the **1Click Slack Webhook URL** only.
   - The normal Slack sender (urgent channel) is not used.
 
+#### PaymentLinkGuardTest
+
+**Generate Payment Link**: cases refused before Shopify is called, and Shopify refusing the order. Shopify is simulated.
+
+**21. Generate Payment Link is refused when switched off** · Negative
+
+`test_disabled_in_settings`
+
+- **What it checks:** When payment links are switched off in Shopify Tax Settings, nothing is sent to Shopify.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Switch off payment links, then click **Generate Payment Link**.
+- **Expected result:**
+  - Blocked with **Shopify Payment Link generation is disabled**.
+  - Shopify is not called; no Slack alert.
+
+**22. A second payment link for the same quotation is refused** · Negative
+
+`test_second_link_for_same_quotation_rejected`
+
+- **What it checks:** Clicking Generate Payment Link twice (or in two tabs) never creates a second Shopify order.
+- **Starting point:** A sent quotation that already has a draft order and a payment link.
+- **Steps:**
+  1. Click **Generate Payment Link**.
+- **Expected result:**
+  - Blocked with **A payment link has already been generated**.
+  - Shopify is not called; the existing link is kept.
+
+**23. Shopify refuses the payment link on all 5 attempts** · Negative
+
+`test_shopify_rejects_all_5_attempts`
+
+- **What it checks:** When Shopify keeps refusing (for example "Variant is not available"), the user sees Shopify's reason and the team is alerted.
+- **Starting point:** A sent quotation, payment links switched on.
+- **Steps:**
+  1. Click **Generate Payment Link** while Shopify answers 422 every time.
+- **Expected result:**
+  - Blocked with **Shopify API error (422)** and Shopify's message.
+  - Exactly **5** attempts; the Slack alert is sent **once**.
+  - An Error Log entry is written; no payment link is saved.
+
+#### ShopifyWebhookGuardTest
+
+Shopify tells the system about card payments through webhooks. These tests check that only genuine Shopify calls are accepted, and the cases where no payment may be recorded. Shopify is simulated.
+
+**24. Unsigned or forged Shopify webhooks are refused** · Negative
+
+`test_unsigned_or_wrongly_signed_webhook_rejected`
+
+- **What it checks:** Only requests signed by Shopify can record a payment. Anyone else calling the webhook address is refused.
+- **Steps:**
+  1. Send a webhook when no signing secret is set up.
+  2. Send one with no signature.
+  3. Send one with a wrong signature.
+  4. Send one correctly signed.
+- **Expected result:**
+  - Step 1: refused, **secret is not configured**.
+  - Step 2: refused, **Missing Shopify webhook signature**.
+  - Step 3: refused, **Invalid Shopify webhook signature**.
+  - Step 4 (control): accepted.
+
+**25. A Shopify payment for a cancelled quotation is not recorded** · Negative
+
+`test_cancelled_quotation_not_recorded_and_alerted`
+
+- **What it checks:** If a customer pays a link after the quotation was cancelled, the payment is not recorded and the team is alerted to check it.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Cancel the quotation.
+  2. Receive a paid Shopify webhook for it.
+- **Expected result:**
+  - Result is **skipped (cancelled)**.
+  - The urgent Slack alert is sent **once**.
+  - No payment row is added.
+
+**26. A Shopify payment is not recorded again on a Won quotation** · Negative
+
+`test_already_won_not_recorded_again`
+
+- **What it checks:** Shopify sends both "order created" and "order paid"; the second one must not add a second payment.
+- **Steps:**
+  1. Jump to **Won**, then receive a paid Shopify webhook.
+- **Expected result:**
+  - Result is **already processed**; no payment row is added.
+
+**27. A bank transfer already recorded by CS is not counted again** · Negative
+
+`test_bank_transfer_already_recorded_by_cs_not_double_counted`
+
+- **What it checks:** When CS confirms a bank transfer, Shopify creates a mirror order; its webhook must not record the money a second time.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Set the payment method to Bank Transfer and the state to **Partially Paid**.
+  2. Receive a paid Shopify webhook.
+- **Expected result:**
+  - Result is **skipped (manual)**; no payment row is added.
+
+**28. An unpaid Shopify order is not recorded as a payment** · Negative
+
+`test_unpaid_order_not_recorded`
+
+- **What it checks:** Only money actually captured counts.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Receive Shopify webhooks with payment status **pending**, **authorized** and **voided**.
+- **Expected result:**
+  - Each result is **not paid**; no payment row is added.
+
+**29. A "paid" order with no successful transaction is not recorded** · Negative
+
+`test_paid_but_no_successful_transaction_not_recorded`
+
+- **What it checks:** The amount recorded is what Shopify actually captured. If no successful transaction is found, nothing is recorded (an Error Log is written for follow-up).
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Receive a paid Shopify webhook whose order has no successful transactions.
+- **Expected result:**
+  - Result is **skipped (missing amount)**.
+  - No payment row is added; state stays **Sent to Customer**.
+
+**30. A normal storefront order is not matched to a quotation** · Negative
+
+`test_storefront_order_not_matched_to_any_quotation`
+
+- **What it checks:** Webhooks for ordinary Shopify shop orders (not from a quotation payment link) are ignored.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Receive a paid Shopify webhook whose note is free text ("please gift wrap") and has no draft order.
+- **Expected result:**
+  - Result is **no match**; no payment is recorded on any quotation.
+
+#### SlackApprovalGuardTest
+
+The Slack approval card: only genuine Slack requests are accepted, only approvers can act, and an out-of-date card does nothing. Slack is simulated.
+
+**31. Old, unsigned or forged Slack requests are refused** · Negative
+
+`test_unsigned_stale_or_forged_slack_request_rejected`
+
+- **What it checks:** Only genuine Slack button clicks are accepted. A copied old request or a forged one cannot approve a quotation.
+- **Steps:**
+  1. Send a Slack request that is 10 minutes old.
+  2. Send one when no Slack signing secret is set up.
+  3. Send one with a wrong signature.
+  4. Send one correctly signed.
+- **Expected result:**
+  - Step 1: refused, **Stale Slack request**.
+  - Step 2: refused, **signing secret not configured**.
+  - Step 3: refused, **Invalid Slack signature**.
+  - Step 4 (control): accepted.
+
+**32. A Slack user who is not an approver cannot approve** · Negative
+
+`test_slack_user_without_approver_role_cannot_act`
+
+- **What it checks:** Clicking Approve in Slack only works for an ERPNext user with the approver role.
+- **Starting point:** A 12,000 quotation in **Pending Approval**.
+- **Steps:**
+  1. Click **Approve** on the Slack card as: a Slack user mapped to Guest, a Slack user whose email has no ERPNext user, and a Slack user with no email.
+- **Expected result:**
+  - Each gets the private message **You're not authorized to act on Quotation approvals from Slack**.
+  - No action runs; state stays **Pending Approval**.
+
+**33. An out-of-date Slack card does nothing** · Negative
+
+`test_out_of_date_card_does_not_act`
+
+- **What it checks:** If the quotation was already approved in ERPNext, clicking Approve on the old Slack card must not approve it again.
+- **Starting point:** A 12,000 quotation in **Pending Approval** with an open Slack card.
+- **Steps:**
+  1. Approve the quotation in ERPNext (state **Approved – Pending Send**).
+  2. Click **Approve** on the old Slack card.
+- **Expected result:**
+  - No workflow action runs.
+  - The card is replaced with **Quotation approval card is out of date** and closed.
+  - State stays **Approved – Pending Send**.
+
 #### ShopifyPollingTest
 
 A scheduled job checks each sent quotation's Shopify draft order to see if the customer has paid. Shopify's replies are simulated. Each test starts from a sent quotation with Shopify draft order 555.
 
-**20. Paid Shopify order records the payment and wins the quotation** · Positive
+**34. Paid Shopify order records the payment and wins the quotation** · Positive
 
 `test_paid_draft_records_payment_and_wins`
 
@@ -1436,7 +1839,7 @@ A scheduled job checks each sent quotation's Shopify draft order to see if the c
   - Shopify Order Name is **#1001**.
   - **One** payment row for the full total.
 
-**21. Partly paid Shopify order makes the quotation Partially Paid** · Positive
+**35. Partly paid Shopify order makes the quotation Partially Paid** · Positive
 
 `test_partially_paid_order`
 
@@ -1446,7 +1849,7 @@ A scheduled job checks each sent quotation's Shopify draft order to see if the c
 - **Expected result:**
   - State is **Partially Paid**.
 
-**22. Unpaid Shopify draft changes nothing** · Negative
+**36. Unpaid Shopify draft changes nothing** · Negative
 
 `test_open_draft_changes_nothing`
 
@@ -1456,7 +1859,7 @@ A scheduled job checks each sent quotation's Shopify draft order to see if the c
 - **Expected result:**
   - State stays **Sent to Customer**; no payment rows.
 
-**23. Shopify timeout on one quotation does not stop the others** · Negative
+**37. Shopify timeout on one quotation does not stop the others** · Negative
 
 `test_timeout_on_one_quotation_does_not_stop_others`
 
@@ -1467,7 +1870,7 @@ A scheduled job checks each sent quotation's Shopify draft order to see if the c
   - The timed-out quotation stays **Sent to Customer**.
   - The other quotation is **Won**.
 
-**24. Pending bank transfer order is not recorded as paid** · Negative
+**38. Pending bank transfer order is not recorded as paid** · Negative
 
 `test_pending_bank_transfer_order_not_recorded`
 
@@ -1481,7 +1884,7 @@ A scheduled job checks each sent quotation's Shopify draft order to see if the c
 
 A daily job creates follow-up tasks for sales on business days 3, 10, 25 and 30 after the quotation email was sent. Each test starts from a sent quotation with Email Sent At set and no Valid Till date; the number of business days is simulated and tasks are not really created.
 
-**25. Follow-up tasks are created on days 3, 10 and 25** · Positive
+**39. Follow-up tasks are created on days 3, 10 and 25** · Positive
 
 `test_followup_days`
 
@@ -1492,7 +1895,7 @@ A daily job creates follow-up tasks for sales on business days 3, 10, 25 and 30 
   - Day 2: no task.
   - Days 3, 10 and 25: one follow-up task each.
 
-**26. A follow-up already sent is not repeated** · Negative
+**40. A follow-up already sent is not repeated** · Negative
 
 `test_day_already_sent_is_skipped`
 
@@ -1502,7 +1905,7 @@ A daily job creates follow-up tasks for sales on business days 3, 10, 25 and 30 
 - **Expected result:**
   - No task.
 
-**27. Day 30: final follow-up, then Lost** · Positive
+**41. Day 30: final follow-up, then Lost** · Positive
 
 `test_day_30_final_task_then_lost`
 
@@ -1512,7 +1915,7 @@ A daily job creates follow-up tasks for sales on business days 3, 10, 25 and 30 
 - **Expected result:**
   - A final day-30 task is created; state is **Lost**.
 
-**28. Quotation past its Valid Till date expires** · Negative
+**42. Quotation past its Valid Till date expires** · Negative
 
 `test_valid_till_passed_expires`
 
@@ -1522,7 +1925,7 @@ A daily job creates follow-up tasks for sales on business days 3, 10, 25 and 30 
 - **Expected result:**
   - No task; state is **Expired**.
 
-**29. A quotation that was never emailed gets no follow-up** · Negative
+**43. A quotation that was never emailed gets no follow-up** · Negative
 
 `test_never_emailed_is_skipped`
 
@@ -1536,7 +1939,7 @@ A daily job creates follow-up tasks for sales on business days 3, 10, 25 and 30 
 
 Connections to the LH Project SLA system and the COGS benchmark check.
 
-**30. SLA close check runs at every step** · Positive
+**44. SLA close check runs at every step** · Positive
 
 `test_sla_close_check_runs_on_update_and_submit`
 
@@ -1547,7 +1950,7 @@ Connections to the LH Project SLA system and the COGS benchmark check.
 - **Expected result:**
   - The SLA close check runs at least **3** times (save, workflow step, send).
 
-**31. COGS benchmark alert only when COGS changes** · Negative
+**45. COGS benchmark alert only when COGS changes** · Negative
 
 `test_cogs_deviation_enqueues_alert_only_when_cogs_changes`
 
@@ -1564,7 +1967,7 @@ Connections to the LH Project SLA system and the COGS benchmark check.
 
 The filter that limits which quotations a user sees in the list.
 
-**32. Admins see every quotation** · Positive
+**46. Admins see every quotation** · Positive
 
 `test_admins_see_everything`
 
@@ -1574,7 +1977,7 @@ The filter that limits which quotations a user sees in the list.
 - **Expected result:**
   - No filter in both cases.
 
-**33. Senior Engineers see only their review quotations** · Positive
+**47. Senior Engineers see only their review quotations** · Positive
 
 `test_senior_engineer_scoped_to_assigned_review_states`
 
@@ -1584,7 +1987,7 @@ The filter that limits which quotations a user sees in the list.
 - **Expected result:**
   - The filter names the user and the states **Senior Review Pending** and **Pending Engineer Review**; it runs without error.
 
-**34. Other roles are not filtered** · Positive
+**48. Other roles are not filtered** · Positive
 
 `test_other_roles_unrestricted`
 
@@ -1598,7 +2001,7 @@ The filter that limits which quotations a user sees in the list.
 
 Links shown on the quotation form.
 
-**35. Linked Lyfe Orders are listed** · Positive
+**49. Linked Lyfe Orders are listed** · Positive
 
 `test_linked_lyfe_orders`
 
@@ -1609,7 +2012,7 @@ Links shown on the quotation form.
 - **Expected result:**
   - Returns that Lyfe Order.
 
-**36. Timesheets appear in the quotation's Connections** · Positive
+**50. Timesheets appear in the quotation's Connections** · Positive
 
 `test_dashboard_shows_timesheets`
 
@@ -1895,7 +2298,7 @@ Fields and rows the system fills or clears automatically.
 - **Expected result:**
   - All three are cleared.
 
-### test\_drawings (17)
+### test\_drawings (21)
 
 Order Drawing upload rules, removing the BOM page from drawings, the Drawing Change Details popup, and Senior Drawing Review.
 
@@ -1947,11 +2350,34 @@ Who can upload an Order Drawing.
 - **Expected result:**
   - The file is attached.
 
+**5. The drawing upload check refuses other document types** · Negative
+
+`test_timesheet_check_rejects_unknown_doctype`
+
+- **What it checks:** The "Is it a drawing attachment?" check only works for document types that have drawings.
+- **Steps:**
+  1. Run the drawing timesheet check for a **User** record.
+- **Expected result:**
+  - Blocked with **Invalid DocType**.
+
+**6. The Engineering drawing Task cannot be completed without a Timesheet** · Negative
+
+`test_engineering_task_cannot_complete_without_timesheet`
+
+- **What it checks:** When Customer Service uploads a drawing, Engineering gets a Task that can only be completed once a Drawing Timesheet is logged.
+- **Starting point:** A standard quotation.
+- **Steps:**
+  1. As Customer Service, upload an Order Drawing (this creates the Task).
+  2. Mark the Task **Completed** with no Timesheet logged.
+- **Expected result:**
+  - Blocked with **Log a Timesheet (Drawing activity) linked to Quotation**.
+  - The Task is not Completed.
+
 #### PdfBomStripperTest
 
 If a drawing PDF contains a BOM page, the system removes it from the Order Drawing (which the customer sees) and keeps the full PDF in **Order Drawing with BOM**. "Upload" below means: attach the PDF as Order Drawing with change details "first upload", and save.
 
-**5. BOM page is removed from the drawing** · Positive
+**7. BOM page is removed from the drawing** · Positive
 
 `test_bom_page_stripped`
 
@@ -1962,7 +2388,7 @@ If a drawing PDF contains a BOM page, the system removes it from the Order Drawi
   - The Order Drawing file has **only page 1**.
   - **Order Drawing with BOM** is filled.
 
-**6. Full PDF is kept in Order Drawing with BOM** · Expected failure
+**8. Full PDF is kept in Order Drawing with BOM** · Expected failure
 
 `test_original_with_bom_kept`
 
@@ -1973,7 +2399,7 @@ If a drawing PDF contains a BOM page, the system removes it from the Order Drawi
   - Should have **both pages**.
 - **Note:** **Expected failure (known issue, local file storage only).** On the local site the copy points at the same file as the upload, so it is stripped too and has 1 page. On production, files are stored on S3 and the copy gets its own file, so the issue does not appear there.
 
-**7. PDF without a BOM page is not changed** · Negative
+**9. PDF without a BOM page is not changed** · Negative
 
 `test_pdf_without_bom_left_alone`
 
@@ -1983,7 +2409,7 @@ If a drawing PDF contains a BOM page, the system removes it from the Order Drawi
 - **Expected result:**
   - The file is unchanged; Order Drawing with BOM stays empty.
 
-**8. Unchanged drawing is not processed again** · Negative
+**10. Unchanged drawing is not processed again** · Negative
 
 `test_unchanged_drawing_not_reprocessed`
 
@@ -1997,7 +2423,7 @@ If a drawing PDF contains a BOM page, the system removes it from the Order Drawi
 
 Every new or changed Order Drawing needs a note in **Drawing Change Details**. In the form, a popup asks for this note right after upload.
 
-**9. First drawing needs change details, then the factory is notified** · Negative
+**11. First drawing needs change details, then the factory is notified** · Negative
 
 `test_first_upload_needs_details_then_notifies`
 
@@ -2010,7 +2436,7 @@ Every new or changed Order Drawing needs a note in **Drawing Change Details**. I
   - Step 1 is blocked with "Drawing Change Details is mandatory".
   - Step 2: **one** notification email goes to support@chandakbrothers.net.
 
-**10. Removing and re-attaching a drawing counts as a replacement** · Negative
+**12. Removing and re-attaching a drawing counts as a replacement** · Negative
 
 `test_clear_then_reattach_counts_as_replacement`
 
@@ -2024,7 +2450,7 @@ Every new or changed Order Drawing needs a note in **Drawing Change Details**. I
   - Step 2: **Replacement Pending** is ticked.
   - Step 3 is blocked with "Drawing Change Details is mandatory".
 
-**11. Upload popup: save first, then add the note** · Negative
+**13. Upload popup: save first, then add the note** · Negative
 
 `test_popup_flow_mark_pending_then_submit_details`
 
@@ -2039,7 +2465,7 @@ Every new or changed Order Drawing needs a note in **Drawing Change Details**. I
   - Step 2: refused with "cannot be empty".
   - Step 3: the note is saved, Change Pending is unticked, and a Comment with the note is added.
 
-**12. Cancel in the popup removes the new drawing** · Positive
+**14. Cancel in the popup removes the new drawing** · Positive
 
 `test_cancel_upload_reverts_drawing`
 
@@ -2050,7 +2476,7 @@ Every new or changed Order Drawing needs a note in **Drawing Change Details**. I
 - **Expected result:**
   - The drawing is removed and Change Pending is unticked.
 
-**13. Popup actions refuse a quotation that does not exist** · Negative
+**15. Popup actions refuse a quotation that does not exist** · Negative
 
 `test_endpoints_reject_unknown_quotation`
 
@@ -2064,7 +2490,7 @@ Every new or changed Order Drawing needs a note in **Drawing Change Details**. I
 
 A scheduled job tidies up uploads whose popup was never answered (for example the browser was closed).
 
-**14. Unanswered uploads are undone after the waiting time** · Negative
+**16. Unanswered uploads are undone after the waiting time** · Negative
 
 `test_sweep`
 
@@ -2081,7 +2507,7 @@ A scheduled job tidies up uploads whose popup was never answered (for example th
 
 Senior Drawing Review for Custom orders, and the lock on approved items.
 
-**15. Request and complete a Senior Review** · Negative
+**17. Request and complete a Senior Review** · Negative
 
 `test_request_and_complete_senior_review`
 
@@ -2099,7 +2525,35 @@ Senior Drawing Review for Custom orders, and the lock on approved items.
   - Step 4: state is back to **Pending Engineer Review**.
 - **Note:** Skipped automatically if the site has no Product Finish records.
 
-**16. Changing items after approval sends the quotation back for review** · Positive
+**18. Senior Review needs a note** · Negative
+
+`test_senior_review_needs_a_note`
+
+- **What it checks:** The engineer must explain why a Senior Review is needed.
+- **Starting point:** A Custom quotation in **Pending Engineer Review**.
+- **Steps:**
+  1. Request Senior Review with an empty note.
+  2. Request it with a note of only spaces.
+- **Expected result:**
+  - Both blocked with **A short note is required**.
+  - State is unchanged.
+
+**19. A Senior Review cannot have an invalid outcome or be submitted twice** · Negative
+
+`test_senior_review_bad_outcome_or_second_submit_rejected`
+
+- **What it checks:** The outcome must be Approved as-is, Changed or Returned, and a completed review cannot be overwritten.
+- **Starting point:** A Custom quotation with a Senior Review requested.
+- **Steps:**
+  1. Submit the review with outcome "Looks fine".
+  2. Submit it as **Approved as-is**.
+  3. Submit it again as **Changed**.
+- **Expected result:**
+  - Step 1: blocked with **Invalid Review Outcome**; the review stays Pending.
+  - Step 2: completed.
+  - Step 3: blocked with **This Senior Review has already been completed**; the outcome stays Approved as-is.
+
+**20. Changing items after approval sends the quotation back for review** · Positive
 
 `test_spec_change_after_approval_routes_back`
 
@@ -2112,7 +2566,7 @@ Senior Drawing Review for Custom orders, and the lock on approved items.
   - Step 1: a snapshot of the approved items (spec hash) is saved.
   - Step 2: state goes back to **Pending Engineer Review** and the snapshot is cleared.
 
-**17. Changing non-item fields keeps the approval** · Positive
+**21. Changing non-item fields keeps the approval** · Positive
 
 `test_non_spec_change_keeps_approval`
 
@@ -2140,3 +2594,20 @@ The site needs `allow_tests` enabled, the active Quotation-3 workflow, and the L
 Before production:
 
 - [ ] Commit the test suite and code, deploy, then `bench migrate` and `bench restart`
+
+## Test run result
+
+**Tuesday, October 27, 2026**, about 09:00 UTC, on lyfelocal.com (Frappe 15.121, ERPNext 15.121, developer mode). All five modules were run in full.
+
+| Module | Tests | Pass | Fail | Expected failure | Time |
+| --- | --- | --- | --- | --- | --- |
+| test\_lifecycle | 49 | 49 | 0 | 0 | 37.2 s |
+| test\_payments | 35 | 35 | 0 | 0 | 18.7 s |
+| test\_integrations | 50 | 50 | 0 | 0 | 34.9 s |
+| test\_validate | 24 | 24 | 0 | 0 | 9.3 s |
+| test\_drawings | 21 | 20 | 0 | 1 | 11.8 s |
+| **Total** | **179** | **178** | **0** | **1** | **111.9 s** |
+
+**Result: PASS.** 179 tests, 99 of them negative. No failures. The 1 expected failure is drawings test 8 (local file storage only).
+
+Added in this run: 30 negative tests covering workflow role checks, payment recording and Confirm Payment, Generate Payment Link guards, Shopify webhook security, Slack approval security, email button links, the Engineering drawing Task and Senior Review.
