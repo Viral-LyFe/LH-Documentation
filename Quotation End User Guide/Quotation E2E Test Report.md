@@ -1,25 +1,66 @@
 # Quotation E2E Test Report
 
-Oct 21, 2026 · updated Oct 26, 2026 · @Viral kansodiya
+Oct 21, 2026 · updated Oct 27, 2026 · @Viral kansodiya
 
-142 automated end-to-end tests cover every LH Quotation customisation. On the latest run (Oct 26) 139 pass, 1 is a known expected failure, and 2 fail because of a workflow setting on the local site (see Results). Nothing is deployed to production yet.
+149 automated end-to-end tests cover every LH Quotation customisation. On the latest run (Oct 27) 148 pass and 1 is a known expected failure. Nothing is deployed to production yet.
 
 ## Results
 
-Run on lyfelocal.com (Frappe 15.121, ERPNext 15.121) on Oct 26. A full run takes about 80 seconds and leaves the database and disk exactly as it found them.
+Run on lyfelocal.com (Frappe 15.121, ERPNext 15.121) on Oct 26; test\_integrations (per-attempt logging change) and test\_lifecycle (Sales User Review approval tests) were re-run on Oct 27. A full run takes about 80 seconds and leaves the database and disk exactly as it found them.
 
 | Module | Area | Tests | Pass | Fail | Expected failure |
 | --- | --- | --- | --- | --- | --- |
-| test\_lifecycle | Workflow walks, transition guards, approval, revisions | 44 | 42 | 2 | 0 |
+| test\_lifecycle | Workflow walks, transition guards, approval, revisions | 45 | 45 | 0 | 0 |
 | test\_payments | Payment schedule, fee, stage blocks, milestones, reminders | 27 | 27 | 0 | 0 |
-| test\_integrations | Email, approval link, payment link retry, Shopify, follow-up, SLA, COGS benchmark, permissions | 30 | 30 | 0 | 0 |
+| test\_integrations | Email, approval link, payment link retry, Shopify, follow-up, SLA, COGS benchmark, permissions | 36 | 36 | 0 | 0 |
 | test\_validate | Order type, box sizes, qty / rate, discounts, approval / COGS flags | 24 | 24 | 0 | 0 |
 | test\_drawings | Upload gate, PDF BOM stripper, change details, Senior Review | 17 | 16 | 0 | 1 |
-| **Total** |  | **142** | **139** | **2** | **1** |
+| **Total** |  | **149** | **148** | **0** | **1** |
 
-The 2 failures are lifecycle tests 13 and 15 (fee-only quotation sent for approval from Sales User Review). On Oct 23 the local Quotation-3 workflow condition for **Sales User Review → Send for Approval** was changed back to `doc.cogs_pending == 0 and doc.approval_required == 1`, so the action is hidden for a quotation with no COGS. Setting it to `doc.approval_required == 1` (the before-production checklist item at the end) fixes both. The expected failure is drawings test 6, a local-storage-only issue described in that test.
+The expected failure is drawings test 6, a local-storage-only issue described in that test.
 
 Every test runs inside one database transaction that is rolled back at the end. Outbound effects (background jobs, email, Slack, Shopify, S3, PDF rendering) are stubbed, so a run sends nothing. Quotation, Lyfe Order, File and Comment counts were identical before and after a full run.
+
+## Live timeout test (Oct 27)
+
+The automated tests simulate Shopify. This test used a real network timeout on lyfelocal.com (developer mode on) to confirm the 5-attempt retry, the per-attempt logging and the failure handling end to end.
+
+**Setup**
+
+- A local stand-in server on `127.0.0.1:9999` that accepts the connection but never replies, so every Shopify call waits for its full 20-second limit and fails with **ReadTimeout**.
+- **Shopify Setting → Shopify URL** pointed at `https://127.0.0.1:9999` for the test only.
+- Quotation **LHQ-2026-0410** (Sent to Customer, owner Administrator). For test A its draft order ID and payment link were cleared first.
+- Afterwards the Shopify URL and the quotation's draft order ID and payment link were put back. Both were checked after the restore.
+
+**A. Generate Payment Link: all 5 attempts time out** · Pass
+
+| Check | Expected | Result |
+| --- | --- | --- |
+| Attempts | 5, each failing with ReadTimeout | 5 × `ReadTimeout … Read timed out. (read timeout=20)` |
+| Integration Requests | Attempt 1/5 to 5/5, all Failed | g2mp573nbu, g9u2l7gs9e, gh6rn61dpf, godcprsu49, gvl56268lj: all Failed |
+| Time between attempts | 20 s timeout + 3 s wait | about 23.2 s (04:25:44 → 04:26:07 → 04:26:31 → 04:26:54 → 04:27:17) |
+| Total time | Under 120 s | 113.9 s |
+| User sees | The error | ReadTimeout raised to the caller |
+| Payment link | Not saved | Empty |
+| Slack alert | Sent once, to the 1Click webhook (developer mode) | Sent: no "alert failed" Error Log. 📷 [SCREENSHOT PL-01: Slack message in the 1Click channel] |
+
+**B. Update Payment Link after a revision: all 5 attempts time out** · Pass
+
+Run by calling the update directly (the same call a revision save makes).
+
+| Check | Expected | Result |
+| --- | --- | --- |
+| Integration Requests | Attempt 1/5 to 5/5, all Failed | h64hd0hj7v, hdb04dg7bt, hki5th33li, hrqae1lf0j, i32m4ffesp: all Failed, ReadTimeout |
+| Crash | None | Finished normally after 113.8 s |
+| Old payment link | Cleared | Cleared |
+| Error Log | One entry | i9g8fqad21 `[shopify][update_draft_order] LHQ-2026-0410 — no response` |
+| Owner alert | In-app notification | i9ij79tf0n "Payment link update failed for LHQ-2026-0410" (Alert, to Administrator) |
+| Slack | None (this path alerts the owner only) | None |
+
+**Findings**
+
+- **Close to the 120-second limit.** 5 timeouts took 113.9 s, leaving about 6 s before the production web server's 120-second request limit. Fine today, but any extra attempt, a longer wait or a longer timeout would cross it.
+- **No Error Log for a timeout on Generate Payment Link.** The code writes an Error Log for an HTTP error from Shopify but not for a timeout on this path. The 5 Integration Requests and the Slack alert are the record.
 
 ## Business rules confirmed
 
@@ -31,7 +72,8 @@ The tests check these business rules.
 | Payment stage unpaid: Before Shipped, On Delivery | Reminder only, never a block |
 | Quotation Lost or Cancelled (any route, including the follow-up scheduler) | No collection reminders; payment blocks on linked Lyfe Orders are released |
 | Partial payment recorded | Advance stage becomes Due and CS gets the Due reminder |
-| Send for Approval, from any state | COGS not required (0-rate quotations carrying only Custom Fee and Shipping) |
+| Send for Approval from Inquiry Approved or Feasibility Approved | COGS not required (0-rate quotations carrying only Custom Fee and Shipping) |
+| Send for Approval from Sales User Review | COGS required: the workflow condition is `doc.cogs_pending == 0 and doc.approval_required == 1` (intentional) |
 | Production Details Review → Feasibility Approve, to any state | COGS required |
 | Production Details Review → Not Feasible | COGS not required |
 | Entering Pending Approval, from any route | Slack approval card posted once, after the save commits |
@@ -39,6 +81,9 @@ The tests check these business rules.
 | Item rate | 0 allowed (fee-only quotes); negative rejected |
 | Item qty | 0 rejected (ERPNext core) |
 | Payment link generation or update fails (any error) | Retried every 3 seconds, up to 5 attempts; alert only if all 5 fail |
+| Every payment link attempt to Shopify | Logged as its own Integration Request, **Shopify Payment Link - Attempt 1/5** … **5/5**, linked to the quotation, with the error or Shopify's reply |
+| Payment link generation fails on a developer-mode (local) site | The Slack alert goes only to LH Slack Settings → 1Click Slack Webhook URL, never to the urgent channel |
+| Shopify times out on every attempt | Each attempt waits at most 20 seconds. Generate Payment Link shows the error and alerts Slack; a revision update clears the old link and alerts the owner; the payment check job moves on to the next quotation |
 | Customer approval link on a Lost, Cancelled or Expired quotation | Rejected ("Quotation No Longer Valid"); state unchanged |
 
 ## Coverage
@@ -74,28 +119,29 @@ Every item in the Asana scope is covered by at least one test class.
 
 ## Negative test cases
 
-65 of the 142 tests are negative tests: they feed in bad data or a disallowed action, or check that something does not happen. Numbers match the test case catalogue below.
+69 of the 149 tests are negative tests: they feed in bad data or a disallowed action, or check that something does not happen. Numbers match the test case catalogue below.
 
-### Blocked, rejected or flagged (43)
+### Blocked, rejected or flagged (46)
 
 | Module | # | Test | Negative case |
 | --- | --- | --- | --- |
 | test\_lifecycle | 3 | test\_sent\_to\_customer\_needs\_email\_and\_address | Send to customer without email, then without address |
 | test\_lifecycle | 6 | test\_won\_with\_no\_payment\_is\_blocked | Won with no payment recorded |
-| test\_lifecycle | 19 | test\_slack\_approve\_rejected\_by\_erp\_replies\_in\_thread | Slack Approve rejected by ERPNext |
-| test\_lifecycle | 21 | test\_completed\_blocked\_without\_drawing | Completed without drawing |
-| test\_lifecycle | 22 | test\_completed\_to\_production\_review\_blocked\_without\_drawing | Completed → Production Details Review without drawing |
-| test\_lifecycle | 23 | test\_completed\_blocked\_by\_item\_photo\_required | Completed with an item Photo Required and no drawing |
-| test\_lifecycle | 29 | test\_production\_review\_needs\_shipping\_unless\_free | Feasibility Approve without shipping |
-| test\_lifecycle | 30 | test\_feasibility\_approve\_needs\_cogs\_whatever\_the\_target | Feasibility Approve with COGS 0 |
-| test\_lifecycle | 33 | test\_request\_senior\_review\_only\_for\_custom\_orders | Senior Review on a Standard order |
-| test\_lifecycle | 34 | test\_inquiry\_rejected\_needs\_reason | Inquiry Rejected without a reason |
-| test\_lifecycle | 35 | test\_not\_feasible\_needs\_reason\_then\_cs\_review | Not Feasible without a reason |
-| test\_lifecycle | 36 | test\_not\_feasible\_reason\_locked\_to\_factory | Sales User edits Not Feasible Reason |
-| test\_lifecycle | 37 | test\_guards | Form button checks: missing drawing, COGS 0, approval required |
-| test\_lifecycle | 40 | test\_rev3\_blocks\_further\_changes | Change after Rev 3 |
-| test\_lifecycle | 42 | test\_item\_edit\_after\_send\_is\_rejected | Item edit after submit |
-| test\_lifecycle | 44 | test\_invalid\_shopify\_link\_rejected | Non-Shopify URL as Shopify Order Link |
+| test\_lifecycle | 13 | test\_fee\_only\_quote\_blocked\_from\_sales\_user\_review | Send for Approval from Sales User Review with COGS pending |
+| test\_lifecycle | 20 | test\_slack\_approve\_rejected\_by\_erp\_replies\_in\_thread | Slack Approve rejected by ERPNext |
+| test\_lifecycle | 22 | test\_completed\_blocked\_without\_drawing | Completed without drawing |
+| test\_lifecycle | 23 | test\_completed\_to\_production\_review\_blocked\_without\_drawing | Completed → Production Details Review without drawing |
+| test\_lifecycle | 24 | test\_completed\_blocked\_by\_item\_photo\_required | Completed with an item Photo Required and no drawing |
+| test\_lifecycle | 30 | test\_production\_review\_needs\_shipping\_unless\_free | Feasibility Approve without shipping |
+| test\_lifecycle | 31 | test\_feasibility\_approve\_needs\_cogs\_whatever\_the\_target | Feasibility Approve with COGS 0 |
+| test\_lifecycle | 34 | test\_request\_senior\_review\_only\_for\_custom\_orders | Senior Review on a Standard order |
+| test\_lifecycle | 35 | test\_inquiry\_rejected\_needs\_reason | Inquiry Rejected without a reason |
+| test\_lifecycle | 36 | test\_not\_feasible\_needs\_reason\_then\_cs\_review | Not Feasible without a reason |
+| test\_lifecycle | 37 | test\_not\_feasible\_reason\_locked\_to\_factory | Sales User edits Not Feasible Reason |
+| test\_lifecycle | 38 | test\_guards | Form button checks: missing drawing, COGS 0, approval required |
+| test\_lifecycle | 41 | test\_rev3\_blocks\_further\_changes | Change after Rev 3 |
+| test\_lifecycle | 43 | test\_item\_edit\_after\_send\_is\_rejected | Item edit after submit |
+| test\_lifecycle | 45 | test\_invalid\_shopify\_link\_rejected | Non-Shopify URL as Shopify Order Link |
 | test\_payments | 2 | test\_zero\_portion\_rejected | 0% schedule row |
 | test\_payments | 3 | test\_row\_without\_stage\_rejected | Schedule row with no stage |
 | test\_payments | 4 | test\_amounts\_must\_sum\_to\_total | Schedule amounts not adding up to the total |
@@ -111,6 +157,8 @@ Every item in the Asana scope is covered by at least one test class.
 | test\_integrations | 10 | test\_cancelled\_docstatus\_not\_approved | Approval link on a cancelled document |
 | test\_integrations | 12 | test\_gives\_up\_after\_5\_failed\_attempts | Shopify fails all 5 attempts: stops and reports the error |
 | test\_integrations | 13 | test\_network\_error\_every\_attempt\_raises | Network error on all 5 attempts: error shown |
+| test\_integrations | 16 | test\_generate\_link\_all\_timeouts\_alerts\_and\_saves\_nothing | Generate Payment Link: Shopify times out on all 5 attempts |
+| test\_integrations | 17 | test\_revision\_update\_all\_timeouts\_clears\_link\_and\_alerts\_owner | Revision update: Shopify times out on all 5 attempts |
 | test\_validate | 6 | test\_bom\_with\_missing\_child\_dims\_is\_flagged | BOM part with missing box size (flagged) |
 | test\_validate | 10 | test\_missing\_cogs\_sets\_cogs\_pending | Missing COGS (COGS Pending flagged) |
 | test\_validate | 14 | test\_negative\_rate\_rejected | Negative item rate |
@@ -124,15 +172,15 @@ Every item in the Asana scope is covered by at least one test class.
 | test\_drawings | 13 | test\_endpoints\_reject\_unknown\_quotation | Popup actions called for a quotation that does not exist |
 | test\_drawings | 15 | test\_request\_and\_complete\_senior\_review | Senior Review without a Reason Code, and a duplicate request |
 
-### Must not happen (22)
+### Must not happen (23)
 
 | Module | # | Test | Negative case |
 | --- | --- | --- | --- |
 | test\_lifecycle | 11 | test\_slack\_card\_off\_when\_setting\_disabled | No Slack card when the setting is off |
-| test\_lifecycle | 16 | test\_no\_second\_card\_while\_already\_pending | No second Slack card |
-| test\_lifecycle | 18 | test\_slack\_approve\_does\_not\_double\_close\_card | Slack card not closed twice |
-| test\_lifecycle | 39 | test\_no\_item\_change\_no\_revision | No revision without an item change |
-| test\_lifecycle | 41 | test\_revision\_ignored\_outside\_sent\_to\_customer | No revision outside Sent to Customer |
+| test\_lifecycle | 17 | test\_no\_second\_card\_while\_already\_pending | No second Slack card |
+| test\_lifecycle | 19 | test\_slack\_approve\_does\_not\_double\_close\_card | Slack card not closed twice |
+| test\_lifecycle | 40 | test\_no\_item\_change\_no\_revision | No revision without an item change |
+| test\_lifecycle | 42 | test\_revision\_ignored\_outside\_sent\_to\_customer | No revision outside Sent to Customer |
 | test\_payments | 11 | test\_unconfigured\_stage\_is\_noop | Stage not in the schedule does nothing |
 | test\_payments | 16 | test\_non\_terminal\_state\_keeps\_block | Non-closing state keeps the block |
 | test\_payments | 20 | test\_block\_reminder\_skipped\_and\_cleared\_for\_lost | No block reminder for Lost |
@@ -141,12 +189,13 @@ Every item in the Asana scope is covered by at least one test class.
 | test\_payments | 26 | test\_unpaid\_shipped\_stage\_sends\_reminder | Before Shipped reminder sets no payment block |
 | test\_payments | 27 | test\_order\_code\_never\_hard\_blocks\_reminder\_only\_stages | No hard block for Before Shipped / On Delivery |
 | test\_integrations | 3 | test\_bank\_transfer\_never\_gets\_card\_link | No card link for bank transfer |
-| test\_integrations | 17 | test\_open\_draft\_changes\_nothing | Open Shopify draft records nothing |
-| test\_integrations | 18 | test\_pending\_bank\_transfer\_order\_not\_recorded | Pending bank-transfer order not recorded |
-| test\_integrations | 20 | test\_day\_already\_sent\_is\_skipped | Follow-up day already sent is skipped |
-| test\_integrations | 22 | test\_valid\_till\_passed\_expires | Expired quotation gets no follow-up task |
-| test\_integrations | 23 | test\_never\_emailed\_is\_skipped | Never-emailed quotation is skipped |
-| test\_integrations | 25 | test\_cogs\_deviation\_enqueues\_alert\_only\_when\_cogs\_changes | No COGS alert when COGS is unchanged |
+| test\_integrations | 22 | test\_open\_draft\_changes\_nothing | Open Shopify draft records nothing |
+| test\_integrations | 23 | test\_timeout\_on\_one\_quotation\_does\_not\_stop\_others | Shopify timeout on one quotation stops the others |
+| test\_integrations | 24 | test\_pending\_bank\_transfer\_order\_not\_recorded | Pending bank-transfer order not recorded |
+| test\_integrations | 26 | test\_day\_already\_sent\_is\_skipped | Follow-up day already sent is skipped |
+| test\_integrations | 28 | test\_valid\_till\_passed\_expires | Expired quotation gets no follow-up task |
+| test\_integrations | 29 | test\_never\_emailed\_is\_skipped | Never-emailed quotation is skipped |
+| test\_integrations | 31 | test\_cogs\_deviation\_enqueues\_alert\_only\_when\_cogs\_changes | No COGS alert when COGS is unchanged |
 | test\_drawings | 7 | test\_pdf\_without\_bom\_left\_alone | PDF without a BOM page left untouched |
 | test\_drawings | 8 | test\_unchanged\_drawing\_not\_reprocessed | Unchanged drawing not reprocessed |
 | test\_drawings | 14 | test\_sweep | Unanswered upload undone by the scheduled job |
@@ -188,9 +237,9 @@ Each test lists **What it checks** (the business rule in one sentence), the **St
 
 ## Test case catalogue
 
-All 142 test cases, grouped by module and test class. Each test is labelled **Positive** (the normal case works), **Negative** (bad input or a disallowed action is stopped, or something must not happen) or **Expected failure**.
+All 149 test cases, grouped by module and test class. Each test is labelled **Positive** (the normal case works), **Negative** (bad input or a disallowed action is stopped, or something must not happen) or **Expected failure**.
 
-### test\_lifecycle (44)
+### test\_lifecycle (45)
 
 Walks quotations through the Quotation-3 workflow and checks every rule that allows or blocks a workflow action.
 
@@ -361,30 +410,40 @@ Quotations of 10,000 or more need manager approval before they can be sent. Appr
   - Step 1: **COGS Pending** and **Approval Required** are both ticked.
   - Step 2: state is **Pending Approval** (COGS is not required for Send for Approval).
 
-**13. Fee-only quotation can go for approval without COGS (from Sales User Review)** · Positive · ⚠ Currently failing
+**13. Fee-only quotation cannot go for approval from Sales User Review while COGS is pending** · Negative
 
-`test_fee_only_quote_sent_for_approval_from_sales_user_review`
+`test_fee_only_quote_blocked_from_sales_user_review`
 
-- **What it checks:** Same as the test above, starting from Sales User Review.
-- **Starting point:** The same fee-only quotation, jumped to **Sales User Review**.
+- **What it checks:** From Sales User Review, Send for Approval needs COGS. The workflow condition on this route is `doc.cogs_pending == 0 and doc.approval_required == 1`, kept on purpose.
+- **Starting point:** The same fee-only quotation (COGS Pending ticked), jumped to **Sales User Review**.
+- **Steps:**
+  1. Click **Send for Approval**.
+- **Expected result:**
+  - Blocked with **Not a valid Workflow Action**; the action is not offered.
+
+**14. Quotation with COGS can go for approval from Sales User Review** · Positive
+
+`test_quote_with_cogs_sent_for_approval_from_sales_user_review`
+
+- **What it checks:** Once COGS is filled in, Send for Approval from Sales User Review works.
+- **Starting point:** A ready-to-send quotation at 12,000 with COGS 5,000, jumped to **Sales User Review**.
 - **Steps:**
   1. Click **Send for Approval**.
 - **Expected result:**
   - State is **Pending Approval**.
-- **Note:** **Failing on lyfelocal.com since 23 Oct.** The Quotation-3 workflow condition for Sales User Review → Send for Approval was changed back to `doc.cogs_pending == 0 and doc.approval_required == 1`, so ERPNext hides the action for this quotation. Fix: the before-production checklist item at the end of this report.
 
-**14. No COGS needed to send for approval from Feasibility Approved** · Positive
+**15. No COGS needed to send for approval from Feasibility Approved** · Positive
 
 `test_no_cogs_needed_from_feasibility_approved`
 
-- **What it checks:** Send for Approval does not require COGS, whichever state it starts from.
+- **What it checks:** Send for Approval from Feasibility Approved does not require COGS.
 - **Starting point:** A ready-to-send quotation at 12,000 with COGS 0, jumped to **Feasibility Approved**.
 - **Steps:**
   1. Click **Send for Approval**.
 - **Expected result:**
   - State is **Pending Approval**.
 
-**15. One Slack card, whichever way the quotation reaches Pending Approval** · Positive · ⚠ Currently failing
+**16. One Slack card, whichever way the quotation reaches Pending Approval** · Positive
 
 `test_slack_card_from_every_route`
 
@@ -392,13 +451,12 @@ Quotations of 10,000 or more need manager approval before they can be sent. Appr
 - **Steps:**
   1. With Slack approval on, take three quotations into Pending Approval:
      - a) 12,000 quotation: **Send for Approval** from Inquiry Approved.
-     - b) Fee-only quotation: **Send for Approval** from Sales User Review.
+     - b) 12,000 quotation with COGS: **Send for Approval** from Sales User Review.
      - c) 12,000 quotation with Free Shipping: **Feasibility Approve** from Production Details Review.
 - **Expected result:**
   - Each route queues one card, set to post after the save commits.
-- **Note:** **Failing on lyfelocal.com since 23 Oct** at route b), for the same workflow-condition reason as the fee-only test above.
 
-**16. No second Slack card when a pending quotation is saved again** · Negative
+**17. No second Slack card when a pending quotation is saved again** · Negative
 
 `test_no_second_card_while_already_pending`
 
@@ -409,7 +467,7 @@ Quotations of 10,000 or more need manager approval before they can be sent. Appr
 - **Expected result:**
   - No second card is queued.
 
-**17. Approving in ERPNext closes the Slack card** · Positive
+**18. Approving in ERPNext closes the Slack card** · Positive
 
 `test_erp_approve_closes_slack_card`
 
@@ -420,7 +478,7 @@ Quotations of 10,000 or more need manager approval before they can be sent. Appr
 - **Expected result:**
   - A job to close the Slack card is queued.
 
-**18. Approving from Slack does not close the card twice** · Negative
+**19. Approving from Slack does not close the card twice** · Negative
 
 `test_slack_approve_does_not_double_close_card`
 
@@ -431,7 +489,7 @@ Quotations of 10,000 or more need manager approval before they can be sent. Appr
 - **Expected result:**
   - ERPNext does not queue a close job.
 
-**19. Slack approval refused by ERPNext is explained in the Slack thread** · Negative
+**20. Slack approval refused by ERPNext is explained in the Slack thread** · Negative
 
 `test_slack_approve_rejected_by_erp_replies_in_thread`
 
@@ -447,7 +505,7 @@ Quotations of 10,000 or more need manager approval before they can be sent. Appr
 
 Quotations that need a drawing or a feasibility check from the engineer / factory. Several tests start from an **engineer review quotation**: a quotation with Drawing Required ticked, moved Inquiry Approved → Request for Technical Details, so it is in **Pending Engineer Review** with no drawing attached.
 
-**20. Drawing Required sends the quotation to the engineer, then back to sales** · Positive
+**21. Drawing Required sends the quotation to the engineer, then back to sales** · Positive
 
 `test_drawing_required_routes_to_engineer_then_sales`
 
@@ -462,7 +520,7 @@ Quotations that need a drawing or a feasibility check from the engineer / factor
   - Step 2: **Drawing Required** is unticked automatically.
   - Step 3: state is **Sales User Review**.
 
-**21. Engineer cannot complete without attaching the drawing** · Negative
+**22. Engineer cannot complete without attaching the drawing** · Negative
 
 `test_completed_blocked_without_drawing`
 
@@ -473,7 +531,7 @@ Quotations that need a drawing or a feasibility check from the engineer / factor
 - **Expected result:**
   - Blocked with a message about the **Drawing**.
 
-**22. Completed is also blocked when it would go to Production Details Review** · Negative
+**23. Completed is also blocked when it would go to Production Details Review** · Negative
 
 `test_completed_to_production_review_blocked_without_drawing`
 
@@ -484,7 +542,7 @@ Quotations that need a drawing or a feasibility check from the engineer / factor
 - **Expected result:**
   - Blocked with a message about the **Drawing**.
 
-**23. Item Photo Required also needs the drawing** · Negative
+**24. Item Photo Required also needs the drawing** · Negative
 
 `test_completed_blocked_by_item_photo_required`
 
@@ -495,7 +553,7 @@ Quotations that need a drawing or a feasibility check from the engineer / factor
 - **Expected result:**
   - Blocked with a message about the **Drawing**.
 
-**24. Urgent quotations can complete without a drawing** · Positive
+**25. Urgent quotations can complete without a drawing** · Positive
 
 `test_urgent_completes_without_drawing`
 
@@ -506,7 +564,7 @@ Quotations that need a drawing or a feasibility check from the engineer / factor
 - **Expected result:**
   - Allowed; state is **Sales User Review**.
 
-**25. Need More Information is not blocked by the drawing rule** · Positive
+**26. Need More Information is not blocked by the drawing rule** · Positive
 
 `test_need_more_information_not_blocked`
 
@@ -517,7 +575,7 @@ Quotations that need a drawing or a feasibility check from the engineer / factor
 - **Expected result:**
   - Allowed; state is **Draft**.
 
-**26. Ticking Feasibility Test Required moves the quotation to Production Details Review** · Positive
+**27. Ticking Feasibility Test Required moves the quotation to Production Details Review** · Positive
 
 `test_feasibility_flag_auto_advances_to_production_review`
 
@@ -528,7 +586,7 @@ Quotations that need a drawing or a feasibility check from the engineer / factor
 - **Expected result:**
   - State changes to **Production Details Review**.
 
-**27. Ticking Feasibility Test Required in Inquiry goes straight to Production Details Review** · Positive
+**28. Ticking Feasibility Test Required in Inquiry goes straight to Production Details Review** · Positive
 
 `test_feasibility_flag_in_inquiry_skips_inquiry_approved`
 
@@ -539,7 +597,7 @@ Quotations that need a drawing or a feasibility check from the engineer / factor
 - **Expected result:**
   - State changes to **Production Details Review**.
 
-**28. Feasibility flag clears itself once COGS and shipping are filled** · Positive
+**29. Feasibility flag clears itself once COGS and shipping are filled** · Positive
 
 `test_feasibility_flag_auto_clears_when_cogs_and_shipping_set`
 
@@ -550,7 +608,7 @@ Quotations that need a drawing or a feasibility check from the engineer / factor
 - **Expected result:**
   - **Feasibility Test Required** is unticked.
 
-**29. Feasibility Approve needs a shipping charge unless Free Shipping is ticked** · Negative
+**30. Feasibility Approve needs a shipping charge unless Free Shipping is ticked** · Negative
 
 `test_production_review_needs_shipping_unless_free`
 
@@ -563,7 +621,7 @@ Quotations that need a drawing or a feasibility check from the engineer / factor
   - Step 1 is blocked with a message about **Shipping Charges**.
   - Step 2: state is **Feasibility Approved**.
 
-**30. Feasibility Approve always needs COGS** · Negative
+**31. Feasibility Approve always needs COGS** · Negative
 
 `test_feasibility_approve_needs_cogs_whatever_the_target`
 
@@ -574,7 +632,7 @@ Quotations that need a drawing or a feasibility check from the engineer / factor
 - **Expected result:**
   - Both are blocked with a message about **Cost of Goods**.
 
-**31. Feasibility Approve on a 10,000+ quotation goes to Pending Approval** · Positive
+**32. Feasibility Approve on a 10,000+ quotation goes to Pending Approval** · Positive
 
 `test_feasibility_approve_over_10k_goes_to_pending_approval`
 
@@ -585,7 +643,7 @@ Quotations that need a drawing or a feasibility check from the engineer / factor
 - **Expected result:**
   - State is **Pending Approval**.
 
-**32. Photo Required in Production Details Review sends it back to the engineer** · Positive
+**33. Photo Required in Production Details Review sends it back to the engineer** · Positive
 
 `test_photo_required_in_production_review_routes_back_to_engineer`
 
@@ -596,7 +654,7 @@ Quotations that need a drawing or a feasibility check from the engineer / factor
 - **Expected result:**
   - State changes to **Pending Engineer Review**.
 
-**33. Senior Review is only for Custom orders** · Negative
+**34. Senior Review is only for Custom orders** · Negative
 
 `test_request_senior_review_only_for_custom_orders`
 
@@ -611,7 +669,7 @@ Quotations that need a drawing or a feasibility check from the engineer / factor
 
 Rejecting an inquiry or marking it not feasible.
 
-**34. Inquiry Rejected needs a reason** · Negative
+**35. Inquiry Rejected needs a reason** · Negative
 
 `test_inquiry_rejected_needs_reason`
 
@@ -624,7 +682,7 @@ Rejecting an inquiry or marking it not feasible.
   - Step 1 is blocked with a message about **Rejected Reason**.
   - Step 2: state is **Inquiry Rejected**.
 
-**35. Not Feasible needs a reason, then goes to CS review** · Negative
+**36. Not Feasible needs a reason, then goes to CS review** · Negative
 
 `test_not_feasible_needs_reason_then_cs_review`
 
@@ -639,7 +697,7 @@ Rejecting an inquiry or marking it not feasible.
   - Step 2: state is **Not Feasible**.
   - Step 3: state is **Sales User Review**.
 
-**36. Only the factory can change the Not Feasible Reason** · Negative
+**37. Only the factory can change the Not Feasible Reason** · Negative
 
 `test_not_feasible_reason_locked_to_factory`
 
@@ -654,7 +712,7 @@ Rejecting an inquiry or marking it not feasible.
 
 The checks that run in the form when a user clicks a workflow button. The test calls these checks directly.
 
-**37. Workflow button checks in the form** · Negative
+**38. Workflow button checks in the form** · Negative
 
 `test_guards`
 
@@ -678,7 +736,7 @@ The checks that run in the form when a user clicks a workflow button. The test c
 
 When items change on a quotation that has already been sent, it becomes a new revision (Rev 1, Rev 2, Rev 3). A sent quotation is submitted, so these tests call the revision logic directly; the last test in this class proves a normal save cannot change items.
 
-**38. Changing items creates a revision and refreshes the payment link** · Positive
+**39. Changing items creates a revision and refreshes the payment link** · Positive
 
 `test_items_change_bumps_revision_and_requeues_shopify`
 
@@ -691,7 +749,7 @@ When items change on a quotation that has already been sent, it becomes a new re
   - Follow-up history is reset, so the revised quotation gets a fresh follow-up cycle.
   - A Shopify draft order update is queued (the payment link shows the new amount).
 
-**39. No item change, no revision** · Negative
+**40. No item change, no revision** · Negative
 
 `test_no_item_change_no_revision`
 
@@ -702,7 +760,7 @@ When items change on a quotation that has already been sent, it becomes a new re
 - **Expected result:**
   - No revision number; no Shopify update queued.
 
-**40. No more changes after Rev 3** · Negative
+**41. No more changes after Rev 3** · Negative
 
 `test_rev3_blocks_further_changes`
 
@@ -713,7 +771,7 @@ When items change on a quotation that has already been sent, it becomes a new re
 - **Expected result:**
   - Blocked with "revised 3 times".
 
-**41. Unsent quotations are not revised** · Negative
+**42. Unsent quotations are not revised** · Negative
 
 `test_revision_ignored_outside_sent_to_customer`
 
@@ -724,7 +782,7 @@ When items change on a quotation that has already been sent, it becomes a new re
 - **Expected result:**
   - No revision number.
 
-**42. Items cannot be edited with a normal save after sending** · Negative
+**43. Items cannot be edited with a normal save after sending** · Negative
 
 `test_item_edit_after_send_is_rejected`
 
@@ -739,7 +797,7 @@ When items change on a quotation that has already been sent, it becomes a new re
 
 Linking an existing Shopify order to a quotation by pasting its link.
 
-**43. Pasting a Shopify order link starts the linking job** · Positive
+**44. Pasting a Shopify order link starts the linking job** · Positive
 
 `test_changed_shopify_link_enqueues_linking`
 
@@ -750,7 +808,7 @@ Linking an existing Shopify order to a quotation by pasting its link.
 - **Expected result:**
   - A job to link the Shopify order is queued.
 
-**44. A non-Shopify link is rejected** · Negative
+**45. A non-Shopify link is rejected** · Negative
 
 `test_invalid_shopify_link_rejected`
 
@@ -1119,7 +1177,7 @@ Customer Service records a bank transfer through the **Confirm Payment** dialog.
 - **Expected result:**
   - Payment checks are found, and **none** of them use Before Shipped or On Delivery.
 
-### test\_integrations (30)
+### test\_integrations (36)
 
 Quotation email, email-open tracking, the customer approval link, the Shopify payment link and payment checks, follow-ups, SLA, the COGS benchmark, list permissions and the dashboard.
 
@@ -1302,11 +1360,71 @@ Creating or updating the Shopify payment link. If Shopify fails, the system wait
   - The payment URL is returned and saved on the quotation.
   - No failure alert is sent.
 
+**15. Each Shopify attempt waits at most 20 seconds** · Positive
+
+`test_each_attempt_waits_at_most_20s`
+
+- **What it checks:** Each attempt gives up after 20 seconds, so 5 attempts plus the waits (112 seconds at most) finish before the server's 120-second limit on a request.
+- **Steps:**
+  1. Create a payment link (Shopify answers straight away).
+- **Expected result:**
+  - The request to Shopify is sent with a **20-second** time limit.
+
+**16. Generate Payment Link: Shopify times out on all 5 attempts** · Negative
+
+`test_generate_link_all_timeouts_alerts_and_saves_nothing`
+
+- **What it checks:** When Shopify cannot be reached at all, the user sees the error, the urgent Slack alert goes out, and no half-made link is saved.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. With the payment link on, generate the payment link while Shopify times out on every attempt.
+- **Expected result:**
+  - The timeout error is shown to the user.
+  - The urgent Slack alert is sent **once**.
+  - No payment link is saved on the quotation.
+
+**17. Revision update: Shopify times out on all 5 attempts** · Negative
+
+`test_revision_update_all_timeouts_clears_link_and_alerts_owner`
+
+- **What it checks:** After a revision, if Shopify cannot be reached, the old payment link (with the old amount) is removed and the quotation owner is told, so the customer cannot pay the wrong amount.
+- **Starting point:** A sent quotation with Shopify draft order 555 and an existing payment link.
+- **Steps:**
+  1. Run the payment link update while Shopify times out on every attempt.
+- **Expected result:**
+  - The update finishes without crashing.
+  - The old payment link is **cleared**.
+  - The quotation owner gets an alert.
+- **Note:** Before Oct 26 a timeout here crashed the background job: the old link stayed on the quotation and nobody was told. Fixed on Oct 26.
+
+**18. Each payment link attempt is logged separately** · Positive
+
+`test_each_attempt_logs_its_own_integration_request`
+
+- **What it checks:** Every try to reach Shopify leaves its own record, so you can see what happened on each of the 5 attempts.
+- **Starting point:** A sent quotation.
+- **Steps:**
+  1. Send the payment link request while Shopify rejects it (401) every time.
+- **Expected result:**
+  - **5** Integration Requests linked to the quotation, named **Shopify Payment Link - Attempt 1/5** to **5/5**, all **Failed**.
+
+**19. On a developer-mode site the failure alert goes to the 1Click webhook** · Positive
+
+`test_failed_link_alert_goes_to_1click_webhook_in_developer_mode`
+
+- **What it checks:** A local or test site never posts payment link failures to the real urgent channel, but the alert can still be seen.
+- **Starting point:** A sent quotation, developer mode on.
+- **Steps:**
+  1. Send the payment link failure alert.
+- **Expected result:**
+  - The "Payment Link Generation Failed" message is sent to the **1Click Slack Webhook URL** only.
+  - The normal Slack sender (urgent channel) is not used.
+
 #### ShopifyPollingTest
 
 A scheduled job checks each sent quotation's Shopify draft order to see if the customer has paid. Shopify's replies are simulated. Each test starts from a sent quotation with Shopify draft order 555.
 
-**15. Paid Shopify order records the payment and wins the quotation** · Positive
+**20. Paid Shopify order records the payment and wins the quotation** · Positive
 
 `test_paid_draft_records_payment_and_wins`
 
@@ -1318,7 +1436,7 @@ A scheduled job checks each sent quotation's Shopify draft order to see if the c
   - Shopify Order Name is **#1001**.
   - **One** payment row for the full total.
 
-**16. Partly paid Shopify order makes the quotation Partially Paid** · Positive
+**21. Partly paid Shopify order makes the quotation Partially Paid** · Positive
 
 `test_partially_paid_order`
 
@@ -1328,7 +1446,7 @@ A scheduled job checks each sent quotation's Shopify draft order to see if the c
 - **Expected result:**
   - State is **Partially Paid**.
 
-**17. Unpaid Shopify draft changes nothing** · Negative
+**22. Unpaid Shopify draft changes nothing** · Negative
 
 `test_open_draft_changes_nothing`
 
@@ -1338,7 +1456,18 @@ A scheduled job checks each sent quotation's Shopify draft order to see if the c
 - **Expected result:**
   - State stays **Sent to Customer**; no payment rows.
 
-**18. Pending bank transfer order is not recorded as paid** · Negative
+**23. Shopify timeout on one quotation does not stop the others** · Negative
+
+`test_timeout_on_one_quotation_does_not_stop_others`
+
+- **What it checks:** If Shopify times out for one quotation, the job logs it and still checks the rest.
+- **Steps:**
+  1. Two sent quotations: Shopify times out for draft 555, and reports draft 556 as completed and paid in full. Run the job.
+- **Expected result:**
+  - The timed-out quotation stays **Sent to Customer**.
+  - The other quotation is **Won**.
+
+**24. Pending bank transfer order is not recorded as paid** · Negative
 
 `test_pending_bank_transfer_order_not_recorded`
 
@@ -1352,7 +1481,7 @@ A scheduled job checks each sent quotation's Shopify draft order to see if the c
 
 A daily job creates follow-up tasks for sales on business days 3, 10, 25 and 30 after the quotation email was sent. Each test starts from a sent quotation with Email Sent At set and no Valid Till date; the number of business days is simulated and tasks are not really created.
 
-**19. Follow-up tasks are created on days 3, 10 and 25** · Positive
+**25. Follow-up tasks are created on days 3, 10 and 25** · Positive
 
 `test_followup_days`
 
@@ -1363,7 +1492,7 @@ A daily job creates follow-up tasks for sales on business days 3, 10, 25 and 30 
   - Day 2: no task.
   - Days 3, 10 and 25: one follow-up task each.
 
-**20. A follow-up already sent is not repeated** · Negative
+**26. A follow-up already sent is not repeated** · Negative
 
 `test_day_already_sent_is_skipped`
 
@@ -1373,7 +1502,7 @@ A daily job creates follow-up tasks for sales on business days 3, 10, 25 and 30 
 - **Expected result:**
   - No task.
 
-**21. Day 30: final follow-up, then Lost** · Positive
+**27. Day 30: final follow-up, then Lost** · Positive
 
 `test_day_30_final_task_then_lost`
 
@@ -1383,7 +1512,7 @@ A daily job creates follow-up tasks for sales on business days 3, 10, 25 and 30 
 - **Expected result:**
   - A final day-30 task is created; state is **Lost**.
 
-**22. Quotation past its Valid Till date expires** · Negative
+**28. Quotation past its Valid Till date expires** · Negative
 
 `test_valid_till_passed_expires`
 
@@ -1393,7 +1522,7 @@ A daily job creates follow-up tasks for sales on business days 3, 10, 25 and 30 
 - **Expected result:**
   - No task; state is **Expired**.
 
-**23. A quotation that was never emailed gets no follow-up** · Negative
+**29. A quotation that was never emailed gets no follow-up** · Negative
 
 `test_never_emailed_is_skipped`
 
@@ -1407,7 +1536,7 @@ A daily job creates follow-up tasks for sales on business days 3, 10, 25 and 30 
 
 Connections to the LH Project SLA system and the COGS benchmark check.
 
-**24. SLA close check runs at every step** · Positive
+**30. SLA close check runs at every step** · Positive
 
 `test_sla_close_check_runs_on_update_and_submit`
 
@@ -1418,7 +1547,7 @@ Connections to the LH Project SLA system and the COGS benchmark check.
 - **Expected result:**
   - The SLA close check runs at least **3** times (save, workflow step, send).
 
-**25. COGS benchmark alert only when COGS changes** · Negative
+**31. COGS benchmark alert only when COGS changes** · Negative
 
 `test_cogs_deviation_enqueues_alert_only_when_cogs_changes`
 
@@ -1435,7 +1564,7 @@ Connections to the LH Project SLA system and the COGS benchmark check.
 
 The filter that limits which quotations a user sees in the list.
 
-**26. Admins see every quotation** · Positive
+**32. Admins see every quotation** · Positive
 
 `test_admins_see_everything`
 
@@ -1445,7 +1574,7 @@ The filter that limits which quotations a user sees in the list.
 - **Expected result:**
   - No filter in both cases.
 
-**27. Senior Engineers see only their review quotations** · Positive
+**33. Senior Engineers see only their review quotations** · Positive
 
 `test_senior_engineer_scoped_to_assigned_review_states`
 
@@ -1455,7 +1584,7 @@ The filter that limits which quotations a user sees in the list.
 - **Expected result:**
   - The filter names the user and the states **Senior Review Pending** and **Pending Engineer Review**; it runs without error.
 
-**28. Other roles are not filtered** · Positive
+**34. Other roles are not filtered** · Positive
 
 `test_other_roles_unrestricted`
 
@@ -1469,7 +1598,7 @@ The filter that limits which quotations a user sees in the list.
 
 Links shown on the quotation form.
 
-**29. Linked Lyfe Orders are listed** · Positive
+**35. Linked Lyfe Orders are listed** · Positive
 
 `test_linked_lyfe_orders`
 
@@ -1480,7 +1609,7 @@ Links shown on the quotation form.
 - **Expected result:**
   - Returns that Lyfe Order.
 
-**30. Timesheets appear in the quotation's Connections** · Positive
+**36. Timesheets appear in the quotation's Connections** · Positive
 
 `test_dashboard_shows_timesheets`
 
@@ -2011,4 +2140,3 @@ The site needs `allow_tests` enabled, the active Quotation-3 workflow, and the L
 Before production:
 
 - [ ] Commit the test suite and code, deploy, then `bench migrate` and `bench restart`
-- [ ] In the Quotation-3 Workflow form, set both "Sales User Review → Send for Approval" conditions to `doc.approval_required == 1`
