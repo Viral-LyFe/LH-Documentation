@@ -1,367 +1,356 @@
-# ERP Error & Alert Sources — Map for Asana Ticket Automation
+# Where Our ERP Records Errors and Alerts
 
-**Owner:** Viral · **Prepared for:** Arth (automated ticketing) · **Date:** 2026-10-28
-**Source request:** Slack thread from Srishti, #C0A1Z6XQE7M, 2026-10-28
-
-> **Purpose.** This document lists every place where ERPNext errors, failures and notifications are recorded today, so they can be polled and turned into Asana tasks.
->
-> **About the numbers.** Every count below comes from a copy of the production database taken on 2026-10-27. Production is hosted at `lyfehardware.v.frappe.cloud` (Frappe Cloud).
->
-> **Apps in scope:** frappe, erpnext, hrms, crm, lms, insights, payments, ecommerce_integrations, shopify_tax, frappe_s3_attachment and **lh**, our custom app. Almost all custom logic lives in `lh`.
+**For:** Arth, who is building the automation that turns ERP errors into Asana tasks
+**From:** Viral · **Date:** 28 Oct 2026
+**Request:** Srishti's Slack thread of 28 Oct 2026
 
 ---
 
-## 0. TL;DR for the automation
+## What this document is
 
-Poll these **8 database tables** through the Frappe REST API (`/api/resource/<DocType>`). Between them they cover nearly everything:
+Our ERP (ERPNext, hosted at `lyfehardware.v.frappe.cloud`) records problems in several places. Some go to internal log tables, some go to Slack, some go by email.
 
-| # | DocType | What it catches | Filter for "needs a ticket" | Retention ⚠️ | Suggested poll |
+This document lists **every place a problem can show up**, explains what each one means, and says which ones the Asana automation should read.
+
+You don't need to know the LH app to use it. Section 1 explains the terms. Section 2 gives the short answer. The rest is detail.
+
+> All numbers come from a copy of the live database taken on 27 Oct 2026.
+
+---
+
+## 1. Terms you will see
+
+### 1.1 Systems we connect to
+
+| Term | Plain meaning |
+|---|---|
+| **ERPNext / Frappe** | Our ERP system. Frappe is the framework it is built on. |
+| **LH app** | Our own custom code added on top of ERPNext. Almost every custom error comes from here. |
+| **DocType** | A table in the ERP, such as "Quotation" or "Error Log". Each row is called a document. |
+| **Shopify** | Our online store. Customers pay their quotations through Shopify payment links. |
+| **ShipStation** | The shipping platform. Orders from Shopify go here, and the ERP pulls them in every 15 minutes. |
+| **17Track** | A tracking service. The ERP asks it hourly where each shipment is. |
+| **1Click** | Our US warehouse partner (3PL). Orders that ship from the US warehouse are sent to 1Click through their API. |
+
+### 1.2 Our main documents
+
+| Term | Plain meaning |
+|---|---|
+| **Quotation** (number like `LHQ-2026-0247`) | A price quote sent to a customer. When the customer pays, it becomes "Won". |
+| **Lyfe Order** (number like `LYF-SH-2026-1874`) | Our main order record, one per customer order. It follows the order from factory to delivery. |
+
+### 1.3 Jobs, alerts and logs
+
+| Term | Plain meaning |
+|---|---|
+| **Scheduled job** | Code that runs automatically on a timer, like a cron job. For example: "sync ShipStation every 15 minutes". |
+| **Background job** | Code that runs in a queue after a user action, so the screen doesn't freeze. |
+| **Webhook (Slack)** | A URL that posts a message into one Slack channel. Most of our alerts use these. |
+| **Slack bot** | Our Slack app. It posts into a channel by channel ID instead of a webhook URL. |
+| **Retention** | How long the ERP keeps a log before deleting it automatically. |
+
+---
+
+## 2. The short answer
+
+The automation only needs to read **3 tables**, through the ERP's REST API. Together they catch nearly every real problem:
+
+| # | Table (DocType) | What a row means | Rows that should become tickets | Deleted after ⚠️ | Check every |
 |---|---|---|---|---|---|
-| 1 | **Error Log** | All Python exceptions plus every `frappe.log_error()` call (custom code, integrations, jobs) | `creation > last_poll` minus the noise list in §1.3 | **14 days** | 10 min |
-| 2 | **Scheduled Job Log** | Scheduled (cron) jobs that crashed | `status = "Failed"` | **7 days** | 15 min |
-| 3 | **Integration Request** | API calls to and from Shopify, ShipStation, 17Track, 1Click, CJ and others | `status = "Failed"` | **2 days** | 10 min |
-| 4 | **Slack Notification Log** | Slack alerts that failed to send (and the alerts themselves) | `status in ("Failed","Blocked")` | none | 15 min |
-| 5 | **Email Queue** | Outgoing emails that failed | `status = "Error"` (or `"Not Sent"` older than 1 h) | **10 days** | 30 min |
-| 6 | **OneClick Shipment Issue** | Differences between 1Click shipped qty/SKU and the ERP | new records | none | 30 min |
-| 7 | **SLA Escalation Log** | Task SLA breaches that were escalated | new records | none | 60 min |
-| 8 | **Lyfe Order** (fields) | Per-order integration errors | `oneclick_error is set`; `tracking_status_desc` in exception states (§4.4) | n/a | 30 min |
+| 1 | **Error Log** | Something in the ERP failed: a crash, or our code recorded a problem | All new rows, except the noise in §4 | **14 days** | 10 min |
+| 2 | **Scheduled Job Log** | One run of a timed job | `status = "Failed"` | **7 days** | 15 min |
+| 3 | **Integration Request** | One call to or from Shopify, ShipStation, 17Track or 1Click | `status = "Failed"` | **2 days** | 10 min |
 
-**Retention is the biggest risk.** Integration Request rows are deleted after **2 days** and Scheduled Job Log rows after **7 days**. Because of the purge, the automation must poll more often than that and must copy the payload into the Asana task. A link back to the ERP record will not work for long.
+Five more tables are useful as a second phase:
 
-**Deduplication key (suggested):** `doctype + normalized title + reference_name`. The `method` field of Error Log already holds a structured prefix such as `[module][function]: ...`.
+| # | Table | What it catches | Rows that should become tickets | Deleted after | Check every |
+|---|---|---|---|---|---|
+| 4 | **Slack Notification Log** | Slack alerts that could not be sent | `status` is `"Failed"` or `"Blocked"` | never | 15 min |
+| 5 | **Email Queue** | Emails that could not be sent | `status = "Error"` | 10 days | 30 min |
+| 6 | **OneClick Shipment Issue** | The US warehouse shipped something different from what we sent | every new row | never | 30 min |
+| 7 | **SLA Escalation Log** | A task missed its deadline and was escalated to a manager | every new row | never | 60 min |
+| 8 | **Lyfe Order** (two fields) | An order with a US-warehouse error or a tracking problem | `oneclick_error` is not empty, or `tracking_status_desc` shows an exception | n/a | 30 min |
+
+### ⚠️ The most important thing
+
+The ERP **deletes logs automatically**:
+- Integration Request after **2 days**
+- Scheduled Job Log after **7 days**
+- Error Log after **14 days**
+
+Because of this:
+1. The automation must check more often than that.
+2. Each Asana task must **contain a copy of the error** (title, details, time, linked document). A link back to the ERP will stop working once the log is deleted.
+
+### How to read a table (example)
+
+```
+GET https://lyfehardware.v.frappe.cloud/api/resource/Error Log
+    ?fields=["name","method","error","reference_doctype","reference_name","creation"]
+    &filters=[["creation",">","2026-10-28 10:00:00"]]
+    &order_by=creation asc
+Authorization: token <api_key>:<api_secret>
+```
+
+Use a dedicated ERP user with **read-only** access to these tables for the API key.
 
 ---
 
-## 1. Error Logs
+## 3. Error Log (the main source)
 
-### 1.1 Where errors are logged
+### 3.1 What goes into it
 
-| Location | What goes there | How to access | Usable by automation? |
-|---|---|---|---|
-| **Error Log** DocType | Unhandled exceptions in web requests, background jobs and scheduler jobs, plus every explicit `frappe.log_error(title, message)` in our code. `lh` has **~600 `log_error` calls**. | Desk: `/app/error-log` · API: `GET /api/resource/Error Log` | ✅ **Primary source** |
-| **Scheduled Job Log** DocType | One row per scheduler run, with `status` = Complete/Failed/Start and `details` holding the traceback | Desk: `/app/scheduled-job-log` · API | ✅ |
-| **RQ Job** (virtual DocType that reads Redis) | Background (RQ) jobs: queued, started, finished and **failed** | Desk: `/app/rq-job` (filter Status = failed) | ⚠️ Reads live from Redis, so verify that REST works on Frappe Cloud. The failures are also in Error Log. |
-| **Frappe Cloud server logs** | `web.error.log`, `worker.error.log`, `scheduler.log`, `frappe.log`, plus app logs (`lh.log`, `lh_project.log`, `shopify.log`) | Frappe Cloud dashboard → Bench/Site → **Logs** tab | ❌ No API. Use only for manual investigation. |
-| **Email Queue** | Outgoing emails, with `error` on failure | `/app/email-queue` · API | ✅ |
+Every time something fails in the ERP, a row is added. This happens in two ways:
+- **Unexpected crashes**, for example a bug or a database timeout.
+- **Problems our code reports on purpose**, for example "Shopify returned HTTP 401". The LH app does this in about 600 places.
 
-### 1.2 Error Log field reference (needed for parsing)
+You can view it in the ERP at **/app/error-log**.
 
-| Field | Content |
+### 3.2 The fields you need
+
+| Field | What it holds |
 |---|---|
-| `method` | **The title.** For our custom errors this is the `title=` passed to `log_error`, for example `[shopify][create_draft_order] LHQ-2026-0406 — HTTP 401`. |
-| `error` | Full traceback or message body |
-| `reference_doctype` / `reference_name` | The linked document, when the code passed one (not always populated) |
-| `creation` | Timestamp |
-| `seen` | 0/1. Set when someone opens the error in Desk. |
+| `method` | **The title of the error.** Despite the name, this is the field to read first. |
+| `error` | The full details (message or technical trace) |
+| `reference_doctype` + `reference_name` | The document it relates to, for example *Lyfe Order LYF-SH-2026-2101*. Often empty. |
+| `creation` | When it happened |
 
-**Title conventions used in `lh`. Use these prefixes to route tickets:**
+### 3.3 Sorting errors by area (for the Asana section or assignee)
 
-| Prefix in `method` | Area / suggested Asana section |
+Our custom errors start with a tag in square brackets, which tells you the area:
+
+| The title starts with or contains | Area |
 |---|---|
-| `[shopify]...`, `Shopify ...`, `HTTPSConnectionPool(host='edaf9f-cb.myshopify.com'...` | Shopify |
-| `[shipstation_settings]...`, `[shipstation_orders]...`, `ShipStation ...` | ShipStation |
-| `Lyfe - 17Track Error — <tracking nos>` | 17Track |
-| `[oneclick...]`, `[oneclick_inbound_email]...`, 1Click | 1Click (US warehouse 3PL) |
-| `[lyfe_order]...`, `[material_issue_for_order]...` | Orders / Factory |
-| `[reports][<name>] failed` | HR weekly reports |
-| `[clarity_usage]...` | Microsoft Clarity |
-| `[excel_export]...`, `[pdf_bom_stripper]...`, `upload_child_sku_images...` | Misc. / internal tools |
-| `(1205, 'Lock wait timeout...')`, `(1406, 'Data too long...')`, `(1048, ...)` | DB errors (Engineering) |
-| `frappe.core.doctype.scheduled_job_type.scheduled_job_type.run_scheduled_job` | Scheduler crash (also in Scheduled Job Log) |
+| `[shopify]`, `Shopify ...`, or mentions `myshopify.com` | **Shopify / payments** |
+| `[shipstation_settings]`, `[shipstation_orders]`, `ShipStation ...` | **ShipStation / order sync** |
+| `Lyfe - 17Track Error` | **Shipment tracking** |
+| `[oneclick...]`, `1Click` | **US warehouse (1Click)** |
+| `[lyfe_order]`, `[material_issue_for_order]` | **Orders / factory** |
+| `[reports]` | **HR reports** |
+| A number in brackets, like `(1205, ...)` or `(1406, ...)` | **Database error → Engineering** |
+| Anything else | **Engineering** (to be sorted by hand) |
 
-### 1.3 Noise to filter out (these must NOT create tickets)
+---
 
-| `method` value | Count (14 days) | Why to ignore |
+## 4. Noise: errors that should NOT become tickets
+
+These show up often but are harmless or temporary. Filter them out:
+
+| Title contains | Why to ignore it |
+|---|---|
+| `Session Stopped` | A user closed the page or the request was cut off. About 86 every 2 weeks. |
+| `make_notification_logs` | A harmless timing glitch inside the ERP's own "you were mentioned" notifications. Users still get notified. |
+| `[shipstation_orders][skip]` | Not an error. It records on purpose why an order was skipped during sync. |
+| `Read timed out`, `504 Gateway Time-out`, `network error` | Shopify, ShipStation or Clarity was slow for a moment. Ticket it only if the same one repeats many times in a day. |
+| `Scheduled jobs can't run in maintenance mode` | Happens during every deployment |
+| `Failed to aquire ... bench_migrate.lock` | Happens during deployment |
+
+**Grouping tip:** remove order, quotation and tracking numbers from the title, then make **one Asana task per title per day**. Add repeats as a comment or a counter. A job that fails every hour should be one task, not 24.
+
+---
+
+## 5. Timed and background jobs
+
+### 5.1 Where failures go
+
+| Kind of job | Where a failure is recorded |
+|---|---|
+| **Scheduled job** (runs on a timer; the LH app has about 60) | **Scheduled Job Log** with `status = Failed`, plus the Error Log |
+| **Background job** (queued after a user action) | **Error Log**. The ERP's "RQ Job" screen (/app/rq-job) also shows failed jobs, but only for a short time and not reliably through the API. |
+| A job that **finished but hit a problem inside** | **Error Log only**. The job still shows as "Complete". Most of our integration jobs work like this, which is why the Error Log matters most. |
+
+### 5.2 Current state
+
+In the last 14 days, scheduled jobs ran about 27,000 times. Only 2 runs failed:
+
+| Job | Failures |
+|---|---|
+| Daily S3 backup | 1 |
+| Email inbox fetch | 1 |
+
+(Another job failed 146 times in this window. It was fixed on 28 Oct and is not an open issue.)
+
+### 5.3 Does anyone get alerted today?
+
+**Mostly no.** A failed job alerts nobody unless that feature has its own alert built in. Only these do:
+
+| Job | Has its own alert? |
+|---|---|
+| ShipStation order sync | ✅ Email + Slack |
+| Weekly HR reports | ✅ Slack |
+| US warehouse (1Click) steps | ✅ Hourly Slack check for anything stuck |
+| Shopify refund confirmation | ✅ Hourly Slack re-check |
+| **Everything else**: deadline (SLA) checks, tracking updates, stock forecasting, attendance, founder briefing | ❌ **No alert.** This is the main gap the ticketing system will close. |
+
+---
+
+## 6. Integrations
+
+Every call to an outside system is recorded in **Integration Request**.
+- The `integration_request_service` field tells you which system.
+- `status = "Failed"` means the call failed.
+- **Kept for 2 days only.** Real failures are also copied to the Error Log, which is kept for 14 days.
+
+| System | Names in `integration_request_service` | Other places it reports problems |
 |---|---|---|
-| `Session Stopped` | 86 | A user navigated away or the request timed out |
-| `frappe.desk.doctype.notification_log.notification_log.make_notification_logs` | 49 | Frappe's in-app notification fan-out. Low value; review it in a weekly digest at most. |
-| `[shipstation_orders][skip]: ...` | varies | **Intentionally informational.** Records why the ShipStation sync skipped an order. Keep for audit; no ticket. |
-| `Unable to send new password notification` | 10 | User-management email noise |
+| **Shopify** | `Shopify`, `Shopify Tax`, `Shopify Order Verification Check`, `Shopify Payment Link - Attempt 1/5` … `5/5`, `Shopify Incomming Refund webhook` (spelled this way) | Error Log titles starting `[shopify]` or `Shopify ...`. Slack alerts are listed in §8. |
+| **ShipStation** | `ShipStation`, `ShipStation Store Refresh` | Error Log `[shipstation_...]`. Email + Slack for sync problems (§8). |
+| **17Track** | `17Track`, `17Track-Scheduler`, `17Track-Webhook` | Error Log `Lyfe - 17Track Error — <tracking numbers>`. "No tracking info yet" is normal and is not logged as an error. |
+| **1Click (US warehouse)** | `1Click-CreateOrder`, `1Click-CreateOrder-Retry`, `1Click-CreateLoad`, `1Click-AddItemMaster`, `1Click-CheckInventory`, `1Click-GetTracking`, `1Click-GetInboundLoads` | The `oneclick_error` field on the Lyfe Order. **OneClick Shipment Issue** table for shipped-quantity differences. |
+| **CJ Logistics** (shipping labels) | `CJ Logistics` | Error Log |
+| Box and rate calculators (Paccurate, 3DBin, ShipEngine) | their own names | Error Log |
 
-### 1.4 Error Log volume snapshot (last 30 days, top titles)
-
-Total rows currently held: **236**, the 14-day window.
-
-| Title (`method`) | Count |
-|---|---|
-| Session Stopped | 86 |
-| make_notification_logs | 49 |
-| [excel_export][_add_picture]: image not loaded | 16 |
-| scheduled_job_type.run_scheduled_job | 12 |
-| Bulk action failed | 10 |
-| Unable to send new password notification | 10 |
-| (1406, "Data too long for column 'content_hash'") | 7 |
-| Shopify HTTPS read timeout | 4 |
-| [clarity_usage] network error | 4 |
-| [shipstation_orders][_log_order_skip]: failed to log a skip reason | 3 |
-| [material_issue_for_order][create_material_receipt_for_row] | 3 |
-| Shopify Tax API error | 2 |
-| Lock wait timeout exceeded | 2 |
-| Other (one-off Shopify HTTP 401/409/422, ShipStation Mark-as-Shipped API error, refund recheck, 1Click packing list, …) | ~20 |
+**Ignore:** the **Ecommerce Integration Log** table. It belongs to an old Shopify connector we no longer use; its last entry is from May 2026.
 
 ---
 
-## 2. Workflow notifications
+## 7. Workflow notifications
 
-### 2.1 Active workflows
+A "workflow" is the series of steps a document moves through, for example a Quotation going from *Draft* to *Pending Approval* to *Won*.
 
-| Workflow | DocType | Built-in "Send Email Alert" |
+We have 4 active workflows: **Lyfe Order**, **Quotation**, **Lyfe Order Return** and **Lyfe Order Reshipment**.
+
+**None of them uses the ERP's built-in workflow emails.** All workflow alerts come from our own code:
+
+| When this happens | Who is told | How |
 |---|---|---|
-| Lyfe Order | Lyfe Order | **Off** |
-| Quotation-3 | Quotation | **Off** |
-| Lyfe Order Return | Lyfe Order Return | **Off** |
-| Lyfe Order Reshipment | Lyfe Order Reshipment | **Off** |
+| A Quotation is sent for approval | Approvers | Slack card with Approve / Send Back buttons |
+| An order is blocked because a payment stage is unpaid | Customer support, then the founders if it stays unpaid | Email + Slack, daily reminder |
+| A payment stage becomes due | Customer support | Email + Slack |
+| An order is shipped or completed without its stage payment | Customer support | Email + Slack |
+| An order is marked shipped in ShipStation | Shipping team | Slack (one channel for success, one for failure) |
+| An order arrives at the US warehouse | US-warehouse team | Slack |
 
-**No workflow uses Frappe's built-in workflow email or any Notification doc.** Every workflow-driven alert is **custom Python code** in `lh`:
+**ERP "Notification" records:** 9 are switched on. All are standard HR, training and accounting emails (training scheduled, exit interview, new fiscal year and similar). None relates to orders or integrations.
 
-| Workflow event | Alert | Channel | Destination |
-|---|---|---|---|
-| Quotation → *Pending Approval* | Approval card with Approve/Reject buttons | Slack bot | LH Slack Settings → `cs_tech_channel_id` |
-| Quotation Slack button action rejected by ERP | Error reply in the card thread | Slack bot | same thread |
-| Quotation workflow blocked by unpaid stage (`_enforce_stage_payment`) | Payment-block reminder, escalating to founders after N days | Email + Slack | support@lyfehardware.com (hardcoded) + Team Settings founders; Access Settings → `urgent_slack_channel` |
-| Payment stage Upcoming → Due | Stage due notice | Email + Slack | same as above |
-| Lyfe Order → Shipped / Completed | Stage payment notification | Email + Slack | same as above |
-| Lyfe Order marked shipped in ShipStation | Success / failure post | Slack | ShipStation Settings → `success_slack_webhook_url` / `slack_webhook_url` |
-| Lyfe Order reaches *US Warehouse Delivered* | Notice | Slack | LH Slack Settings (1Click channel) |
-
-**Audit trail:** each Lyfe Order transition is recorded in the **Lyfe Order Workflow Log** child table (1,234 rows). This is history, not an alert source.
-
-### 2.2 Notification DocType (Frappe "Notification" records)
-
-Nine are enabled. **All are email and all are standard HR/LMS/Accounts.** None relates to orders or integrations.
-
-| Notification | DocType | Event | Recipients |
-|---|---|---|---|
-| Customer Contact Access Request – Notify Approver | Customer Contact Access Request | New | System Manager |
-| Material Request Receipt Notification | Material Request | status → Received / Partially Received | (owner) |
-| Notification for new fiscal year | Fiscal Year | New (auto-created) | Accounts User / Manager |
-| New job alert | Job Opportunity | New | System Manager |
-| Exit Interview Scheduled | Exit Interview | Days Before | employee email |
-| Retention Bonus | Retention Bonus | Days Before | — |
-| Training Scheduled / Training Feedback | Training Event / Result | Submit | employees |
-| Certificate Request Reminder | LMS Certificate Request | Days Before | evaluator, member |
-
-A Quotation "Value Change" notification exists but is **disabled**.
+**Server Scripts:** 2 exist. Neither sends alerts. One fills in a default shipping address; the other unlinks orders from a cancelled invoice.
 
 ---
 
-## 3. Background job failures
+## 8. All custom alerts (Slack and email)
 
-### 3.1 Where failures are recorded
+**How to read the tables:**
+- **Problem?** ✅ means the alert reports something broken (a ticket candidate). ➖ means it is a normal business update.
+- **In Slack log?** means whether the alert appears in the Slack Notification Log (§9).
 
-| Job type | Recorded in | Notes |
-|---|---|---|
-| **Scheduled jobs** (cron/hourly/daily from `lh/hooks.py`; ~60 in `lh`) | **Scheduled Job Log** (`status=Failed`, traceback in `details`) **and** **Error Log** | Scheduled Job Log is kept for 7 days only |
-| **Enqueued jobs** (`frappe.enqueue`, e.g. post-sync verification, payment reminders, bulk actions) | **RQ Job** (failed registry in Redis) **and** **Error Log** | RQ failed jobs expire from Redis |
-| Errors caught inside a job (the job "completes" but logs a problem) | **Error Log** only | Most integration jobs handle errors this way, so the job still shows *Complete*. **Error Log is the only reliable signal.** |
+### Orders and ShipStation
 
-### 3.2 Current failure snapshot (Scheduled Job Log, last 14 days)
-
-Totals: **27,030 complete / 2 failed** (excluding `tar_escalation_scan`, which failed 146 times before it was fixed on 2026-10-28).
-
-| Job | Failed runs |
-|---|---|
-| `s3_backup_settings.take_backups_daily` | 1 |
-| `email_account.pull` | 1 |
-
-### 3.3 Existing alerting on job failures
-
-**There is no generic alert.** A failed scheduled or background job alerts nobody unless that specific feature has its own handler:
-
-| Job | Has its own failure alert? |
-|---|---|
-| ShipStation sync (`run_sync_from_settings`, every 15 min) | ✅ Email + Slack (`_notify_sync_failure`) |
-| HR weekly reports (`lh_hrms.reports.*`) | ✅ Slack (`reports_failure_alert_webhook_url`) |
-| 1Click automated steps | ✅ Hourly "stuck" sweep to Slack (`oneclick_stuck_alerts`) |
-| Shopify refund capture | ✅ Hourly recheck to Slack |
-| **Everything else**, including SLA scans, tracking crons, forecasting, attendance and the founder briefing | ❌ **None.** These are the main gap the ticketing system should close. |
-
----
-
-## 4. Integration error capture
-
-Integration calls are logged in **Integration Request**. ⚠️ **Retention is 2 days.** Use `integration_request_service` to identify the integration and `status = Failed` to find failures. Genuine failures are **also** written to Error Log.
-
-### 4.1 Shopify (custom `lh` integration, not the stock ecommerce_integrations connector)
-
-| Where | Detail |
-|---|---|
-| Integration Request services | `Shopify`, `Shopify Tax`, `Shopify Order Verification Check`, `Shopify Payment Link - Attempt n/5`, `Shopify Incomming Refund webhook` (sic) |
-| Error Log | Titles `[shopify][<function>] <Quotation> — HTTP <code>`, `Shopify Tax API error`, `Shopify Webhook — ...`, HTTPS timeouts to `edaf9f-cb.myshopify.com` |
-| Slack alerts | Payment link failed, payment on a cancelled quotation (Access Settings `urgent_slack_channel`); refund capture failed / still stuck (ShipStation Settings `success_slack_webhook_url`); draft tax mismatch (1Click webhook + email) |
-| In-app | Draft order update failed → Notification Log alert to the Quotation owner |
-| Ecommerce Integration Log (stock connector) | 416 "Error" rows, the latest from **May 2026**. The stock connector is no longer the active path. **Ignore.** |
-| Failed now (snapshot) | 1 Shopify, 1 refund webhook, 5 payment-link attempts (one quotation), 2 Shopify Tax |
-
-### 4.2 ShipStation
-
-| Where | Detail |
-|---|---|
-| Integration Request services | `ShipStation`, `ShipStation Store Refresh` |
-| Error Log | `[shipstation_settings][...]`, `[shipstation_orders][...]`, `ShipStation Mark as Shipped - API Error`; **skip records** `[shipstation_orders][skip]: <order> -- <reason>` are informational (see §1.3) |
-| Email + Slack alerts | Order import failures, sync crash, API quota exceeded (403), monthly shipment counter threshold, orders in ShipStation missing from ERP (post-sync and hourly), Shopify orders with no Lyfe Order, order cancelled after posting to 1Click (also creates a Task) |
-| Recipients | Email: Access Settings → **ShipStation Failure Alert Users**. Slack: ShipStation Settings `slack_webhook_url` (failures) **and** `success_slack_webhook_url`. ⚠️ Despite its name, the "success" channel also receives failure alerts. |
-| In-app | When the sync changes items on a Lyfe Order: Notification Log alert to Factory users plus email |
-
-### 4.3 17Track (shipment tracking)
-
-| Where | Detail |
-|---|---|
-| Integration Request services | `17Track` (manual), `17Track-Scheduler` (cron), `17Track-Webhook` (inbound push) |
-| Error Log | `Lyfe - 17Track Error — <tracking numbers>`. The body includes the Lyfe Order(s), URL and HTTP status. "No tracking info yet" responses are treated as transient and **not** logged as errors. |
-| Business alerts (Slack + Email) | Order newly flagged as **Possible Lost, Delivery Exception, Stale Tracking or Carrier Never Scanned** (hourly tracking crons and a daily untracked-order scan). Seventeen Track Settings `tracking_alert_slack_webhook_url` and `tracking_alert_recipients`. |
-
-### 4.4 Other integrations (for completeness)
-
-| Integration | Where errors go |
-|---|---|
-| **1Click** (US warehouse 3PL) | Integration Request `1Click-CreateOrder`, `-CreateOrder-Retry`, `-CreateLoad`, `-AddItemMaster`, `-CheckInventory`, `-GetTracking`, `-GetInboundLoads`. Per-order error in **Lyfe Order.`oneclick_error`**. Qty/SKU differences create **OneClick Shipment Issue** records. All Slack alerts go to LH Slack Settings (consolidated alerts channel or `oneclick_slack_webhook_url`). |
-| **CJ Logistics** (labels) | Integration Request `CJ Logistics` (has a "retry from log" action) |
-| Paccurate / 3DBin / ShipEngine (box and rate calcs) | Integration Request plus Error Log |
-| Gorgias | **Gorgias Integration Log** DocType (0 rows, inactive) |
-| Claude / MCP | **MCP Audit Log** (6,928 rows; audit trail, not errors) |
-
-Lyfe Order fields that show tracking state: `tracking_status_desc`, `tracking_status_us`, `reship_tracking_status`.
-
----
-
-## 5. Custom alerts (scripts, server scripts, Notification docs)
-
-### 5.1 Server Scripts / Client Scripts
-
-| Name | Type | What it does | Alerts? |
-|---|---|---|---|
-| quotation | DocType Event · Quotation · Before Validate | Defaults the shipping address to the customer address | No |
-| Sales invoice | DocType Event · Sales Invoice · Before Cancel | Unlinks Lyfe Order / Reshipment from a cancelled invoice | No |
-| 4 Client Scripts | UI | UI behaviour only | No |
-
-### 5.2 Custom alerts in `lh` Python code (complete list)
-
-Legend: **E** = error/failure alert (a ticket candidate), **I** = informational/business notification. **SNL** = recorded in Slack Notification Log (§6).
-
-#### Orders / ShipStation
-| Alert | Trigger | Channel → Destination | Kind | SNL |
+| Alert | When it fires | Sent to | Problem? | In Slack log? |
 |---|---|---|---|---|
-| Mark-as-shipped failure | ShipStation mark-shipped API/validation fails | Slack → ShipStation Settings `slack_webhook_url` | E | ✅ |
-| Mark-as-shipped success | succeeds | Slack → `success_slack_webhook_url` | I | ✅ |
-| Order import failures | ShipStation sync has errors | Email (Failure Users) + Slack | E | ✅ |
-| Sync crash | 15-min ShipStation sync raises | Email + Slack ×2 | E | ✅ |
-| API quota exceeded | ShipStation returns 403 | Email + Slack ×2 | E | ✅ |
-| Shipment counter threshold | monthly count ≥ threshold (sent once) | Email + Slack ×2 | E (warn) | ✅ |
-| ERP missing ShipStation orders | after sync + hourly check | Email + Slack | E | ✅ |
-| Shopify orders with no Lyfe Order | after sync | Email + Slack | E | ✅ |
-| Order cancelled after posting to 1Click | ShipStation sync (also creates a Task) | Slack → Access Settings `urgent_slack_channel` | E | ✅ |
-| Order items changed by sync | ShipStation sync | In-app (Factory role) + Email (Factory & Support, hardcoded) | I | – |
-| Urgent dispatch reminder | daily 09:00 | Slack → Access Settings `dispatch_reminder_slack_webhook` | I | ✅ |
-| Missing Item Group digest | daily 10:30 / 15:30 | Email → Access Settings `ig_users` | I | – |
-| Item Group fallback on Shopify item sync | on sync | Slack → 1Click webhook | E | ❌ |
-| New custom orders digest | Mon–Fri 09:00 / 15:00 | Email → support@ | I | – |
-| Customer contact displayed by Factory | Lyfe Order save | Email → Access Settings `contact_display_notify_users` | I | – |
-| Factory comment routing | Comment on Quotation/Lyfe Order involving Engineer/CS | Slack bot → CS channels | I | ❌ |
+| Couldn't mark order shipped in ShipStation | Push to ShipStation fails | Slack (ShipStation failures channel) | ✅ | ✅ |
+| Order marked shipped in ShipStation | Push succeeds | Slack (ShipStation success channel) | ➖ | ✅ |
+| Orders failed to import | After a sync with errors | Email + Slack | ✅ | ✅ |
+| ShipStation sync crashed | Sync job crashes | Email + Slack | ✅ | ✅ |
+| ShipStation API limit reached | ShipStation refuses requests | Email + Slack | ✅ | ✅ |
+| Monthly shipment limit nearly reached | Counter passes threshold | Email + Slack | ✅ (warning) | ✅ |
+| Orders in ShipStation missing from the ERP | After sync and hourly | Email + Slack | ✅ | ✅ |
+| Shopify orders with no ERP order | After sync | Email + Slack | ✅ | ✅ |
+| Order cancelled after it was sent to the US warehouse | Sync sees the cancellation | Slack (urgent orders channel); also creates a task | ✅ | ✅ |
+| Order items changed by sync | Sync changes items | ERP notification + email to factory and support | ➖ | – |
+| Urgent order close to its dispatch deadline | Daily 9 AM | Slack | ➖ | ✅ |
+| Items missing a product group | Twice daily | Email | ➖ | – |
+| Product group not found during Shopify item sync | On sync | Slack (US-warehouse channel) | ✅ | ❌ |
+| New custom orders summary | Weekdays 9 AM and 3 PM | Email to support | ➖ | – |
+| Factory viewed customer contact details | On order save | Email | ➖ | – |
+| Comment that tags customer support or an engineer | On comment | Slack bot (CS channels) | ➖ | ❌ |
 
-#### 1Click (all go to LH Slack Settings; none are logged in SNL)
-| Alert | Trigger | Kind |
+### US warehouse (1Click)
+
+All of these go to the US-warehouse Slack channel. **None** appear in the Slack Notification Log.
+
+| Alert | When it fires | Problem? |
 |---|---|---|
-| 1Click fulfilment error | create/resume order raises | E |
-| Final Create Order / Load failure after retries | posting | E |
-| US stock too low to post | before post | E |
-| SKU not found → auto-registration | create_order rejected | E |
-| Shipped qty/SKU differs (creates OneClick Shipment Issue) | hourly tracking sync | E |
-| Stuck automated steps (not routed, shipped not posted, etc.) | hourly sweep | E |
-| US-warehouse load not confirmed in 1Click | daily | E |
-| Reshipment create/load failures, no customer tracking | hourly/daily | E |
-| Duplicate load attempted | on post | I |
-| Inbound / dispatch email to the 3PL (Slack alert if the email fails) | batch / delivery | I / E |
+| Order failed to send to 1Click | On error | ✅ |
+| Order or shipment still failing after all retries | After retries | ✅ |
+| Not enough US stock to send the order | Before sending | ✅ |
+| Product code unknown to 1Click (auto-registered, needs a manual retry) | On send | ✅ |
+| 1Click shipped a different quantity or product | Hourly check | ✅ |
+| An automatic step didn't run (stuck order) | Hourly check | ✅ |
+| Delivery to the US warehouse not confirmed by 1Click | Daily check | ✅ |
+| Reshipment failed to send, or has no tracking | Hourly / daily | ✅ |
+| Shipment already created (duplicate attempt) | On send | ➖ |
+| Packing email to the warehouse failed | On send | ✅ |
 
-#### Shopify
-| Alert | Trigger | Channel → Destination | Kind | SNL |
+### Shopify and payments
+
+| Alert | When it fires | Sent to | Problem? | In Slack log? |
 |---|---|---|---|---|
-| Payment link failed | draft order create raises | Slack → `urgent_slack_channel` | E | ✅ |
-| Payment received on cancelled quotation | payment/webhook | Slack → `urgent_slack_channel` | E | ✅ |
-| Draft order update failed | update raises | In-app → Quotation owner | E | – |
-| Tax mismatch on draft | after create/update | Slack (1Click webhook) + Email (Failure Users) | E | ❌ |
-| Refund capture failed / still stuck | webhook retries exhausted; hourly recheck | Slack → ShipStation `success_slack_webhook_url` | E | ✅ |
-| Bank transfer chosen | customer action | Email → support@ and the customer | I | – |
+| Payment link could not be created | "Generate Payment Link" fails | Slack (urgent orders channel) | ✅ | ✅ |
+| **Customer paid against a cancelled quotation** | Shopify reports a payment for a cancelled quotation | Slack bot → **CS Quotation channel** (changed 28 Oct) | ✅ | ❌ |
+| Payment draft could not be updated | Update fails | ERP notification to the quotation owner | ✅ | – |
+| Quotation tax differs from Shopify tax | After the payment draft is created | Slack (US-warehouse channel) + email | ✅ | ❌ |
+| Shopify refund could not be confirmed | Retries run out; re-checked hourly | Slack (ShipStation success channel) | ✅ | ✅ |
+| Customer chose bank transfer | Customer action | Email to support and the customer | ➖ | – |
 
-#### 17Track
-| Alert | Trigger | Channel | Kind | SNL |
+### Shipment tracking (17Track)
+
+| Alert | When it fires | Sent to | Problem? | In Slack log? |
 |---|---|---|---|---|
-| Possible Lost / Delivery Exception / Stale / Never Scanned | hourly tracking crons + daily scan | Slack + Email (Seventeen Track Settings) | E | ✅ |
+| Package possibly lost, delivery exception, no updates, or never scanned | Hourly tracking check + daily scan | Slack + email | ✅ | ✅ |
 
-#### Quotation
-| Alert | Trigger | Channel | Kind |
-|---|---|---|---|
-| Approval card | → Pending Approval | Slack bot | I |
-| Drawing file replaced | Quotation update | Email → support@chandakbrothers.net (hardcoded) | I |
-| Timer stopped on drawing / quotation cancel | Quotation update/cancel | Email → timesheet owner | I |
+### Quotations
 
-#### COGS
-| Alert | Trigger | Channel | Kind |
+| Alert | When it fires | Sent to | Problem? |
 |---|---|---|---|
-| COGS deviation | Lyfe Order / Quotation update | Email → Access Settings `cogs_alert_emails` | E (warn) |
-| COGS digest | daily 07:00 | Email (same) | I |
+| Quotation approval card | Quotation sent for approval | Slack bot (CS Tech channel) | ➖ |
+| Approval clicked in Slack was rejected by the ERP | On button click | Reply in the Slack thread | ✅ |
+| Drawing file replaced | On quotation update | Email to the factory | ➖ |
+| Work timer stopped | Drawing change or quotation cancel | Email to the person timing it | ➖ |
 
-#### Forecast / Founder
-| Alert | Trigger | Channel | Kind |
-|---|---|---|---|
-| Stock risk worsened to High/Critical | nightly snapshot | Slack → Founder Briefing Settings | I |
-| Daily founder briefing | hourly, self-gated | Slack (same) | I |
+### Costs, stock and founder reports
 
-#### HR (LH HRMS Settings)
-| Alert | Trigger | Channel | Kind |
+| Alert | When it fires | Sent to | Problem? |
 |---|---|---|---|
-| Missed clock-in / clock-out | every 15 min | Email → employee | I |
-| Founder attendance digest | daily (IST hour gate) | Slack | I |
-| Hours reconciliation flags / resolutions | 02:30 daily; Daily Work Log update | Slack + In-app → manager | I |
-| Birthdays | daily | Slack | I |
-| Daily Work Log posts | DWL submit / clock-out | Slack bot or webhook | I |
-| Weekly reports (timesheet, SLA health, hiring, reconciliation, learning, points) | weekly, self-gated | Email / Slack | I |
-| **Weekly report failed** | any report raises | Slack → `reports_failure_alert_webhook_url` | **E** |
+| Product cost far from its benchmark | On order or quotation update | Email | ✅ (warning) |
+| Daily cost summary | Daily 7 AM | Email | ➖ |
+| Item stock risk became High or Critical | Nightly | Slack (founder channel) | ➖ |
+| Daily founder briefing | Once a day | Slack (founder channel) | ➖ |
 
-#### SLA / Task automation
-| Alert | Trigger | Channel | Kind |
+### HR
+
+| Alert | When it fires | Sent to | Problem? |
 |---|---|---|---|
-| New SLA violation task | 15-min SLA scan, when SLA Rule `notify_on_slack` is on | Slack bot → consolidated alerts channel | E |
-| SLA escalation to manager | hourly escalation scan | In-app toast + Email; record in **SLA Escalation Log** | E |
-| Task auto-created by rule | doc events | In-app toast | I |
+| Missed clock-in or clock-out | Every 15 min | Email to the employee | ➖ |
+| Daily attendance summary | Daily | Slack (founder) | ➖ |
+| Logged hours don't match tracked hours | Nightly | Slack + ERP notification to the manager | ➖ |
+| Birthdays | Daily | Slack | ➖ |
+| Daily work log posts | On clock-in and clock-out | Slack | ➖ |
+| Weekly HR reports | Weekly | Email or Slack | ➖ |
+| **A weekly HR report failed to send** | When it fails | Slack (report-failure channel) | ✅ |
+
+### Task deadlines (SLA)
+
+| Alert | When it fires | Sent to | Problem? |
+|---|---|---|---|
+| Task created because a deadline was missed | Every 15 min | Slack bot (alerts channel) | ✅ |
+| Overdue task escalated to a manager | Hourly | ERP pop-up + email; also recorded in the **SLA Escalation Log** | ✅ |
+| Task created automatically by a rule | On document events | ERP pop-up | ➖ |
 
 ---
 
-## 6. Slack Notification Log: how it works and its gaps
+## 9. Slack Notification Log
 
-- Every Slack **webhook** post made through `lh_hrms/notifications/slack.py: send_slack_message` writes one row.
-- `source` holds the calling function's path, for example `lh.lyfe_hardware.tasks.refund_capture_recheck._notify_slack_refund_still_stuck`.
-- `status` is one of three values:
-  - `Success`
-  - `Failed`, with the error text in `error`
-  - `Blocked`, meaning the URL is invalid, or developer mode is on and Slack is disabled
-- **Gaps.** The following are **not** logged:
-  - Bot posts (`chat.postMessage`): Quotation approval, SLA, factory routing
-  - Every 1Click alert
-  - The Shopify tax-mismatch and Item Group alerts
-  - Any alert skipped because its webhook URL is empty. These fail silently with no row.
-- **Conclusion:** use SNL only to detect **failed Slack deliveries**. It is not a complete list of alerts sent.
-- Snapshot (all `Success`):
-  - mark-as-shipped success: 234
-  - refund still stuck: 188
-  - tracking alerts: 93
-  - refund capture failed: 23
-  - payment reminders: 3
-  - cancelled-after-1Click: 1
-  - cancelled quotation payment: 1
+This table records Slack messages sent through **webhooks**:
+- `status = "Success"`: sent.
+- `status = "Failed"`: Slack rejected it. The reason is in `error`.
+- `status = "Blocked"`: not sent because the URL is wrong, or because this is a test site.
+
+**It does not record everything.** These are missing:
+- Messages sent by the **Slack bot**: quotation approval cards, deadline (SLA) alerts, comment routing, and the cancelled-quotation payment alert.
+- All **US warehouse (1Click)** alerts.
+- The Shopify tax-mismatch and product-group alerts.
+- Any alert that was skipped because its Slack channel is not set up. These fail silently with no row.
+
+**Use it only to catch Slack messages that failed to send.** It is not a full list of alerts.
 
 ---
 
-## 7. Recommendations for the Asana automation
+## 10. Recommendations for the Asana automation
 
-1. **Primary feed:**
-   - Error Log, minus the noise list
-   - Scheduled Job Log (Failed)
-   - Integration Request (Failed)
-
-   These three cover real errors. Poll every 10–15 minutes **because of the 2-day and 7-day purges**.
-2. **Group, don't spam.** Normalise the title by removing order, quotation and tracking numbers, then create **one Asana task per normalised title per day**. Add repeats as comments or a counter. Example: a job that fails every hour should be one task, not 24 a day.
-3. **Route by title prefix** (§1.2): Shopify / ShipStation / 17Track / 1Click / Orders / HR / Engineering.
-4. **Copy the payload** (title, traceback, reference doc, timestamp) into the task body. The ERP record will be purged.
-5. **Use the Slack alerts as context only.** They are already human-facing. Ticket them only if a channel is unmonitored, or as a later phase.
-6. **API access:** create a dedicated ERP API user with read-only roles on the DocTypes above, then use token auth with `GET /api/resource/<DocType>?filters=...&fields=...`.
+1. **Start with the 3 main tables** (§2): Error Log, Scheduled Job Log (`Failed`) and Integration Request (`Failed`). Check every 10–15 minutes, because the logs are deleted quickly.
+2. **Filter the noise** listed in §4.
+3. **Group repeats.** One Asana task per error title per day; add further repeats as comments.
+4. **Assign by area** using the title tags in §3.3.
+5. **Copy the error details into the task.** Don't rely only on a link to the ERP, since the log will be deleted.
+6. **Leave Slack alerts out of phase 1.** People already read them in Slack. Add them later only if a channel is not being watched.
+7. **Use a read-only ERP API user** for the automation.
