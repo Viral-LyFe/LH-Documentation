@@ -367,9 +367,3 @@ Legend: **E** = error/failure alert (a ticket candidate), **I** = informational/
 5. **Use the Slack alerts as context only.** They are already human-facing. Ticket them only if a channel is unmonitored, or as a later phase.
 6. **Fix first:** `tar_escalation_scan` is failing about every hour (146 failures in 14 days).
 7. **API access:** create a dedicated ERP API user with read-only roles on the DocTypes above, then use token auth with `GET /api/resource/<DocType>?filters=...&fields=...`.
-
-### Open questions for Arth / Srishti
-- Should the automation tick `seen = 1` on Error Log rows it has ticketed? That requires write permission.
-- Asana project, sections and assignee mapping per area (Shopify, ShipStation, 1Click, HR, Engineering)?
-- Severity rules, for example: payment and shipping failures = High, report or digest failures = Low?
-- Should retention be raised (Integration Request 2 → 14 days, Scheduled Job Log 7 → 14 days) as a safety margin? It is changed in Log Settings.
