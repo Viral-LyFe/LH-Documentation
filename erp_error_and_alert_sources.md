@@ -157,11 +157,10 @@ A Quotation "Value Change" notification exists but is **disabled**.
 
 ### 3.2 Current failure snapshot (Scheduled Job Log, last 14 days)
 
-Totals: **27,030 complete / 148 failed.**
+Totals: **27,030 complete / 2 failed** (excluding `tar_escalation_scan`, which failed 146 times before it was fixed on 2026-10-28).
 
 | Job | Failed runs |
 |---|---|
-| `lh_project.sla.scheduler.tar_escalation_scan.run` (hourly) | **146** ← failing almost every run; needs a fix independent of the ticketing work |
 | `s3_backup_settings.take_backups_daily` | 1 |
 | `email_account.pull` | 1 |
 
@@ -175,7 +174,7 @@ Totals: **27,030 complete / 148 failed.**
 | HR weekly reports (`lh_hrms.reports.*`) | ✅ Slack (`reports_failure_alert_webhook_url`) |
 | 1Click automated steps | ✅ Hourly "stuck" sweep to Slack (`oneclick_stuck_alerts`) |
 | Shopify refund capture | ✅ Hourly recheck to Slack |
-| **Everything else**, including `tar_escalation_scan`, SLA scans, tracking crons, forecasting, attendance and the founder briefing | ❌ **None.** These are the main gap the ticketing system should close. |
+| **Everything else**, including SLA scans, tracking crons, forecasting, attendance and the founder briefing | ❌ **None.** These are the main gap the ticketing system should close. |
 
 ---
 
@@ -361,9 +360,8 @@ Legend: **E** = error/failure alert (a ticket candidate), **I** = informational/
    - Integration Request (Failed)
 
    These three cover real errors. Poll every 10–15 minutes **because of the 2-day and 7-day purges**.
-2. **Group, don't spam.** Normalise the title by removing order, quotation and tracking numbers, then create **one Asana task per normalised title per day**. Add repeats as comments or a counter. Example: 146 `tar_escalation_scan` failures should be one task.
+2. **Group, don't spam.** Normalise the title by removing order, quotation and tracking numbers, then create **one Asana task per normalised title per day**. Add repeats as comments or a counter. Example: a job that fails every hour should be one task, not 24 a day.
 3. **Route by title prefix** (§1.2): Shopify / ShipStation / 17Track / 1Click / Orders / HR / Engineering.
 4. **Copy the payload** (title, traceback, reference doc, timestamp) into the task body. The ERP record will be purged.
 5. **Use the Slack alerts as context only.** They are already human-facing. Ticket them only if a channel is unmonitored, or as a later phase.
-6. **Fix first:** `tar_escalation_scan` is failing about every hour (146 failures in 14 days).
-7. **API access:** create a dedicated ERP API user with read-only roles on the DocTypes above, then use token auth with `GET /api/resource/<DocType>?filters=...&fields=...`.
+6. **API access:** create a dedicated ERP API user with read-only roles on the DocTypes above, then use token auth with `GET /api/resource/<DocType>?filters=...&fields=...`.
