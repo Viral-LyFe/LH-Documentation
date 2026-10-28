@@ -4,8 +4,8 @@
 |---|---|
 | **Features** | **Lyfe Order Return** (goods coming back from the customer: refund, restock fee, replacement) and **Lyfe Order Reshipment** (a second shipment to the customer, including the Return link and the Via-US-Warehouse route) |
 | **Who it is for** | Customer Service, Factory, Shipping Forwarder, Finance, Super Admin, System Manager |
-| **Document version** | 2.6 |
-| **Last updated** | 2026-10-22 |
+| **Document version** | 2.8 |
+| **Last updated** | 2026-10-28 |
 | **Screenshots** | Every `📷 [SCREENSHOT RS-xx]` (Reshipment) or `📷 [SCREENSHOT RT-xx]` (Return) line is a placeholder. Take the screenshot, save it as the same ID (for example `RT-01.png`) and insert it there. |
 
 ---
@@ -120,6 +120,7 @@ Every reshipment is named **`{Order ID}-R{number}`**, counting per order. For or
 | **Reason** | **Required.** One of the reasons listed in “What are a Reshipment and a Return?”. |
 | **Via US Warehouse** | Tick if the parcel should travel Factory → 1Click US Warehouse → Customer. Locked once the reshipment is in a Bulk Transfer Batch. See [Use case 5](#use-case-5--reshipment-through-the-us-warehouse). |
 | **Description** | Free text (support ticket number, notes). |
+| **New Delivery Address** | Use when the customer wants the reshipment sent to a different address. Pick one of the customer's saved addresses, or click **Add New Address** (see 4.3). The address shows in the box below it. When set, it fills the **Consignee** address on the CJ Shipping tab, and the reshipment's **Sales Invoice** uses it as the billing and shipping address. |
 | **Signature Required / Photo Required / Note Required** | Copied from the order. |
 
 #### Items
@@ -154,7 +155,7 @@ Used to create the international shipping label (FedEx via CJ).
 | Block | Fields |
 |---|---|
 | **Consignor (Shipper)** | Pick an **Export Partner** — name, contact, address, GST type and GSTIN fill in by themselves. |
-| **Consignee (Receiver)** | Name, email, phone, address, city, state, zip, country. Copied from the order. |
+| **Consignee (Receiver)** | Name, email, phone, address, city, state, zip, country. Copied from the order. Choosing a **New Delivery Address** replaces the address, city, state, zip and country (you can still edit them afterwards). |
 | **Package Details** | **Parcel Details** table — weight, length, width, height. |
 | **Customs & Shipment** | Customs Value and Currency, Goods Description, Ship Purpose, Terms of Sale, Duty & Tax, CSB Type, Package Type, DDP, Exporter Invoice No., Signature Required, Invoice Attachment (PDF). |
 | **Shipment Items** | Item, Qty, **Rate (USD)**, **HSN Code**. Filled automatically when the Material Issue for Order is submitted (see step 4.5). |
@@ -325,6 +326,7 @@ Reshipment cost appears as its own line in the **PnL dashboard**, the Founder da
 3. Choose the **Warehouse**. Pick **Factory - LH** to use the CJ Shipping tab, Gate Pass and invoice.
 4. If the parcel must go through the US warehouse, tick **Via US Warehouse** (see Use case 5).
 5. **Save**.
+6. If the customer wants it delivered to a new address, click **Add New Address** at the top, fill in the address (and the customer's **Email** and **Phone** if they changed) and click **Save**. The address is saved for the customer and set as **New Delivery Address**; the CJ Shipping consignee address is updated with it. (The form must be saved first. The button is hidden once the reshipment is Completed or Cancelled.)
 
    <img width="1717" height="912" alt="image" src="https://github.com/user-attachments/assets/aa03679c-39d6-48e8-baca-747c4a6dff57" />
 
@@ -768,7 +770,7 @@ Only a **System Manager** can cancel, and only from **Return Requested** or **Re
 | **Lyfe Order Return list** | All returns. Filter by state, type, reason, order, customer, or *Reshipments* (0 = return only) |
 | **Lyfe Order Reshipment list** | Filter by Return (`is set` / `is not set`), state, order, reason |
 | **Returns Dashboard** | Open it from the search bar or from the Status Overview page. Cards: **Total Returns**, **Pending Refunds**, **Pending Reshipping**, **Avg Cycle Time**, **Return Only** (no reshipment), **Return + Reshipment**, **Reshipment Only** (no return), **Reshipments From Returns**, **Awaiting Reshipment**; filters for date, type and status; charts by type and by week; recent returns table. Click a card to open the matching list. (Set a wide **From Date** to include older returns.) |
-| **Lyfe Orders — Status Overview** | **Active Returns** card (number of returns still open — Requested, In Transit or Received) — click it for a table with return, order, customer, state, type, reason, initiated date and days open, tracking/carrier, received date, return-to warehouse, refund and reship status; buttons to open the **Returns Dashboard** and the returns list. Also the **Active Reshipment** card (open reshipments — not Completed, Cancelled or Shipped) and the collapsible **↩ Reshipments** panel with a state filter. Completed reshipments are hidden in that panel unless **Show Completed Orders** is ticked or the state filter is set to *Completed*. The page refreshes every 15 seconds. |
+| **Lyfe Orders — Status Overview** | **Active Returns** card (number of returns still open — Requested, In Transit or Received) — click it for a table with return, order, customer, state, type, reason, initiated date and days open, tracking/carrier, received date, return-to warehouse, refund and reship status; buttons to open the **Returns Dashboard** and the returns list. Also the **Active Reshipment** card (open reshipments — not Completed, Cancelled or Shipped) and the collapsible **↩ Reshipments** panel with a state filter. Completed reshipments are hidden in that panel unless **Show Completed Orders** is ticked or the state filter is set to *Completed*. The page refreshes every 15 seconds. **Export Pending Orders** (menu) adds an **Active Reshipment** sheet for open Factory reshipments; its address comes from the Reshipment's **Consignee** address, city, state, zip and country — any of these left blank is taken from the original order (or the US Warehouse address for Via-US-Warehouse orders). Name and support contact are unchanged. |
 | **PnL dashboard / Founder dashboard** | Reshipment cost as a separate cost line |
 
 <img width="1630" height="921" alt="image" src="https://github.com/user-attachments/assets/903a894a-ee2c-4638-9e22-c4b0e872d98d" />
@@ -873,6 +875,8 @@ Cancelling removes it from the order's return history and the customer's return 
 
 | Version | Date | What changed |
 |---|---|---|
+| 2.8 | 2026-10-28 | Added **New Delivery Address** and the **Add New Address** button on the Reshipment. The new address (plus its email and phone, when given) fills the CJ Shipping consignee details and is used as the billing and shipping address on the reshipment's Sales Invoice. |
+| 2.7 | 2026-10-28 | **Export Pending Orders → Active Reshipment** sheet now shows the Reshipment's own Consignee address (address, city, state, zip, country), falling back to the original order's address for any blank field. |
 | 2.6 | 2026-10-22 | Status Overview **↩ Reshipments** panel: Completed reshipments now show only when **Show Completed Orders** is ticked (or the state filter is set to *Completed*). |
 | 2.5 | 2026-10-16 | **Reship Status** now follows the Reshipment from the start: *Reshipment Request* → **PENDING**, any later step (In Progress, Internal Review, Ready for Dispatch, Awaiting Tracking/Shipping, Shipped, US Warehouse / 1Click steps) → **ON GOING**, all Completed → **SUCCESSFUL**. Cancelling every reshipment clears the automatic value. Applies to the Return and the Lyfe Order. |
 | 2.4 | 2026-10-13 | The **Return Received** follow-up Task is now assigned only to `support@lyfehardware.com`; the Factory user is no longer added when goods return to Factory - LH. |
