@@ -278,7 +278,6 @@ All of these go to the US-warehouse Slack channel. **None** appear in the Slack 
 | Payment link could not be created | "Generate Payment Link" fails | Slack (urgent orders channel) | ✅ | ✅ |
 | **Customer paid against a cancelled quotation** | Shopify reports a payment for a cancelled quotation | Slack bot → **CS Quotation channel** (changed 28 Oct) | ✅ | ❌ |
 | Payment draft could not be updated | Update fails | ERP notification to the quotation owner | ✅ | – |
-| Quotation tax differs from Shopify tax | After the payment draft is created | Slack (US-warehouse channel) + email | ✅ | ❌ |
 | Shopify refund could not be confirmed | Retries run out; re-checked hourly | Slack (ShipStation success channel) | ✅ | ✅ |
 | Customer chose bank transfer | Customer action | Email to support and the customer | ➖ | – |
 
@@ -338,7 +337,7 @@ This table records Slack messages sent through **webhooks**:
 **It does not record everything.** These are missing:
 - Messages sent by the **Slack bot**: quotation approval cards, deadline (SLA) alerts, comment routing, and the cancelled-quotation payment alert.
 - All **US warehouse (1Click)** alerts.
-- The Shopify tax-mismatch and product-group alerts.
+- The product-group alert.
 - Any alert that was skipped because its Slack channel is not set up. These fail silently with no row.
 
 **Use it only to catch Slack messages that failed to send.** It is not a full list of alerts.
