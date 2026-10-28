@@ -4,7 +4,7 @@
 |---|---|
 | **Features** | **Lyfe Order Return** (goods coming back from the customer: refund, restock fee, replacement) and **Lyfe Order Reshipment** (a second shipment to the customer, including the Return link and the Via-US-Warehouse route) |
 | **Who it is for** | Customer Service, Factory, Shipping Forwarder, Finance, Super Admin, System Manager |
-| **Document version** | 2.9 |
+| **Document version** | 2.10 |
 | **Last updated** | 2026-10-28 |
 | **Screenshots** | Every `📷 [SCREENSHOT RS-xx]` (Reshipment) or `📷 [SCREENSHOT RT-xx]` (Return) line is a placeholder. Take the screenshot, save it as the same ID (for example `RT-01.png`) and insert it there. |
 
@@ -771,7 +771,7 @@ Only a **System Manager** can cancel, and only from **Return Requested** or **Re
 | **Lyfe Order Reshipment list** | Filter by Return (`is set` / `is not set`), state, order, reason |
 | **Returns Dashboard** | Open it from the search bar or from the Status Overview page. Cards: **Total Returns**, **Pending Refunds**, **Pending Reshipping**, **Avg Cycle Time**, **Return Only** (no reshipment), **Return + Reshipment**, **Reshipment Only** (no return), **Reshipments From Returns**, **Awaiting Reshipment**; filters for date, type and status; charts by type and by week; recent returns table. Click a card to open the matching list. (Set a wide **From Date** to include older returns.) |
 | **Lyfe Orders — Status Overview** | **Active Returns** card (number of returns still open — Requested, In Transit or Received) — click it for a table with return, order, customer, state, type, reason, initiated date and days open, tracking/carrier, received date, return-to warehouse, refund and reship status; buttons to open the **Returns Dashboard** and the returns list. Also the **Active Reshipment** card (open reshipments — not Completed, Cancelled or Shipped) and the collapsible **↩ Reshipments** panel with a state filter. Completed reshipments are hidden in that panel unless **Show Completed Orders** is ticked or the state filter is set to *Completed*. The page refreshes every 15 seconds. **Export Pending Orders** (menu) adds an **Active Reshipment** sheet for open Factory reshipments; its address comes from the Reshipment's **Consignee** address, city, state, zip and country — any of these left blank is taken from the original order (or the US Warehouse address for Via-US-Warehouse orders). Name and support contact are unchanged. |
-| **Lyfe Order list — Export COGS Range** | When the chosen order range has reshipments (not Cancelled), the Excel file gets two extra sheets: **Reshipment COGS Export** (each reshipment with its Reshipment COGS and every Reshipment Item's name, ERP item, quantity and COGS) and **Reshipment Net Weight Details** (the reshipment's Shipment Items with quantity and net weight). |
+| **Lyfe Order list — Export COGS Range** | When the chosen order range has reshipments (not Cancelled), the Excel file gets two extra sheets: **Reshipment COGS Export** (each reshipment with its Reshipment COGS and every Reshipment Item's name, ERP item, quantity and COGS) and **Reshipment Net Weight Details** (the reshipment's Shipment Items with quantity and net weight). To export **only reshipments**, tick **Export Reshipment Order** in the same dialog: the Internal Order ID fields are replaced by **From Date / To Date**, and every reshipment (not Cancelled) whose **Ready for Dispatch Date** is in that range is exported into the same two sheets. Reshipments that never reached Ready for Dispatch have no such date and are not included. |
 | **PnL dashboard / Founder dashboard** | Reshipment cost as a separate cost line |
 
 <img width="1630" height="921" alt="image" src="https://github.com/user-attachments/assets/903a894a-ee2c-4638-9e22-c4b0e872d98d" />
@@ -876,6 +876,7 @@ Cancelling removes it from the order's return history and the customer's return 
 
 | Version | Date | What changed |
 |---|---|---|
+| 2.10 | 2026-10-28 | **Export COGS Range** dialog: new **Export Reshipment Order** tick box exports reshipments only, filtered by **Ready for Dispatch Date** (From / To Date). |
 | 2.9 | 2026-10-28 | **Export COGS Range** on the Lyfe Order list now adds **Reshipment COGS Export** and **Reshipment Net Weight Details** sheets when the range has reshipments. |
 | 2.8 | 2026-10-28 | Added **New Delivery Address** and the **Add New Address** button on the Reshipment. The new address (plus its email and phone, when given) fills the CJ Shipping consignee details and is used as the billing and shipping address on the reshipment's Sales Invoice. |
 | 2.7 | 2026-10-28 | **Export Pending Orders → Active Reshipment** sheet now shows the Reshipment's own Consignee address (address, city, state, zip, country), falling back to the original order's address for any blank field. |
