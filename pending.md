@@ -29,7 +29,7 @@
 | 0.3 | Role matrix | ✅ Completed | |
 | 0.4 | Check prod webhook secrets; is the ShipStation webhook used? | ✅ Completed | 17Track key and Shopify secrets are set. ShipStation webhook isn't used, so it was deleted (C2). |
 | 0.5 | Rotate the AWS access key | ⏳ Pending | `0e003915` and `f9f83402` are already deployed. The nginx deny isn't possible on Frappe Cloud and isn't needed anymore. |
-| 0.6 | Rotate the Slack webhook and remove it from the patch | ⚠️ Code done | URL removed from the patch in `026bb5c5`. Marked done in Slack, but an empty-payload check on 28 Oct still got `invalid_payload` instead of `no_service`/`invalid_token`, which means the old URL may still work. Re-check in Slack. The Oneclick Settings field is kept for future use. |
+| 0.6 | Rotate the Slack webhook and remove it from the patch | ✅ Completed | URL removed from the patch in `026bb5c5`. The old #order-via-us-warehouse webhook (`B0C2XQ3QKNV`) was revoked on 28 Oct; Slack now returns `no_service` (404) for it. Nothing in the ERP used it, so no settings needed updating. The Oneclick Settings field is kept for future use. |
 
 ### Code
 
