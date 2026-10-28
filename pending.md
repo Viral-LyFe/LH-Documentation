@@ -43,7 +43,7 @@
 | C3 | Fake payments | ✅ Completed | `9368226f` | `add_payment_entry` is no longer whitelisted. `complete_draft_order` allows only CS and System Manager, from Bank Transfer Selected or Partially Paid. Tested in the browser. |
 | C4 | Shopify webhook hijack | ✅ Completed (not pushed) | `753af930` | `register_` / `deregister_shopify_webhooks`: System Manager only |
 | C6 | Billable CJ labels | ✅ Completed (not pushed) | `b63895e8` | `generate_cj_label`, `generate_cj_label_for_reshipment`, `retry_from_integration_log`: Factory, Founder, Super Admin, System Manager |
-| 1.1 | Shared `verify_webhook` helper | ⏳ Optional | | Each receiver got its own inline check instead, so the bug is fixed |
+| 1.1 | Shared `verify_webhook` helper | ✅ Completed | `1e1be4a7` | Done inline in each receiver; a shared helper isn't needed. The ShipStation webhook was deleted, and Shopify and 17Track each reject a blank secret and compare signatures in constant time. Each provider signs differently, so there's no logic to share. New webhooks are covered by the 2.1 / 5.9 CI check. |
 | — | 17Track Integration Request logging | ✅ Completed | `ed0404af` | `17Track-Webhook` / `17Track-Scheduler` |
 | 1.4 | Prod deploy and smoke test | ⚠️ Partly | | Deployed C2, C3, C5 and H1. C4, C6 and 0.6 need a push and another deploy. |
 
