@@ -10,7 +10,7 @@
 
 | | Completed | Pending |
 |---|---|---|
-| Criticals (C1–C6) | C2, C3, C4, C5, C6 (code) | C1: 1Click and Shopify keys still need revoking |
+| Criticals (C1–C6) | C2, C3, C4, C5, C6 (code); C1 Shopify token | C1: 1Click keys still need revoking |
 | Highs (H1–H13) | H1 | H2–H13 |
 | Mediums / Lows | 0.6 code; 5.1 partly | All others |
 
@@ -25,7 +25,7 @@
 | # | Task | Status | Notes |
 |---|---|---|---|
 | 0.1 | Ask 1Click to revoke the 4 leaked keys and issue a new one | ⏳ Pending | C1 stays open until 1Click revokes them |
-| 0.2 | Find where the `shpat_0217…` token came from | ⚠️ Source found | It's an old value of `Shopify Setting.password`. The current token is different. Still to confirm: the old token is revoked in Shopify Admin (Settings → Apps → Develop apps). |
+| 0.2 | Find where the `shpat_0217…` token came from | ✅ Completed | It's an old value of `Shopify Setting.password`. The token is rotated every 45 minutes (`shopify_token_rotation.rotate_shopify_token`) and expires after 1 hour, so the old one no longer works. |
 | 0.3 | Role matrix | ✅ Completed | |
 | 0.4 | Check prod webhook secrets; is the ShipStation webhook used? | ✅ Completed | 17Track key and Shopify secrets are set. ShipStation webhook isn't used, so it was deleted (C2). |
 | 0.5 | Rotate the AWS access key | ⏳ Pending | `0e003915` and `f9f83402` are already deployed. The nginx deny isn't possible on Frappe Cloud and isn't needed anymore. |
