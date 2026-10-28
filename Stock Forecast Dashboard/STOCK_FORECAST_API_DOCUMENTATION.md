@@ -644,11 +644,11 @@ bench --site lyfelocal.com execute lh.lyfe_hardware.page.founder_dashboard.found
 - **Kind / path:** Desk whitelisted, `.../get_tile_trending_items` (`_check_stock_permission`).
 - **Purpose:** Demand Trends: use (Material Issue units, finishes pooled, tube / acrylic / not-stocked left out) in the last N days against the N days before, per category and for the top rising items.
 - **Parameters:** `item_group`, `item_code` (page filter bar; with `item_group` the categories are that group's own sub-groups), `days` = N (1-365, default 30 = demand window), `top` (1-100, default 10). Invalid values fall back to the defaults.
-- **Response:** `window_days`, `top`, `bucket_days` (1 / 7 / 30), `bucket_ends[]` (date of each period's last day), `min_pct` (25), `min_issues` (3), `history_short` (bool: Material Issue history starts after today - 2N), `history_from`, `categories[]` = `{category, now, prev, items, series[], change_pct (null = new), direction: up / down / steady / new}` largest first, `items[]` = `{key, members[], item_name, item_group, category, variant_count, now, prev, series[], change_pct, change_units, days_of_stock, risk_level}` ranked by `change_units`.
+- **Response:** `window_days`, `top`, `bucket_days` (1 / 7 / 30), `bucket_ends[]` (date of each period's last day), `min_pct` (25), `min_issues` (3), `history_short` (bool: Material Issue history starts after today - 2N), `history_from`, `categories[]` = `{category, now, prev, items, series[], change_pct (null = new), direction: up / down / steady / new}` largest first, `items[]` = `{key, members[], item_name, item_group, category, variant_count, now, prev, series[], change_pct, change_units, days_of_stock, risk_level}` ranked by `change_units`, `tube` = the same fields for the tube items alone (store pipes and cut lengths; no nested `tube`; `days_of_stock` / `risk_level` from the live tube rows). The main fields exclude tube.
 - **Rules:** item listed when issues in the last N days >= 3, `now > prev`, `_is_unexpected_order(per-issue units)` false and change >= 25% (or prev = 0). Direction: change > +10% up, < -10% down, else steady.
 - **Errors:** `_log_and_reraise("trending_items")`.
 - **Example (real, local copy of production, 26 Oct 2026, N = 30):** categories Railings 1,558 vs 1,590 (steady -2%), ACRYLIC / LUCITE 100 vs 234 (down -57%); top item FEC-200 162 vs 88 (+84%), UHRB-150 50 vs 6 (+733%, Critical).
-- **Page usage:** `trending_items`; `renderTrendingItems` + `renderTrendCategoryChart`; filter = two number boxes.
+- **Page usage:** `trending_items`; `renderTrendingItems` + `renderTrendCategoryChart`; filter = two number boxes. `tube` is shown in a collapsed "Tube items (N)" section (no chart).
 
 ### 8.10b `get_tile_demand_forecast`
 
@@ -656,10 +656,10 @@ bench --site lyfelocal.com execute lh.lyfe_hardware.page.founder_dashboard.found
 - **Purpose:** expected use per product over the next N days and whether stock lasts. Built on the same rows as Stockout Risk / Restock List (`_stockout_rows(include_all=True)`), so the numbers agree.
 - **Parameters:** `item_group`, `item_code` (page filter bar), `days` = N (1-365, default 30), `top` (1-100, default 10). Invalid values fall back to the defaults.
 - **Formulas:** `forecast = avg_daily_outflow x N`; `expected = forecast + committed_qty` (`max(forecast, committed_qty)` when Stock Forecast Settings is backlog-aware); `left_after = current_qty - expected`; `short = left_after < 0` (unrounded). `short_items` equals the Restock List's Item rows for the same N.
-- **Response:** `days`, `top`, `backlog_aware`, `history_ends[]` (12 week end dates), `total_items`, `short_items`, `totals {forecast, committed, expected}` over all products, `items[]` (largest `expected` first) = `{item_code, item_name, item_group, variant_count, daily, forecast, committed, expected, on_hand, left_after, short, risk_level, confidence, history[] (units per week, last 12 weeks, from trends.family_series(84)), per_week}`.
+- **Response:** `days`, `top`, `backlog_aware`, `history_ends[]` (12 week end dates), `total_items`, `short_items`, `totals {forecast, committed, expected}` over all products, `items[]` (largest `expected` first) = `{item_code, item_name, item_group, variant_count, daily, forecast, committed, expected, on_hand, left_after, short, risk_level, confidence, history[] (units per week, last 12 weeks, from trends.family_series(84)), per_week}`, `tube` = the same fields for the tube items alone (live rows: `projected_stockouts(include_tube=True)` filtered to tube items, enriched and finish-merged; not part of `short_items` / the Restock List; no nested `tube`). The main fields exclude tube.
 - **Errors:** `_log_and_reraise("demand_forecast")`.
 - **Example (real, 26 Oct 2026, N = 30):** CMBR-200 daily 7.7, forecast 231, committed 16, expected 247, on hand 51, left_after -196; totals expected 2,043 over 103 products, 82 short.
-- **Page usage:** `demand_forecast`; `renderDemandForecast`, `forecastLine()` (inline SVG: history grey, forecast dashed).
+- **Page usage:** `demand_forecast`; `renderDemandForecast`, `forecastLine()` (inline SVG: history grey, forecast dashed). `tube` is shown in a collapsed "Tube items (N)" section; Export covers the main list only.
 
 ### 8.10c `get_tile_forecast_accuracy`
 
@@ -667,10 +667,10 @@ bench --site lyfelocal.com execute lh.lyfe_hardware.page.founder_dashboard.found
 - **Purpose:** forecast vs actual for the last N complete weeks, rebuilt from Material Issues (no stored snapshots needed).
 - **Parameters:** `item_group`, `item_code`, `weeks` (1-52, default 12; capped so every week has 30 days of history before it), `top` (1-100, default 10).
 - **Formulas:** week k covers the 7 days ending yesterday minus 7k; forecast = Material Issue units (same exclusions and finish pooling as Demand Trends) in the 30 days before the week / 30 x 7; actual = units issued in the week. `error_pct` = sum |forecast - actual| / sum actual over product-weeks; `bias_pct` = (sum forecast - sum actual) / sum actual (+ = too high). Item `miss` = sum of weekly |forecast - actual|.
-- **Response:** `weeks`, `limited_by_history`, `history_from`, `top`, `overall {forecast, actual, error_pct, bias_pct, items}`, `week_rows[] {week_start, forecast, actual, error_pct, bias_pct}` oldest first, `items[] {item_code, variant_count, forecast, actual, diff, miss, error_pct}` biggest miss first.
+- **Response:** `weeks`, `limited_by_history`, `history_from`, `top`, `overall {forecast, actual, error_pct, bias_pct, items}`, `week_rows[] {week_start, forecast, actual, error_pct, bias_pct}` oldest first, `items[] {item_code, variant_count, forecast, actual, diff, miss, error_pct}` biggest miss first, `tube` = the same fields for the tube items alone (no nested `tube`). The main fields exclude tube. Example (local copy, 27 Oct 2026, 12 weeks): tube forecast 2,006 vs actual 1,847 (bias +8.6%), error 114.1% over 34 tube items.
 - **Errors:** `_log_and_reraise("forecast_accuracy")`.
 - **Example (real, 26 Oct 2026, 12 weeks):** overall forecast 5,075 vs actual 5,407 (bias -6.1%), error 93.8% over 169 products; biggest miss CMBR-200 508 vs 581. Maximum weeks today: 19.
-- **Page usage:** `forecast_accuracy`; `renderForecastAccuracy` + `renderAccuracyChart` (`frappe.Chart`: Used bars, Forecast line).
+- **Page usage:** `forecast_accuracy`; `renderForecastAccuracy` + `renderAccuracyChart` (`frappe.Chart`: Used bars, Forecast line). `tube` is shown in a collapsed "Tube items (N)" section (summary and biggest misses, no chart).
 - **Note:** the weekly `Stock Forecast Accuracy` table (from the nightly snapshots) is separate and not shown on the page; once snapshots cover several weeks the two can be compared.
 
 ### 8.11 `get_tile_material_shortfall`

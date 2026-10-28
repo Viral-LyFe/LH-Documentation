@@ -167,7 +167,7 @@ The subtitle says **Live** or **Snapshot - date**.
 
 **Numbers:** net quantity = issued minus returned. Only items above zero are shown.
 
-**Filter:** Trailing days. The full-list popup always uses 30 days.
+**Filters:** Category and Trailing days. The full-list popup always uses 30 days.
 
 ### 4.4 Category-wise Stock Forecast
 **What it shows:** one stacked bar per top-level category, split into Critical, High, Medium and Low item counts. It covers every item with use in the last 30 days, including Low cover.
@@ -230,7 +230,7 @@ Orders are taken **oldest order date first**. Stock is handed out in that order:
 
 **Columns:** Internal Order ID (link), Order Type, Order Date, Order Value, Status, and the limiting components ("item (need N, have N, missing N)"). The summary line shows Ready / Partial / Short counts, **Blocked** (value of Partial + Short orders) and the value of Ready orders.
 
-**Filters:** column filter boxes and **Export**. No other filter.
+**Filters:** Category (tile filter), column filter boxes and **Export**.
 
 **Which orders are included:** active, not-yet-dispatched orders (statuses from New up to Pending India Dispatch / Awaiting India Components). Orders whose material is already issued are left out. Custom-order lines with no BOM are skipped.
 
@@ -271,6 +271,8 @@ An item needs at least 3 separate issues in the period and 25% more use than bef
 
 If the tile says the history is incomplete, the "before" period goes back further than our records (May 2026), so rises look bigger than they are.
 
+**Tube items:** tube is kept out of the main lists and shown in its own section at the bottom of the tile, **Tube items (N)**. Click it to open. Pipes are counted in feet and cut lengths as issued, so they never mix with the other products' units.
+
 ### 4.8b Demand Forecast (next N days)
 **Question answered:** "How much will each product need over the next N days, and will our stock last?"
 
@@ -287,6 +289,8 @@ The line in each row shows the last 12 weeks of real use (grey) and the forecast
 
 The line at the top sums it up: for example "Expected 2,043 units across 103 products … 82 products will run short." That count always matches the Restock List for the same days.
 
+**Tube items:** tube is kept out of the main lists and shown in its own section at the bottom of the tile, **Tube items (N)**. Click it to open. Pipes are counted in feet and cut lengths as issued, so they never mix with the other products' units. Cut lengths are cut from pipe when needed, so they usually show 0 on hand and appear as short; check the pipe rows and the Tube Stock tile before ordering.
+
 ### 4.8c Forecast vs Actual
 **Question answered:** "How close was our forecast to what we really used?"
 
@@ -299,6 +303,8 @@ For each of the last N complete weeks (default 12; type another number in the fi
 **The chart** shows each week's real use (bars) against the forecast (line). **Biggest misses** lists the products the forecast got most wrong, with "over" (forecast too high) or "under" (too low).
 
 The history starts in May 2026 and each week needs the 30 days before it, so the tile can look back about 19 weeks for now; it says so when that limit applies.
+
+**Tube items:** tube is kept out of the main lists and shown in its own section at the bottom of the tile, **Tube items (N)**. Click it to open. Pipes are counted in feet and cut lengths as issued, so they never mix with the other products' units.
 
 ### 4.9 Material Not In Stock - Total Required
 **Question answered:** "For everything we still have to build, which materials are short in total?"
@@ -347,7 +353,7 @@ The aim is to keep this at zero. The count is the number of lines that are not O
 | Control | What it does |
 |---|---|
 | **Category and Item Code (bar at the top of the page)** | Narrows the whole page at once: the summary cards, Stockout Risk, the Category view, Material Usage, Buildable Orders, the Restock List and both Not In Stock tables. Pick any category, including a main category: it then covers all its sub-categories (for example *Railings* includes Handrail Brackets, Flanges, End Caps and the rest). Pick an item code to see just that item; picking one finish shows the product's combined "×N finishes" row. Use both together to combine them, and clear a box to remove it. Buildable Orders then lists only the orders that need a matching part, and each order's Ready / Partial / Short status stays the same as without the filter. The Tube and Acrylic tiles are not affected, and acrylic rows in the Restock List show only when nothing is selected. |
-| **Category filter (on a tile)** | The funnel on Stockout Risk and the Category view limits just that tile to one category and its sub-categories. It takes priority over the bar at the top for that tile. |
+| **Category filter (on a tile)** | The funnel at the top right of a tile limits just that tile to one category and its sub-categories. It is on every tile where a category makes sense: Stockout Risk, the Category view, Material Usage, Buildable Orders, Restock List, Demand Trends, Demand Forecast, Forecast vs Actual and both Material Not In Stock tables (not on Tube and Acrylic, which are one material each). It takes priority over the bar at the top for that tile. |
 | **Trailing days filter** | On Stockout Risk, Tube, Acrylic and Material Usage. Sets how many days of history define "daily use". |
 | **Refresh** | The main button reloads every tile. Each tile also has its own refresh arrow. A tile that fails shows "Data unavailable" with a **Retry** button; the others keep working. |
 | **Column filters** | On the Restock List, Buildable Orders and both Not In Stock tiles: type in the box under a heading to hide rows that do not contain that text. All boxes combine. |
