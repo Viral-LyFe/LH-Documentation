@@ -82,7 +82,7 @@
 | 4.2 | Exact-match `_assign`; ELR list condition; visibility deny-by-default | ⏳ Pending | |
 | 4.3 | `recalculate_weighted_score` (H9) | ⚠️ Code done, committed, not pushed | `c9a49cf6` | No longer an API endpoint (option A, per you). It had no check, so any user could read the hidden score and force a save. Nothing used it: no button, script or job; the HR dashboard says scores are never shown. The score is still recalculated on every Appraisal save. Tested: refused for Engineer, Customer Service, Factory, System Manager and Guest. |
 | 4.4 | Gorgias reply/sync (H10) | ⏳ Pending | Existing checks predate the audit; finding still applies |
-| 4.5 | `add_task_to_board` (H11) | ⏳ Pending | Existing check predates the audit; finding still applies |
+| 4.5 | `add_task_to_board` (H11) | ⚠️ Committed, not pushed | `7fd178fc` | The projection service now requires access to the task's home project (members; System Manager and Administrator pass; tasks with no project fall back to Task read permission). Before, any board member could pull tasks from projects they had no access to, by guessing sequential names. Tested: outsider refused; member, Administrator and System Manager allowed; 216 multiboard tests pass. Super Admin without System Manager follows the board's existing rule (project members only). |
 | 4.6 | Task field allow-list, `set_column_terminal`, points, HR scope | ⏳ Pending | No checks |
 | 4.7 | `safe_eval` without the `frappe` module | ⏳ Pending | `rule_engine.py:409` still passes `frappe` |
 | 4.8 | MCP masked-field bypass; status-overview tool gates | ⏳ Pending | |
