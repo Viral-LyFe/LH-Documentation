@@ -80,7 +80,7 @@
 |---|---|---|---|
 | 4.1 | `has_permission` for Task, Project, Quotation, CRM Lead/Deal (H8) | ⏳ Pending | `hooks.py` covers only Lyfe Order and External Learning Record |
 | 4.2 | Exact-match `_assign`; ELR list condition; visibility deny-by-default | ⏳ Pending | |
-| 4.3 | `recalculate_weighted_score` (H9) | ⏳ Pending | No check |
+| 4.3 | `recalculate_weighted_score` (H9) | ⚠️ Code done, committed, not pushed | `c9a49cf6` | No longer an API endpoint (option A, per you). It had no check, so any user could read the hidden score and force a save. Nothing used it: no button, script or job; the HR dashboard says scores are never shown. The score is still recalculated on every Appraisal save. Tested: refused for Engineer, Customer Service, Factory, System Manager and Guest. |
 | 4.4 | Gorgias reply/sync (H10) | ⏳ Pending | Existing checks predate the audit; finding still applies |
 | 4.5 | `add_task_to_board` (H11) | ⏳ Pending | Existing check predates the audit; finding still applies |
 | 4.6 | Task field allow-list, `set_column_terminal`, points, HR scope | ⏳ Pending | No checks |
