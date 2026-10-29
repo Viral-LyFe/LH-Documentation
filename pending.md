@@ -2,7 +2,7 @@
 
 **Asana:** [Security audit fixes: lh app (26–31 Oct)](https://app.asana.com/1/1204809689822175/project/1211921346208625/task/1219812548257717)
 **Plan:** `LH Documentation/lh/SCHEDULE.md` · **Findings:** `LH Documentation/lh/REPORT.md`
-**Last updated:** Wed 28 Oct 2026
+**Last updated:** Thu 29 Oct 2026
 
 ✅ Completed · ⏳ Pending · ⚠️ Done, but needs a follow-up
 
@@ -11,10 +11,10 @@
 | | Completed | Pending |
 |---|---|---|
 | Criticals (C1–C6) | C2, C3, C4, C5, C6 (code); C1 Shopify token | C1: 1Click keys still need revoking |
-| Highs (H1–H13) | H1 | H2–H13 |
-| Mediums / Lows | 0.6 code; 5.1 partly | All others |
+| Highs (H1–H13) | H1; H6 (P&L and COGS exports, code) | H2–H5, H7–H13 |
+| Mediums / Lows | 0.6; 5.1 (code, partly) | All others |
 
-**Not pushed yet:** `753af930` (C4), `b63895e8` (C6), `026bb5c5` (0.6). The 1.4 prod deploy did not include them.
+**Committed, not pushed yet (29 Oct):** `be7e3c9a` (5.1 signed links) and `8d79ed5f` (H6 P&L / COGS roles, revert logging). C4, C6 and 0.6 (`753af930`, `b63895e8`, `026bb5c5`) are on `origin/prod`; confirm they went out with the last deploy.
 
 ---
 
@@ -45,7 +45,7 @@
 | C6 | Billable CJ labels | ✅ Completed (not pushed) | `b63895e8` | `generate_cj_label`, `generate_cj_label_for_reshipment`, `retry_from_integration_log`: Factory, Founder, Super Admin, System Manager |
 | 1.1 | Shared `verify_webhook` helper | ✅ Completed | `1e1be4a7` | Done inline in each receiver; a shared helper isn't needed. The ShipStation webhook was deleted, and Shopify and 17Track each reject a blank secret and compare signatures in constant time. Each provider signs differently, so there's no logic to share. New webhooks are covered by the 2.1 / 5.9 CI check. |
 | — | 17Track Integration Request logging | ✅ Completed | `ed0404af` | `17Track-Webhook` / `17Track-Scheduler` |
-| 1.4 | Prod deploy and smoke test | ⚠️ Partly | | Deployed C2, C3, C5 and H1. C4, C6 and 0.6 need a push and another deploy. |
+| 1.4 | Prod deploy and smoke test | ⚠️ Partly | | Deployed C2, C3, C5 and H1. C4, C6 and 0.6 are pushed; confirm they were in the deploy. The 29 Oct commits still need a push and deploy. |
 
 ---
 
@@ -53,8 +53,8 @@
 
 | # | Task | Status | Current state in code |
 |---|---|---|---|
-| 2.1 | AST CI check for whitelisted methods with no permission check | ⏳ Pending | No script in the repo |
-| 2.2 | ~40 Lyfe Order and accounting actions (H4) | ⏳ Pending | No new checks |
+| 2.1 | AST CI check for whitelisted methods with no permission check | ⚠️ Partly | | One-off scan run on 29 Oct (not in the repo yet): 482 whitelisted methods, **205 have no visible check**, 46 of them high priority (write with `ignore_permissions`, or call an outside service). Still to do: save the list, add the script to the repo, and make CI fail on new ones (5.9). |
+| 2.2 | ~40 Lyfe Order and accounting actions (H4) | ⚠️ Partly | `8d79ed5f` | `revert_workflow_state` done: needs write on the order, and every revert is recorded in Track Changes (all changed fields). The other actions have no new checks. |
 | 2.3 | `create_gate_pass_for_order`, `mark_orders_ready_for_dispatch` (H4) | ⏳ Pending | No check; not POST-only |
 | 2.4 | `backfill_erp_items_from_item_name`, `fetch_shopify_details` (H5) | ⏳ Pending | No check; use `ignore_permissions` |
 | 2.5 | `submit_senior_review` and drawing-upload cancel (H12) | ⏳ Pending | No check; uses `ignore_permissions` |
@@ -65,7 +65,7 @@
 
 | # | Task | Status | Current state in code |
 |---|---|---|---|
-| 3.1 | P&L dashboard, COGS export, `get_quotation_detail` (H6) | ⏳ Pending | P&L gated only by Lyfe Order read; `export_cogs_by_internal_id_range` has no check |
+| 3.1 | P&L dashboard, COGS export, `get_quotation_detail` (H6) | ⚠️ Partly | `8d79ed5f` | P&L (22 endpoints) now follows the page's role list: System Manager and Super Admin. COGS exports (`export_cogs_by_internal_id_range`, `export_reshipment_cogs_by_date_range`): Factory, System Manager, Super Admin. `get_quotation_detail` still to do. |
 | 3.2 | Lifecycle heal, shipment analysis, status-overview legs, exports (H7) | ⏳ Pending | |
 | 3.3 | `generate_pick_pack_pdf` (H7) | ⏳ Pending | No check; uses `ignore_permissions` |
 | 3.4 | `CustomFile.get_content`, S3 `?key=` (H2) | ⏳ Pending | Still fetches remote URLs with the `sid` cookie; `get_s3_image_url` accepts `?key=` |
@@ -93,7 +93,7 @@
 
 | # | Task | Status | Current state in code |
 |---|---|---|---|
-| 5.1 | Quotation approval link | ⚠️ Partly | `e1cb6c1b` refuses closed quotations. Still to do: the HMAC key falls back to `db_password` and then to a hardcoded value (`quotation.py:2142`); no expiry; no POST confirm. |
+| 5.1 | Quotation approval link | ⚠️ Code done | `be7e3c9a` | Approval and tracking links are signed only with the site-config key `approval_link_secret` (set on prod, checked 64 characters); no fallback. Approval links expire after 45 days. Old links keep working for quotations created up to 29 Oct. Still to do: deploy; approve on a confirm page instead of a plain GET; blank the old tracking tokens kept in `Quotation.custom_tracking_token` when the old-key code is removed. |
 | 5.2 | `methods=["POST"]` on state-changing methods | ⏳ Pending | |
 | 5.3 | `ss_api_key` and Slack webhook fields → Password | ⏳ Pending | `ss_api_key` is still `Data` |
 | 5.4 | Remove secrets from Error Log messages | ⏳ Pending | |
@@ -119,13 +119,23 @@
 
 | # | Check | Status |
 |---|---|---|
-| 1 | Prod deploy of the Monday fixes | ✅ Done for C2, C3, C5, H1 · ⏳ C4, C6, 0.6 after push |
+| 1 | Prod deploy of the Monday fixes | ✅ Done for C2, C3, C5, H1 · ⚠️ C4, C6, 0.6 pushed, confirm deployed |
 | 2 | 403 test with `sec-test-forwarder` / `sec-test-employee` on prod | ⏳ Pending. So far tested only on `lyfelocal.com`: C3 in the browser; C4 and C6 by script (Shipping Forwarder, CS and Employee blocked; Factory and System Manager allowed) |
 | 3 | 17Track test push creates a `17Track-Webhook` Integration Request | ⏳ Pending |
 | 4 | Error Log watch: "Secret Not Configured", "Key Not Configured", "failed to create Integration Request" | ⏳ Pending |
 | 5 | Shopify webhooks added by hand (Settings → Notifications) | ⏳ Pending. Only the 3 API-registered webhooks were checked. |
 | 6 | Smoke test: Shopify payment → Won, CJ label (as a Factory user), ShipStation sync, 1Click posting | ⏳ Pending |
 | 7 | `execute_via_http` in `patches/generate_fake_orders_2000.py` broken by C5 | ⏳ Pending: delete it or leave it |
+| 8 | `approval_link_secret` set on prod | ✅ Done (checked: 64 characters) |
+| 9 | After deploying the 29 Oct commits: (a) open an old approval link: "Already Approved"; (b) send a test quotation email and click Approve; (c) P&L page roles are System Manager and Super Admin; (d) Error Log has no "Signing key missing" | ⏳ Pending |
+| 10 | `mcp@lyfehardware.com` disabled on prod; its API key no longer works | ✅ Done. Still check: OAuth Bearer Token list has no Active token for that user |
+
+## Added 29 Oct
+
+| Item | Status | Notes |
+|---|---|---|
+| Rule: System Manager and Super Admin are never blocked by an API check | ⚠️ Partly | Followed in everything added since 28 Oct. About 15 older checks still block one of them: the Super-Admin-only P&L API (`api.py`), `founder_dashboard.py`, `mcp_audit.py`; the CS/System Manager-only checks in `lyfe_order.py` and `merge_order.py`; 7 HR Manager/System Manager checks in `daily_work_log.py`; `shopify_token_rotation.py`; `backtest.py`; and the shared `require_roles()` helper. Waiting for a go-ahead to change them in one commit. |
+| Whitelisted APIs: where to act | ⏳ Pending | Order of work: P&L (done), COGS exports (done), `revert_workflow_state` (done), then `update_all_real_time_tracking` (H3, no login needed), the calls to outside services (`create_load_for_order`, `retry_create_order_from_log`, `mark_order_as_shipped`, `create_draft_order`, `send_quotation_email`), `recalculate_weighted_score` (H9), then the rest of the 205 |
 
 ## Records
 
