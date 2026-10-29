@@ -59,7 +59,7 @@
 | 2.4 | `backfill_erp_items_from_item_name`, `fetch_shopify_details` (H5) | ⚠️ Partly | `df92578f` | Role gate added; `ignore_permissions` removed from `backfill_erp_items_from_item_name` (`fetch_shopify_details` keeps it: `shopify_*` fields can't be written by any role). Still to do: reload the doc from the database before saving. |
 | 2.5 | `submit_senior_review` and drawing-upload cancel (H12) | ⏳ Pending | No check; uses `ignore_permissions` |
 | 2.6 | Item/BOM create and overwrite (H13) | ⏳ Pending | Unchanged |
-| 2.7 | `update_all_real_time_tracking` (H3) | ⏳ Pending | Still `allow_guest=True`; no rate limit |
+| 2.7 | `update_all_real_time_tracking` (H3) | ⚠️ Code done, not committed | | No longer an API (it was `allow_guest=True`); only the background job queued by the Real-Time Tracking button runs it. `start_real_time_tracking_job` stays open to every logged-in user, with one run at a time. The 17Track webhook is unchanged (checked: signed push 200, bad signature 401). Still to do: role-gate `tracking.track_order`; check the Frappe Cloud request logs for any outside caller of the old endpoint. |
 
 ## Wed 28 Oct: finance, customer data, files — ⏳ not started
 
