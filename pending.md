@@ -2,7 +2,7 @@
 
 **Asana:** [Security audit fixes: lh app (26–31 Oct)](https://app.asana.com/1/1204809689822175/project/1211921346208625/task/1219812548257717)
 **Plan:** `LH Documentation/lh/SCHEDULE.md` · **Findings:** `LH Documentation/lh/REPORT.md`
-**Last updated:** Thu 29 Oct 2026
+**Last updated:** Thu 29 Oct 2026 (evening)
 
 ✅ Completed · ⏳ Pending · ⚠️ Done, but needs a follow-up
 
@@ -14,7 +14,7 @@
 | Highs (H1–H13) | H1; H6 (P&L and COGS exports, code) | H2–H5, H7–H13 |
 | Mediums / Lows | 0.6; 5.1 (code, partly) | All others |
 
-**Deployed (29 Oct):** every lh commit up to `8d79ed5f` is on `origin/prod` (checked) and, per you, deployed to prod. That includes C4, C6, 0.6, 5.1 and H6. I can't see Frappe Cloud, so the after-deploy checks below still need doing.
+**Pushed (29 Oct):** every lh commit up to `3d107ec1` is on `origin/prod` (checked), including the order role gates (`df92578f`), the Engineer fix (`f970a196`), the ShipStation hotfix (`a553f6ef`), H3 (`efc88a26`) and the `track_order` gate (`acd99e30`). Earlier commits are deployed per you. I can't see Frappe Cloud, so confirm the latest deploy and run the after-deploy checks below.
 
 ---
 
@@ -54,12 +54,12 @@
 | # | Task | Status | Current state in code |
 |---|---|---|---|
 | 2.1 | AST CI check for whitelisted methods with no permission check | ⚠️ Partly | | One-off scan run on 29 Oct (not in the repo yet): 482 whitelisted methods, **205 have no visible check**, 46 of them high priority (write with `ignore_permissions`, or call an outside service). Still to do: save the list, add the script to the repo, and make CI fail on new ones (5.9). |
-| 2.2 | ~40 Lyfe Order and accounting actions (H4) | ⚠️ Partly: pushed, deploy to confirm | `df92578f` | Role gate (Factory, Customer Service, System Manager, Super Admin) added to 13 order APIs: `save_dispatch_again`, `create_gate_pass`, `bulk_assign_to_factory`, `bulk_create_gate_pass`, `split_order`, `create_load_for_order`, `create_purchase_order_for_order`, `backfill_erp_items_from_item_name`, `fetch_shopify_details`, `create_gate_pass_if_not_exists`, `track_order_validate`, status overview `create_gate_pass_for_order` and `mark_orders_ready_for_dispatch`. `ignore_permissions` removed from Lyfe Order updates and creation, Gate Pass and Purchase Order saves (Factory has those permissions; per you, Customer Service, Super Admin and System Manager were also granted Gate Pass / Purchase Order create in Role Permission Manager on prod, not checked from here). Three server-only functions are no longer APIs. `tracking.track_order` gated (`acd99e30`). Still to do: documents and stock actions, MIFO, transfer orders, outside-service calls. `revert_workflow_state` was done earlier (`8d79ed5f`). |
+| 2.2 | ~40 Lyfe Order and accounting actions (H4) | ⚠️ Partly: pushed, deploy to confirm | `df92578f` | Role gate (Factory, Customer Service, System Manager, Super Admin) added to 13 order APIs: `save_dispatch_again`, `create_gate_pass`, `bulk_assign_to_factory`, `bulk_create_gate_pass`, `split_order`, `create_load_for_order`, `create_purchase_order_for_order`, `backfill_erp_items_from_item_name`, `fetch_shopify_details`, `create_gate_pass_if_not_exists`, `track_order_validate`, status overview `create_gate_pass_for_order` and `mark_orders_ready_for_dispatch`. `ignore_permissions` removed from Lyfe Order updates and creation, Gate Pass and Purchase Order saves (Factory has those permissions; per you, Customer Service, Super Admin and System Manager were also granted Gate Pass / Purchase Order create in Role Permission Manager on prod, not checked from here). Three server-only functions are no longer APIs. `tracking.track_order` gated (`acd99e30`). Still to do: documents and stock actions, MIFO, transfer orders, outside-service calls. `revert_workflow_state` was done earlier (`8d79ed5f`). Automated callers checked 29 Oct: the scheduler runs as Administrator (passes every gate); the one hook-driven path is `create_gate_pass_if_not_exists` from `on_update`, which runs as the user moving the order (Factory or Customer Service) or, for the US-warehouse tracking step, as the scheduler. No gated function is reachable from a Guest webhook. `tracking.track_order` is also gated (`acd99e30`). |
 | 2.3 | `create_gate_pass_for_order`, `mark_orders_ready_for_dispatch` (H4) | ⚠️ Partly | `df92578f` | Role gate added (Factory, Customer Service, System Manager, Super Admin). Still to do: POST only. |
-| 2.4 | `backfill_erp_items_from_item_name`, `fetch_shopify_details` (H5) | ⚠️ Partly | `df92578f` | Role gate added; `ignore_permissions` removed from `backfill_erp_items_from_item_name` (`fetch_shopify_details` keeps it: `shopify_*` fields can't be written by any role). Still to do: reload the doc from the database before saving. |
+| 2.4 | `backfill_erp_items_from_item_name`, `fetch_shopify_details` (H5) | ⚠️ Partly, fix agreed in principle | `df92578f` | Role gate added; `ignore_permissions` removed from `backfill_erp_items_from_item_name` (`fetch_shopify_details` keeps it: `shopify_*` fields can't be written by any role). Still to do: both methods save the document the browser sent, so a caller can change any field. Plan: load a fresh copy from the database, `check_permission("write")` on it (needed for `fetch_shopify_details` only; `save()` checks it for `backfill`), write only the computed fields (`erp_item`, nine `shopify_*`), copy them onto `self` so the form refreshes. Open question: `fetch_shopify_details` would use the **saved** Shopify Order ID, so the user must save before clicking Fetch. No automated caller of either method. |
 | 2.5 | `submit_senior_review` and drawing-upload cancel (H12) | ⏳ Pending | No check; uses `ignore_permissions` |
 | 2.6 | Item/BOM create and overwrite (H13) | ⏳ Pending | Unchanged |
-| 2.7 | `update_all_real_time_tracking` (H3) | ⚠️ Committed, not pushed | `efc88a26` | No longer an API (it was `allow_guest=True`); only the background job queued by the Real-Time Tracking button runs it. `start_real_time_tracking_job` stays open to every logged-in user, with one run at a time. The 17Track webhook is unchanged (checked: signed push 200, bad signature 401). Still to do: check the Frappe Cloud request logs for any outside caller of the old endpoint. |
+| 2.7 | `update_all_real_time_tracking` (H3) | ⚠️ Pushed, deploy to confirm | `efc88a26` | No longer an API (it was `allow_guest=True`); only the background job queued by the Real-Time Tracking button runs it. `start_real_time_tracking_job` stays open to every logged-in user, with one run at a time. The 17Track webhook is unchanged (checked: signed push 200, bad signature 401). Still to do: check the Frappe Cloud request logs for any outside caller of the old endpoint. |
 
 ## Wed 28 Oct: finance, customer data, files — ⏳ not started
 
@@ -129,11 +129,15 @@
 | 8 | `approval_link_secret` set on prod | ✅ Done (checked: 64 characters) |
 | 9 | After deploying the 29 Oct commits: (a) open an old approval link: "Already Approved"; (b) send a test quotation email and click Approve; (c) P&L page roles are System Manager and Super Admin; (d) Error Log has no "Signing key missing"; (e) as a Customer Service user, move a Factory-warehouse order to Ready for Dispatch: a Gate Pass is created (no "Auto gate pass creation failed" in the Error Log); (f) open a Lyfe Order as an Engineer: no "No permission for Oneclick Settings" popup | ⏳ Pending |
 | 10 | `mcp@lyfehardware.com` disabled on prod; its API key no longer works | ✅ Done. Still check: OAuth Bearer Token list has no Active token for that user |
+| 11 | ShipStation sync after the hotfix `a553f6ef`: no new "unexpected keyword argument 'ignore_permission'" in the Error Log; orders synced before the deploy are rerouted by the next sync (check any still stuck) | ⏳ Pending |
+| 12 | Outside tools with an API key (`automations@`, `kushal@`, `viralk@` hold none of the four gate roles): confirm none of them call the gated order actions (`create_gate_pass`, `bulk_assign_to_factory`, `create_load_for_order`, ...); `automations@` has made no document changes | ⏳ Pending |
 
 ## Added 29 Oct
 
 | Item | Status | Notes |
 |---|---|---|
+| Engineer: "No permission for Oneclick Settings" on opening a Lyfe Order | ✅ Code done, pushed | `f970a196`: the flag is sent with the page load instead of read from the browser. Needs migrate and a browser refresh (testing item 9f). |
+| ShipStation reroute hotfix | ✅ Code done, pushed | `a553f6ef` fixed two typos (`ignore_permission`) that broke `maybe_reroute_after_shipstation_sync` on every order sync; it came in with `df92578f`. Check the Error Log after the deploy (testing item 11). |
 | Rule: System Manager and Super Admin are never blocked by an API check | ⚠️ Partly | Followed in everything added since 28 Oct. About 15 older checks still block one of them: the Super-Admin-only P&L API (`api.py`), `founder_dashboard.py`, `mcp_audit.py`; the CS/System Manager-only checks in `lyfe_order.py` and `merge_order.py`; 7 HR Manager/System Manager checks in `daily_work_log.py`; `shopify_token_rotation.py`; `backtest.py`; and the shared `require_roles()` helper. Waiting for a go-ahead to change them in one commit. |
 | Whitelisted APIs: where to act | ⏳ Pending | Order of work: P&L (done), COGS exports (done), `revert_workflow_state` (done), then `update_all_real_time_tracking` (H3, no login needed), the calls to outside services (`create_load_for_order`, `retry_create_order_from_log`, `mark_order_as_shipped`, `create_draft_order`, `send_quotation_email`), `recalculate_weighted_score` (H9), then the rest of the 205 |
 
