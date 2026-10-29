@@ -14,7 +14,7 @@
 | Highs (H1–H13) | H1; H6 (P&L and COGS exports, code) | H2–H5, H7–H13 |
 | Mediums / Lows | 0.6; 5.1 (code, partly) | All others |
 
-**Committed, not pushed yet (29 Oct):** `be7e3c9a` (5.1 signed links) and `8d79ed5f` (H6 P&L / COGS roles, revert logging). C4, C6 and 0.6 (`753af930`, `b63895e8`, `026bb5c5`) are on `origin/prod`; confirm they went out with the last deploy.
+**Deployed (29 Oct):** every lh commit up to `8d79ed5f` is on `origin/prod` (checked) and, per you, deployed to prod. That includes C4, C6, 0.6, 5.1 and H6. I can't see Frappe Cloud, so the after-deploy checks below still need doing.
 
 ---
 
@@ -45,7 +45,7 @@
 | C6 | Billable CJ labels | ✅ Completed (not pushed) | `b63895e8` | `generate_cj_label`, `generate_cj_label_for_reshipment`, `retry_from_integration_log`: Factory, Founder, Super Admin, System Manager |
 | 1.1 | Shared `verify_webhook` helper | ✅ Completed | `1e1be4a7` | Done inline in each receiver; a shared helper isn't needed. The ShipStation webhook was deleted, and Shopify and 17Track each reject a blank secret and compare signatures in constant time. Each provider signs differently, so there's no logic to share. New webhooks are covered by the 2.1 / 5.9 CI check. |
 | — | 17Track Integration Request logging | ✅ Completed | `ed0404af` | `17Track-Webhook` / `17Track-Scheduler` |
-| 1.4 | Prod deploy and smoke test | ⚠️ Partly | | Deployed C2, C3, C5 and H1. C4, C6 and 0.6 are pushed; confirm they were in the deploy. The 29 Oct commits still need a push and deploy. |
+| 1.4 | Prod deploy and smoke test | ✅ Deployed (per you) · ⏳ smoke test | | Everything up to `8d79ed5f` is deployed. The smoke test is the checklist under Testing and verification (items 6 and 9). |
 
 ---
 
@@ -65,7 +65,7 @@
 
 | # | Task | Status | Current state in code |
 |---|---|---|---|
-| 3.1 | P&L dashboard, COGS export, `get_quotation_detail` (H6) | ⚠️ Partly | `8d79ed5f` | P&L (22 endpoints) now follows the page's role list: System Manager and Super Admin. COGS exports (`export_cogs_by_internal_id_range`, `export_reshipment_cogs_by_date_range`): Factory, System Manager, Super Admin. `get_quotation_detail` still to do. |
+| 3.1 | P&L dashboard, COGS export, `get_quotation_detail` (H6) | ⚠️ Deployed, partly | `8d79ed5f` | P&L (22 endpoints) now follows the page's role list: System Manager and Super Admin. COGS exports (`export_cogs_by_internal_id_range`, `export_reshipment_cogs_by_date_range`): Factory, System Manager, Super Admin. `get_quotation_detail` still to do. |
 | 3.2 | Lifecycle heal, shipment analysis, status-overview legs, exports (H7) | ⏳ Pending | |
 | 3.3 | `generate_pick_pack_pdf` (H7) | ⏳ Pending | No check; uses `ignore_permissions` |
 | 3.4 | `CustomFile.get_content`, S3 `?key=` (H2) | ⏳ Pending | Still fetches remote URLs with the `sid` cookie; `get_s3_image_url` accepts `?key=` |
@@ -93,7 +93,7 @@
 
 | # | Task | Status | Current state in code |
 |---|---|---|---|
-| 5.1 | Quotation approval link | ⚠️ Code done | `be7e3c9a` | Approval and tracking links are signed only with the site-config key `approval_link_secret` (set on prod, checked 64 characters); no fallback. Approval links expire after 45 days. Old links keep working for quotations created up to 29 Oct. Still to do: deploy; approve on a confirm page instead of a plain GET; blank the old tracking tokens kept in `Quotation.custom_tracking_token` when the old-key code is removed. |
+| 5.1 | Quotation approval link | ⚠️ Deployed, partly | `be7e3c9a` | Approval and tracking links are signed only with the site-config key `approval_link_secret` (set on prod, checked 64 characters); no fallback. Approval links expire after 45 days. Old links keep working for quotations created up to 29 Oct. Still to do: check it on prod (testing item 9); approve on a confirm page instead of a plain GET; blank the old tracking tokens kept in `Quotation.custom_tracking_token` when the old-key code is removed. |
 | 5.2 | `methods=["POST"]` on state-changing methods | ⏳ Pending | |
 | 5.3 | `ss_api_key` and Slack webhook fields → Password | ⏳ Pending | `ss_api_key` is still `Data` |
 | 5.4 | Remove secrets from Error Log messages | ⏳ Pending | |
@@ -119,7 +119,7 @@
 
 | # | Check | Status |
 |---|---|---|
-| 1 | Prod deploy of the Monday fixes | ✅ Done for C2, C3, C5, H1 · ⚠️ C4, C6, 0.6 pushed, confirm deployed |
+| 1 | Prod deploy of the Monday fixes and the 29 Oct commits | ✅ Deployed (per you) |
 | 2 | 403 test with `sec-test-forwarder` / `sec-test-employee` on prod | ⏳ Pending. So far tested only on `lyfelocal.com`: C3 in the browser; C4 and C6 by script (Shipping Forwarder, CS and Employee blocked; Factory and System Manager allowed) |
 | 3 | 17Track test push creates a `17Track-Webhook` Integration Request | ⏳ Pending |
 | 4 | Error Log watch: "Secret Not Configured", "Key Not Configured", "failed to create Integration Request" | ⏳ Pending |
