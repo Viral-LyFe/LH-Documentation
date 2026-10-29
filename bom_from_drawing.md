@@ -184,6 +184,14 @@ per table:
 
 ---
 
+## Access (2026-10-29, security audit H13)
+
+- **Who can use it:** Engineer, Factory, System Manager and Super Admin only, on an order they can read (Parse) or edit (Confirm). Other roles get a permission error.
+- **Items and BOMs are written with the user's own permissions** (no more `ignore_permissions`): the user needs Item create and Lyfe BOM write, which these roles hold.
+- **Confirm can still overwrite an existing Lyfe BOM** for the same parent item (all its components are replaced). A Lyfe BOM has no draft or approved state, so nothing prevents this; it is not logged yet.
+
+---
+
 ## Known Limitations / Open Items (as of 2026-05-27)
 
 - Feature is on the `auto-bom` branch (in progress).

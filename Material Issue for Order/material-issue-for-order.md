@@ -46,6 +46,8 @@ Every order that goes to dispatch from the factory **must have at least one subm
 
 If you are in the Factory role and need to cancel a submitted MIFO, ask a System Manager.
 
+When the form creates a cut-tube, finish or acrylic item for you (see section 13), it does so with **your own permissions**. Factory and System Manager can create items, so nothing changes for them; a user who cannot create items gets a permission error.
+
 ---
 
 ## 4. The complete workflow (step by step)
