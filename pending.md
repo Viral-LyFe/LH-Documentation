@@ -68,7 +68,7 @@
 | 3.1 | P&L dashboard, COGS export, `get_quotation_detail` (H6) | ⚠️ Deployed, partly | `8d79ed5f` | P&L (22 endpoints) now follows the page's role list: System Manager and Super Admin. COGS exports (`export_cogs_by_internal_id_range`, `export_reshipment_cogs_by_date_range`): Factory, System Manager, Super Admin. `get_quotation_detail` still to do. |
 | 3.2 | Lifecycle heal, shipment analysis, status-overview legs, exports (H7) | ⏳ Pending | |
 | 3.3 | `generate_pick_pack_pdf` (H7) | ⏳ Pending | No check; uses `ignore_permissions` |
-| 3.4 | `CustomFile.get_content`, S3 `?key=` (H2) | ⏳ Pending | Still fetches remote URLs with the `sid` cookie; `get_s3_image_url` accepts `?key=` |
+| 3.4 | `CustomFile.get_content`, S3 `?key=` (H2) | ⏳ Pending (on hold per you) | | Analysed 29 Oct, no code changed. Part A: replace the remote/`/api/` fetch with the `sid` cookie (`overrides/file.py` lines 110-135) by a clear error; nothing needs it (S3 files are read directly, the 2,486 remote links open in the browser). Part B: S3 `?key=` reads (`get_content` lines 89-108 and `get_s3_image_url`) must resolve to an existing File the user can read; check the ShipStation re-link flow and uploads first. |
 | 3.5 | Sales Invoice PDFs private | ⏳ Pending | `sales_invoice.py:193` still sets `is_private=0` |
 | 3.6 | Status overview / returns / aggregate dashboards gate | ⏳ Pending | |
 | 3.7 | `backfill_item_group`: role gate + POST only | ⏳ Pending | Still accepts GET |
