@@ -273,6 +273,11 @@ If the tile says the history is incomplete, the "before" period goes back furthe
 
 **Tube items:** tube is kept out of the main lists and shown in its own section at the bottom of the tile, **Tube items (N)**. Click it to open. Pipes are counted in feet and cut lengths as issued, so they never mix with the other products' units.
 
+
+Each item also shows its most-used finish with its trend; click it to see every finish (last N days, the N days before, change). Pick an Item in the tile's funnel to check any single item, even if it is not rising.
+
+Demand Forecast and Forecast vs Actual also have a "finishes" line under each item: click it to see the forecast (and, in Forecast vs Actual, what was really used) for each finish.
+
 ### 4.8b Demand Forecast (next N days)
 **Question answered:** "How much will each product need over the next N days, and will our stock last?"
 
