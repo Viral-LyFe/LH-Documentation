@@ -10,7 +10,7 @@
 
 | | Completed | Pending |
 |---|---|---|
-| Criticals (C1–C6) | C2, C3, C4, C5, C6 (code); C1 Shopify token | C1: 1Click keys still need revoking |
+| Criticals (C1–C6) | C1–C6 (C1: Shopify token and 1Click keys revoked) | None |
 | Highs (H1–H13) | H1; H6 (P&L and COGS exports, code) | H2–H5, H7–H13 |
 | Mediums / Lows | 0.6; 5.1 (code, partly) | All others |
 
@@ -24,7 +24,7 @@
 
 | # | Task | Status | Notes |
 |---|---|---|---|
-| 0.1 | Ask 1Click to revoke the 4 leaked keys and issue a new one | ⏳ Pending | C1 stays open until 1Click revokes them |
+| 0.1 | Ask 1Click to revoke the 4 leaked keys and issue a new one | ✅ Completed | Leaked keys revoked and a new token issued (30 Oct) |
 | 0.2 | Find where the `shpat_0217…` token came from | ✅ Completed | It's an old value of `Shopify Setting.password`. The token is rotated every 45 minutes (`shopify_token_rotation.rotate_shopify_token`) and expires after 1 hour, so the old one no longer works. |
 | 0.3 | Role matrix | ✅ Completed | |
 | 0.4 | Check prod webhook secrets; is the ShipStation webhook used? | ✅ Completed | 17Track key and Shopify secrets are set. ShipStation webhook isn't used, so it was deleted (C2). |
@@ -35,7 +35,7 @@
 
 | # | Finding | Status | Commit | What changed |
 |---|---|---|---|---|
-| C1 | Leaked 1Click keys in the repo | ✅ Code side | `6f8c2ff6`, `f9f83402`, `8e7f2410` | No key prefixes left in the current code. Revoking the keys is 0.1. |
+| C1 | Leaked 1Click keys in the repo | ✅ Completed | `6f8c2ff6`, `f9f83402`, `8e7f2410` | No key prefixes left in the current code. Keys revoked and new token issued (0.1). |
 | — | S3 secret stored encrypted | ✅ Completed | `0e003915` | |
 | C2 | ShipStation webhook fail-open | ✅ Completed | `1e1be4a7` | Endpoint deleted; it was never used |
 | H1 | Shopify / 17Track webhooks fail-open | ✅ Completed | `1e1be4a7` | Both reject requests when the secret is blank. The expected HMAC is no longer logged. |
@@ -67,8 +67,8 @@
 |---|---|---|---|
 | 3.1 | P&L dashboard, COGS export, `get_quotation_detail` (H6) | ⚠️ Deployed, partly | `8d79ed5f` | P&L (22 endpoints) now follows the page's role list: System Manager and Super Admin. COGS exports (`export_cogs_by_internal_id_range`, `export_reshipment_cogs_by_date_range`): Factory, System Manager, Super Admin. `get_quotation_detail` still to do. |
 | 3.2 | Lifecycle heal, shipment analysis, status-overview legs, exports (H7) | ⏳ Pending | |
-| 3.3 | `generate_pick_pack_pdf` (H7) | ⏳ Pending | No check; uses `ignore_permissions` |
-| 3.4 | `CustomFile.get_content`, S3 `?key=` (H2) | ⚠️ Part A code done, not committed; Part B pending | | Part A: `get_content` no longer fetches `http(s)` or `/api/` URLs and no longer sends the `sid` cookie (it raises a clear error instead). Reproduced the bug locally with a listener (logged-in cookie leaked; the public `download_file` made the server call it with no login) and confirmed the same test now returns an error and the listener stays silent. Checked: attaching links, existing Drive and Shopify link Files (refused cleanly), a local file and an S3 file still read. Part B (pending): S3 `?key=` reads in `get_content` and `get_s3_image_url` must resolve to an existing File the user can read; check the ShipStation re-link flow and uploads first. After deploy: download an S3 attachment, a local file and open a link attachment on prod; check the Error Log for File errors. |
+| 3.3 | `generate_pick_pack_pdf` (H7) | ⚠️ Committed, not pushed | `8f956d99` | Requires read access to the order (`has_permission` read, which applies User Permissions and the order-visibility rules); before, any user could pull any order's customer name and address by guessing its name. The private PDF is still saved with `ignore_permissions` so read-only users can use it. Tested: roles with access get the PDF; accounts without Lyfe Order access are refused; a Factory user is refused on an order hidden from them. Still open under H7: lifecycle heal, shipment analysis, status-overview legs and exports (3.2). |
+| 3.4 | `CustomFile.get_content`, S3 `?key=` (H2) | ⚠️ Part A committed, not pushed; Part B pending | `1f073e60` | Part A: `get_content` no longer fetches `http(s)` or `/api/` URLs and no longer sends the `sid` cookie (it raises a clear error instead). Reproduced the bug locally with a listener (logged-in cookie leaked; the public `download_file` made the server call it with no login) and confirmed the same test now returns an error and the listener stays silent. Checked: attaching links, existing Drive and Shopify link Files (refused cleanly), a local file and an S3 file still read. Part B (pending): S3 `?key=` reads in `get_content` and `get_s3_image_url` must resolve to an existing File the user can read; check the ShipStation re-link flow and uploads first. After deploy: download an S3 attachment, a local file and open a link attachment on prod; check the Error Log for File errors. |
 | 3.5 | Sales Invoice PDFs private | ⏳ Pending | `sales_invoice.py:193` still sets `is_private=0` |
 | 3.6 | Status overview / returns / aggregate dashboards gate | ⏳ Pending | |
 | 3.7 | `backfill_item_group`: role gate + POST only | ⏳ Pending | Still accepts GET |
@@ -81,7 +81,7 @@
 | 4.1 | `has_permission` for Task, Project, Quotation, CRM Lead/Deal (H8) | ⏳ Pending | `hooks.py` covers only Lyfe Order and External Learning Record |
 | 4.2 | Exact-match `_assign`; ELR list condition; visibility deny-by-default | ⏳ Pending | |
 | 4.3 | `recalculate_weighted_score` (H9) | ⚠️ Code done, committed, not pushed | `c9a49cf6` | No longer an API endpoint (option A, per you). It had no check, so any user could read the hidden score and force a save. Nothing used it: no button, script or job; the HR dashboard says scores are never shown. The score is still recalculated on every Appraisal save. Tested: refused for Engineer, Customer Service, Factory, System Manager and Guest. |
-| 4.4 | Gorgias reply/sync (H10) | ⏳ Pending | Existing checks predate the audit; finding still applies |
+| 4.4 | Gorgias reply/sync (H10) | ⚠️ Committed, not pushed | `b517ae90` | `Task.custom_gorgias_ticket_id` is now permission level 1: only Customer Service, System Manager and Super Admin can read or set it (it stays hidden on the form), so no other user can point a Task at another customer's ticket through the API. New patch `restrict_task_gorgias_ticket_id` (Task permission rows 11 to 14, additive); the field setting is re-applied on every migrate. The integration is unaffected (database write). `reply_to_customer` and `sync_task_from_gorgias` are unchanged. The Gorgias buttons now show only for those three roles. Tested through the API with real users. After deploy: open a Gorgias-linked Task as Customer Service (buttons) and as an Engineer (no buttons). |
 | 4.5 | `add_task_to_board` (H11) | ⚠️ Committed, not pushed | `7fd178fc` | The projection service now requires access to the task's home project (members; System Manager and Administrator pass; tasks with no project fall back to Task read permission). Before, any board member could pull tasks from projects they had no access to, by guessing sequential names. Tested: outsider refused; member, Administrator and System Manager allowed; 216 multiboard tests pass. Super Admin without System Manager follows the board's existing rule (project members only). |
 | 4.6 | Task field allow-list, `set_column_terminal`, points, HR scope | ⏳ Pending | No checks |
 | 4.7 | `safe_eval` without the `frappe` module | ⏳ Pending | `rule_engine.py:409` still passes `frappe` |
@@ -147,5 +147,5 @@
 | Record | Status |
 |---|---|
 | Tracker table in `SCHEDULE.md` | ⏳ Blank |
-| Asana subtasks | ⏳ All 6 open; Mon 26 Oct can close once 0.1, 0.5 and the C4/C6 deploy are done |
+| Asana subtasks | ⏳ All 6 open; Mon 26 Oct can close once 0.5 and the C4/C6 deploy are done |
 | Asana "PR / Commit link" field | ⏳ Empty; fill in after push |

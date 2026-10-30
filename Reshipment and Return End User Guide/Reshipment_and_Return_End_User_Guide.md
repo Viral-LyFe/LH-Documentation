@@ -4,8 +4,8 @@
 |---|---|
 | **Features** | **Lyfe Order Return** (goods coming back from the customer: refund, restock fee, replacement) and **Lyfe Order Reshipment** (a second shipment to the customer, including the Return link and the Via-US-Warehouse route) |
 | **Who it is for** | Customer Service, Factory, Shipping Forwarder, Finance, Super Admin, System Manager |
-| **Document version** | 2.10 |
-| **Last updated** | 2026-10-28 |
+| **Document version** | 2.11 |
+| **Last updated** | 2026-10-30 |
 | **Screenshots** | Every `📷 [SCREENSHOT RS-xx]` (Reshipment) or `📷 [SCREENSHOT RT-xx]` (Return) line is a placeholder. Take the screenshot, save it as the same ID (for example `RT-01.png`) and insert it there. |
 
 ---
@@ -375,6 +375,7 @@ Factory clicks **Internal Review**. Customer Service clicks **Approve** (→ App
 
 2. Hand the parcel to the carrier, then click **Dispatched**.
 3. If no invoice was created, use **Create → Sales Invoice**.
+   *Note:* anything on the draft Sales Invoice that comes from the reshipment (items, quantities, rates, address) is read-only there — change it on the **Reshipment** and the invoice updates automatically.
 4. If the Gate Pass was cancelled (or was never created), use **Create → Gate Pass** while the reshipment is *Ready for Dispatch* and Warehouse is **Factory - LH**. It makes a new Gate Pass (or reuses today's draft one) and links it in **References**. It is refused if the reshipment already has a Gate Pass that is not cancelled. Each box row gets its **Box Group** filled in automatically (BOX-<Gate Pass number>-<row number>), the same as when you add rows on the Gate Pass by hand.
 
 ### 4.9 Tracking
@@ -876,6 +877,7 @@ Cancelling removes it from the order's return history and the customer's return 
 
 | Version | Date | What changed |
 |---|---|---|
+| 2.11 | 2026-10-30 | The reshipment is now the source of truth for its draft **Sales Invoice**. Customer, PO number, contract type, exporter, destination, shipping address and the item details are read-only on the invoice, and any change to the reshipment's CJ Shipment Items is copied to the draft invoice automatically. Submitted invoices are not changed. |
 | 2.10 | 2026-10-28 | **Export COGS Range** dialog: new **Export Reshipment Order** tick box exports reshipments only, filtered by **Ready for Dispatch Date** (From / To Date). |
 | 2.9 | 2026-10-28 | **Export COGS Range** on the Lyfe Order list now adds **Reshipment COGS Export** and **Reshipment Net Weight Details** sheets when the range has reshipments. |
 | 2.8 | 2026-10-28 | Added **New Delivery Address** and the **Add New Address** button on the Reshipment. The new address (plus its email and phone, when given) fills the CJ Shipping consignee details and is used as the billing and shipping address on the reshipment's Sales Invoice. |
