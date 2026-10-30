@@ -2,7 +2,7 @@
 
 **Asana:** [Security audit fixes: lh app (26–31 Oct)](https://app.asana.com/1/1204809689822175/project/1211921346208625/task/1219812548257717)
 **Plan:** `LH Documentation/lh/SCHEDULE.md` · **Findings:** `LH Documentation/lh/REPORT.md`
-**Last updated:** Thu 29 Oct 2026 (evening)
+**Last updated:** Fri 30 Oct 2026
 
 ✅ Completed · ⏳ Pending · ⚠️ Done, but needs a follow-up
 
@@ -11,10 +11,10 @@
 | | Completed | Pending |
 |---|---|---|
 | Criticals (C1–C6) | C1–C6 (C1: Shopify token and 1Click keys revoked) | None |
-| Highs (H1–H13) | H1, H3, H5, H6, H9, H10, H11, H12, H13 (code); H2 part A; H7 (pick-pack, dashboards, exports); H4 partly; H8 closed by decision | H4 (remaining actions, 2.2), H2 part B (S3 `?key=`) |
+| Highs (H1–H13) | H1, H3, H5, H6, H9, H10, H11, H12, H13 (code); H2 part A; H7 (pick-pack, dashboards, exports); H4 partly; H8 closed by decision | H4 (the remaining writers found by the scan, 2.2), H2 part B (S3 `?key=`) |
 | Mediums / Lows | 0.6; 5.1 (code, partly) | All others |
 
-**Pushed (checked 30 Oct):** every lh commit up to the H13 pair (`369d6dcf`, `49f6f9c2`) is on `origin/prod`, including the order role gates, the Engineer fix, the ShipStation hotfix, H3, `track_order`, H5, H9, H11 and H12. **Not pushed yet:** `1f073e60` (H2 part A), `8f956d99` (H7 pick-pack) and `b517ae90` (H10 Gorgias, needs a migrate). I can't see Frappe Cloud, so confirm the latest deploy and run the after-deploy checks below.
+**Pushed (checked 30 Oct):** every lh commit up to the H13 pair (`369d6dcf`, `49f6f9c2`) is on `origin/prod`. **Not pushed yet (9 lh commits, oldest first):** `1f073e60` (H2 part A), `8f956d99` (H7 pick-pack), `b517ae90` (H10 Gorgias, needs a migrate), `d025a2cf` (hooks.py comment), `61cc5da0` (H7 3.2 dashboards and legs, adds an Order Leg patch, needs a migrate), `5f4ffb09` (H7 3.2 exports), `f0ab2241` (H4 batch 1), `22037fda` (H4 batch 2), `da55c582` (H4 batch 3). The docs repo also has 4 unpushed commits. Four deleted load-test files under `lh/patches/` are not committed. I can't see Frappe Cloud, so confirm the latest deploy and run the after-deploy checks below.
 
 ---
 
@@ -131,6 +131,7 @@
 | 10 | `mcp@lyfehardware.com` disabled on prod; its API key no longer works | ✅ Done. Still check: OAuth Bearer Token list has no Active token for that user |
 | 11 | ShipStation sync after the hotfix `a553f6ef`: no new "unexpected keyword argument 'ignore_permission'" in the Error Log; orders synced before the deploy are rerouted by the next sync (check any still stuck) | ⏳ Pending |
 | 12 | Outside tools with an API key (`automations@`, `kushal@`, `viralk@` hold none of the four gate roles): confirm none of them call the gated order actions (`create_gate_pass`, `bulk_assign_to_factory`, `create_load_for_order`, ...); `automations@` has made no document changes | ⏳ Pending |
+| 13 | After deploying the 30 Oct commits (run `bench migrate` first: H10 and the Order Leg patch): (a) Customer Service, Factory and System Manager can still open the Status Overview, Order Lifecycle and Shipment Analysis pages and the Excel / PDF export buttons work; a user with no Lyfe Order role is refused; (b) Super Admin can open Order Leg; (c) Customer Service: Send Quotation and Generate Payment Link work; (d) Factory: Create Sales Invoice, Create Packing List, Bulk Transfer Batch pulls, Material Issue receipt and finish / tube / acrylic item creation work; Customer Service: Mark Delivered on a Transfer Order and the Replenishment steps work; (e) Error Log has no new `PermissionError` from a user who should have access | ⏳ Pending |
 
 ## Added 29 Oct
 
@@ -140,7 +141,7 @@
 | Engineer: "No permission for Oneclick Settings" on opening a Lyfe Order | ✅ Code done, pushed | `f970a196`: the flag is sent with the page load instead of read from the browser. Needs migrate and a browser refresh (testing item 9f). |
 | ShipStation reroute hotfix | ✅ Code done, pushed | `a553f6ef` fixed two typos (`ignore_permission`) that broke `maybe_reroute_after_shipstation_sync` on every order sync; it came in with `df92578f`. Check the Error Log after the deploy (testing item 11). |
 | Rule: System Manager and Super Admin are never blocked by an API check | ⚠️ Partly | Followed in everything added since 28 Oct. About 15 older checks still block one of them: the Super-Admin-only P&L API (`api.py`), `founder_dashboard.py`, `mcp_audit.py`; the CS/System Manager-only checks in `lyfe_order.py` and `merge_order.py`; 7 HR Manager/System Manager checks in `daily_work_log.py`; `shopify_token_rotation.py`; `backtest.py`; and the shared `require_roles()` helper. Waiting for a go-ahead to change them in one commit. |
-| Whitelisted APIs: where to act | ⏳ Pending | Order of work: P&L (done), COGS exports (done), `revert_workflow_state` (done), then `update_all_real_time_tracking` (H3, no login needed), the calls to outside services (`create_load_for_order`, `retry_create_order_from_log`, `mark_order_as_shipped`, `create_draft_order`, `send_quotation_email`), `recalculate_weighted_score` (H9), then the rest of the 205 |
+| Whitelisted APIs: where to act | ⏳ Pending | Order of work: P&L (done), COGS exports (done), `revert_workflow_state` (done), then `update_all_real_time_tracking` (H3), `create_load_for_order`, `recalculate_weighted_score` (H9), the 13 order actions, outside-service calls (`retry_create_order_from_log`, `create_draft_order`, `send_quotation_email` done 30 Oct; `mark_order_as_shipped` left as is by decision), documents and stock actions, Bulk Transfer Batch, Transfer Order, Replenishment, Reshipment and Material Issue for Order methods (done 30 Oct). Still open: project board actions, timers, ShipStation sync, shipping helpers, validation and tracking methods |
 
 ## Records
 
