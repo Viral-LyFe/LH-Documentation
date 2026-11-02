@@ -2,7 +2,7 @@
 
 **Asana:** [Security audit fixes: lh app (26–31 Oct)](https://app.asana.com/1/1204809689822175/project/1211921346208625/task/1219812548257717)
 **Plan:** `LH Documentation/lh/SCHEDULE.md` · **Findings:** `LH Documentation/lh/REPORT.md`
-**Last updated:** Fri 30 Oct 2026
+**Last updated:** Mon 2 Nov 2026 · **Asana due date:** Sat 7 Nov
 
 ✅ Completed · ⏳ Pending · ⚠️ Done, but needs a follow-up
 
@@ -11,10 +11,11 @@
 | | Completed | Pending |
 |---|---|---|
 | Criticals (C1–C6) | C1–C6 (C1: Shopify token and 1Click keys revoked) | None |
+| Outside-the-code steps (0.1–0.6) | All six (0.5 AWS credentials revoked 2 Nov) | None |
 | Highs (H1–H13) | H1, H3, H5, H6, H9, H10, H11, H12, H13 (code); H2 part A; H7 (pick-pack, dashboards, exports); H4 partly; H8 closed by decision | H4 (the remaining writers found by the scan, 2.2), H2 part B (S3 `?key=`) |
-| Mediums / Lows | 0.6; 5.1 (code, partly) | All others |
+| Mediums / Lows | 0.6; 3.5; 3.7; 4.7; 5.3 (no change); 5.1 and 5.2 (mostly) | 3.6, 4.2, 4.6, 4.8–4.10, 5.4–5.10, the 2 Nov finding (`get_cogs_based_rate`) |
 
-**Pushed (30 Oct):** every lh commit up to `f30f3d9f` (audit 4.7) is on `origin/prod` (checked against the local `origin/prod` ref; `git fetch` can't run here without credentials). Nothing is waiting to push, including the H2 part A, H7, H10, H4 batches 1 to 3, 3.5, 3.7 and 4.7 commits. Two patches need a migrate on deploy: H10 (`restrict_task_gorgias_ticket_id`) and the Order Leg read patch (3.2). Everything is deployed (per you: deploys run every morning and end of day, so pushed code counts as deployed). The after-deploy checks below are still to run.
+**Pushed (checked 2 Nov):** every lh commit up to `1e26bbfe` (2 Nov) is on `origin/prod`, including the 30 Oct 5.2 commits (`b8a94fe4`, `a6786aa2`, `4924aa55`, `c95dcabb`, `016295d4`, `a2db010b`) that the 30 Oct Asana comment listed as not pushed, and the load-test script removal (`529e91be`). Pushed code counts as deployed (deploys run every morning and end of day). Two patches need a migrate on deploy: H10 (`restrict_task_gorgias_ticket_id`) and the Order Leg read patch (3.2). Two newer commits on the feature branch `feat/quotation-factory-cs-rates` are not pushed; neither is part of the audit. The after-deploy checks below are still to run.
 
 ---
 
@@ -28,7 +29,7 @@
 | 0.2 | Find where the `shpat_0217…` token came from | ✅ Completed | It's an old value of `Shopify Setting.password`. The token is rotated every 45 minutes (`shopify_token_rotation.rotate_shopify_token`) and expires after 1 hour, so the old one no longer works. |
 | 0.3 | Role matrix | ✅ Completed | |
 | 0.4 | Check prod webhook secrets; is the ShipStation webhook used? | ✅ Completed | 17Track key and Shopify secrets are set. ShipStation webhook isn't used, so it was deleted (C2). |
-| 0.5 | Rotate the AWS access key | ⏳ Pending | `0e003915` and `f9f83402` are already deployed. The nginx deny isn't possible on Frappe Cloud and isn't needed anymore. |
+| 0.5 | Rotate the AWS access key | ✅ Completed | The S3 AWS credentials were revoked on 2 Nov (per you). `0e003915` and `f9f83402` were already deployed. The nginx deny isn't possible on Frappe Cloud and isn't needed anymore. Still to check: the new key is set in the S3 settings and uploads / downloads work (testing item 14). |
 | 0.6 | Rotate the Slack webhook and remove it from the patch | ✅ Completed | URL removed from the patch in `026bb5c5`. The old #order-via-us-warehouse webhook (`B0C2XQ3QKNV`) was revoked on 28 Oct; Slack now returns `no_service` (404) for it. Nothing in the ERP used it, so no settings needed updating. The Oneclick Settings field is kept for future use. |
 
 ### Code
@@ -125,28 +126,37 @@
 | 4 | Error Log watch: "Secret Not Configured", "Key Not Configured", "failed to create Integration Request" | ⏳ Pending |
 | 5 | Shopify webhooks added by hand (Settings → Notifications) | ⏳ Pending. Only the 3 API-registered webhooks were checked. |
 | 6 | Smoke test: Shopify payment → Won, CJ label (as a Factory user), ShipStation sync, 1Click posting | ⏳ Pending |
-| 7 | `execute_via_http` in `patches/generate_fake_orders_2000.py` broken by C5 | ✅ Done. The load-test scripts (`generate_fake_orders_2000`, `step2_infra_sizing_run`, `step2_sustained_scheduler_soak`, `locustfile_step2_concurrent_users`) were deleted. Not committed yet. |
+| 7 | `execute_via_http` in `patches/generate_fake_orders_2000.py` broken by C5 | ✅ Done. The load-test scripts (`generate_fake_orders_2000`, `step2_infra_sizing_run`, `step2_sustained_scheduler_soak`, `locustfile_step2_concurrent_users`) were deleted (`529e91be`, pushed). |
 | 8 | `approval_link_secret` set on prod | ✅ Done (checked: 64 characters) |
 | 9 | After deploying the 29 Oct commits: (a) open an old approval link: "Already Approved"; (b) send a test quotation email and click Approve; (c) P&L page roles are System Manager and Super Admin; (d) Error Log has no "Signing key missing"; (e) as a Customer Service user, move a Factory-warehouse order to Ready for Dispatch: a Gate Pass is created (no "Auto gate pass creation failed" in the Error Log); (f) open a Lyfe Order as an Engineer: no "No permission for Oneclick Settings" popup | ⏳ Pending |
 | 10 | `mcp@lyfehardware.com` disabled on prod; its API key no longer works | ✅ Done. Still check: OAuth Bearer Token list has no Active token for that user |
 | 11 | ShipStation sync after the hotfix `a553f6ef`: no new "unexpected keyword argument 'ignore_permission'" in the Error Log; orders synced before the deploy are rerouted by the next sync (check any still stuck) | ⏳ Pending |
 | 12 | Outside tools with an API key (`automations@`, `kushal@`, `viralk@` hold none of the four gate roles): confirm none of them call the gated order actions (`create_gate_pass`, `bulk_assign_to_factory`, `create_load_for_order`, ...); `automations@` has made no document changes | ⏳ Pending |
 | 13 | After deploying the 30 Oct commits (run `bench migrate` first: H10 and the Order Leg patch): (a) Customer Service, Factory and System Manager can still open the Status Overview, Order Lifecycle and Shipment Analysis pages and the Excel / PDF export buttons work; a user with no Lyfe Order role is refused; (b) Super Admin can open Order Leg; (c) Customer Service: Send Quotation and Generate Payment Link work; (d) Factory: Create Sales Invoice, Create Packing List, Bulk Transfer Batch pulls, Material Issue receipt and finish / tube / acrylic item creation work; Customer Service: Mark Delivered on a Transfer Order and the Replenishment steps work; (e) Error Log has no new `PermissionError` from a user who should have access | ⏳ Pending |
+| 14 | After the AWS credential change (2 Nov): upload an attachment to S3, open an existing S3 attachment and an Item image (`item_image` API), and check the Error Log for S3 / `botocore` errors | ⏳ Pending |
 
 ## Added 29 Oct
 
 | Item | Status | Notes |
 |---|---|---|
-| New public endpoint `item_image` (`3d107ec1`, no login) | ⚠️ Reviewed, low risk, 2 small hardening points | Rate-limited (300/min), takes only an item code and redirects to `Item.image` (S3 files get a fresh signed URL), so a caller can't choose the file. Open points: (1) it redirects to whatever is stored in `Item.image`, so an Item editor could store any URL and make it an open redirect on your domain; allow only your own paths, `cdn.shopify.com` and the S3 host. (2) An Item editor could point `Item.image` at a private S3 file and this would hand out a signed link; limit to image files or the Item image bucket path. Neither is reachable by an outsider. |
+| New public endpoint `item_image` (`3d107ec1`, no login) | ⚠️ Reviewed, low risk, 2 small hardening points | Rate-limited (300/min), takes only an item code and redirects to `Item.image` (S3 files get a fresh signed URL), so a caller can't choose the file. 2 Nov (`45e77120`, `ba4d1987`): it now serves only items with Is Listed Product = YES and returns JSON errors, which narrows it to Shopify-listed items; both points below still apply to those items. Open points: (1) it redirects to whatever is stored in `Item.image`, so an Item editor could store any URL and make it an open redirect on your domain; allow only your own paths, `cdn.shopify.com` and the S3 host. (2) An Item editor could point `Item.image` at a private S3 file and this would hand out a signed link; limit to image files or the Item image bucket path. Neither is reachable by an outsider. |
 | Engineer: "No permission for Oneclick Settings" on opening a Lyfe Order | ✅ Code done, pushed | `f970a196`: the flag is sent with the page load instead of read from the browser. Needs migrate and a browser refresh (testing item 9f). |
 | ShipStation reroute hotfix | ✅ Code done, pushed | `a553f6ef` fixed two typos (`ignore_permission`) that broke `maybe_reroute_after_shipstation_sync` on every order sync; it came in with `df92578f`. Check the Error Log after the deploy (testing item 11). |
 | Rule: System Manager and Super Admin are never blocked by an API check | ⚠️ Partly | Followed in everything added since 28 Oct. About 15 older checks still block one of them: the Super-Admin-only P&L API (`api.py`), `founder_dashboard.py`, `mcp_audit.py`; the CS/System Manager-only checks in `lyfe_order.py` and `merge_order.py`; 7 HR Manager/System Manager checks in `daily_work_log.py`; `shopify_token_rotation.py`; `backtest.py`; and the shared `require_roles()` helper. Waiting for a go-ahead to change them in one commit. |
 | Whitelisted APIs: where to act | ⏳ Pending | Order of work: P&L (done), COGS exports (done), `revert_workflow_state` (done), then `update_all_real_time_tracking` (H3), `create_load_for_order`, `recalculate_weighted_score` (H9), the 13 order actions, outside-service calls (`retry_create_order_from_log`, `create_draft_order`, `send_quotation_email` done 30 Oct; `mark_order_as_shipped` left as is by decision), documents and stock actions, Bulk Transfer Batch, Transfer Order, Replenishment, Reshipment and Material Issue for Order methods (done 30 Oct). Still open: project board actions, timers, ShipStation sync, shipping helpers, validation and tracking methods |
+
+## Added 2 Nov
+
+| Item | Status | Notes |
+|---|---|---|
+| New API `get_cogs_based_rate` (Quotation, 2 Nov, `0f34b898`) | ⏳ Pending (new finding) | Gives Customer Service the COGS-based price. It checks only Quotation read and returns COGS × Item Group multiplier × Finish multiplier for any item code. Both multipliers are readable on their own records, so anyone with Quotation read can work out the COGS of any item: Automation, Engineer, Senior Engineer (including the outside account `production@cbdesigns.in`), Sales, Maintenance, Factory, Customer Service. The audit locked COGS exports for this reason (H6). Options: limit it to the roles that price quotations (Customer Service, Factory, System Manager, Super Admin), or only answer for items on a quotation the user can write. |
+| New API `create_lyfe_order` on US Warehouse Replenishment (`6c801305`) | ✅ Checked | POST only, `frappe.only_for` Factory / System Manager / Super Admin, plus write on the Replenishment. Follows the rule. |
+| `get_approval_amount_choice`, `approve_with_amount` | ✅ Removed | Gone with the reverted Factory / CS Suggested Amount feature (`0be789ea`). |
 
 ## Records
 
 | Record | Status |
 |---|---|
 | Tracker table in `SCHEDULE.md` | ⏳ Blank |
-| Asana subtasks | ⏳ All 6 open; Mon 26 Oct can close once 0.5 and the C4/C6 deploy are done |
-| Asana "PR / Commit link" field | ⏳ Empty; fill in after push |
+| Asana subtasks | ⏳ All 6 open. Mon 26 Oct can close now (0.5 done 2 Nov; C4 / C6 deployed). |
+| Asana "PR / Commit link" field | ✅ Filled (41 commits, up to `a2db010b`). Add `529e91be`, `d025a2cf` and the item_image commits `45e77120`, `ba4d1987`. |

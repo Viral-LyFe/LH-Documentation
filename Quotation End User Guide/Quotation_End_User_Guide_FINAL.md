@@ -130,7 +130,7 @@ If the customer will pay by bank transfer, tick **Payment Via Bank Transfer**.
 > **Warning:** Ticking it sets the discount on **every item row to 8%**. Unticking it sets every row’s discount back to **0%**, erasing any discounts you typed in manually. Tick or untick it *before* entering custom discounts.
 
 ### Step 6 — Save
-After the first save, the quotation moves to **Inquiry** automatically. The system also adds a **Shipping Charges** row and a **Custom Fee** row to the taxes table (section 7).
+After the first save, the quotation moves to **Inquiry** automatically. The system also adds a **Shipping Charges** row to the taxes table (section 7). A custom fee is no longer added automatically — add it as a separate row in the Items table.
 
 ### Step 7 — Submit the inquiry
 From **Inquiry**, CS clicks one of:
@@ -175,7 +175,7 @@ The system fills box dimensions and weight from the item master, or from its bil
 
 ### Calculations
 - Amount = Qty × Rate after discount.
-- Grand Total = item total + Shipping Charges + Custom Fee + taxes (US sales tax and any processing fee).
+- Grand Total = item total (including any Custom Fee item row) + Shipping Charges + taxes (US sales tax and any processing fee).
 - IGST rows are removed automatically on save.
 
 > **Note:** The Additional Discount section and the Shipping Rule field are hidden. Apply discounts per item row only.
@@ -197,15 +197,16 @@ What Order Type affects: **Request Senior Review** is only available on **Custom
 
 ## 7. Shipping, Charges and Taxes
 
-### Shipping Charges and Custom Fee rows
-Every quotation has two charge rows at the bottom of the **Taxes and Charges** table:
+### Shipping Charges row
+Every quotation has a Shipping Charges row at the bottom of the **Taxes and Charges** table (older quotations may also still show a Custom Fee row):
 
 | Charge | What to enter |
 |---|---|
 | Shipping Charges | Estimated shipping cost in the Amount column. |
-| Custom Fee | Customs or duty fee. Leave 0 if none. |
 
-[IMAGE PLACEHOLDER: Taxes and Charges table with Shipping Charges and Custom Fee rows]
+**Custom Fee:** add it as its own row in the **Items** table (item *CUSTOM FEE*, with the fee as the rate). It is no longer a row in the Taxes table.
+
+[IMAGE PLACEHOLDER: Taxes and Charges table with Shipping Charges row]
 
 **When shipping is required:** The system does **not** stop CS from sending the quotation with 0 shipping. The shipping check happens when **Factory** finishes its review: Factory cannot click **Feasibility Approve** unless Shipping Charges is greater than 0 **or Free Shipping is ticked**. Still, always check the shipping amount before sending.
 
