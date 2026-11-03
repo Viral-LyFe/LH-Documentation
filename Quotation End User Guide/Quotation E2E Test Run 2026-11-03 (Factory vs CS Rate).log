@@ -1,0 +1,56 @@
+Quotation E2E test run — Factory vs CS Rate comparison — lyfelocal.com (staging: copy of the production database), Frappe 15.121 / ERPNext 15.121, developer mode
+Started 2026-11-03 13:28 UTC. One command per module:
+  bench --site lyfelocal.com run-tests --app lh --module lh.tests.quotation_e2e.test_<module>
+
+=================== test_feasibility_rates ===================
+----------------------------------------------------------------------
+Ran 50 tests in 30.449s
+OK
+real 33.43s
+
+=================== test_lifecycle ===================
+FAIL: test_fee_only_quote_blocked_from_sales_user_review (lh.tests.quotation_e2e.test_lifecycle.ApprovalPathTest.test_fee_only_quote_blocked_from_sales_user_review)
+----------------------------------------------------------------------
+AssertionError: ValidationError not raised
+----------------------------------------------------------------------
+Ran 49 tests in 34.521s
+FAILED (failures=1)
+real 37.92s
+
+=================== test_payments ===================
+----------------------------------------------------------------------
+Ran 35 tests in 17.678s
+OK
+real 19.31s
+
+=================== test_integrations ===================
+----------------------------------------------------------------------
+Ran 50 tests in 29.842s
+OK
+real 32.61s
+
+=================== test_validate ===================
+FAIL: test_3dbinpacking_takes_priority_when_enabled (lh.tests.quotation_e2e.test_validate.CombinedBoxTest.test_3dbinpacking_takes_priority_when_enabled)
+----------------------------------------------------------------------
+AssertionError: Expected 'call_3dbinpacking' to have been called.
+FAIL: test_combined_box_and_parcels_from_catalogue (lh.tests.quotation_e2e.test_validate.CombinedBoxTest.test_combined_box_and_parcels_from_catalogue)
+----------------------------------------------------------------------
+AssertionError: 0.0 is not true
+FAIL: test_paccurate_used_when_3dbin_off (lh.tests.quotation_e2e.test_validate.CombinedBoxTest.test_paccurate_used_when_3dbin_off)
+----------------------------------------------------------------------
+AssertionError: Lists differ: [] != [(50, 2)]
+----------------------------------------------------------------------
+Ran 26 tests in 8.975s
+FAILED (failures=3)
+real 11.59s
+
+=================== test_drawings ===================
+----------------------------------------------------------------------
+Ran 21 tests in 11.984s
+OK (expected failures=1)
+real 13.30s
+
+=================== test_api_access ===================
+ModuleNotFoundError: No module named 'lh.tests.quotation_e2e.test_api_access'
+real 0.87s
+

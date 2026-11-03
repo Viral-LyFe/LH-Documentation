@@ -3072,6 +3072,679 @@ The price a Customer Service user sees when picking an item. CS cannot read Cost
 - **Expected result:**
   - Both prices are the same.
 
+## Factory vs CS Rate comparison (Nov 3)
+
+New automated tests for the Factory vs CS Rate comparison on the Quotation: the feasibility flag, negative amounts, the CS Rate and CS shipping that must be filled in before Send for Approval, the rate locks, what a Factory user can see, the Slack approval card, and approving with the Factory or the CS proposal. They are in a new module, `test_feasibility_rates`, and are kept separate from the module counts above.
+
+### Result
+
+Run on lyfelocal.com (Frappe 15.121, ERPNext 15.121, developer mode), which is staging: a copy of the production database. Tuesday, November 3, 2026, about 13:28 UTC. The full console output is in `Quotation E2E Test Run 2026-11-03 (Factory vs CS Rate).log`, next to this report.
+
+| Module | Tests | Pass | Fail | Positive | Negative | Time |
+| --- | --- | --- | --- | --- | --- | --- |
+| test\_feasibility\_rates | 50 | 50 | 0 | 26 | 24 | 30.4 s |
+
+**Result: PASS.** 50 tests, 24 of them negative (a bad input or a disallowed action is stopped, or something must not happen). Every test runs in one database transaction that is rolled back at the end, and Slack, email and background jobs are stubbed, so the run sends nothing and leaves the database as it found it.
+
+### Do the tests catch a broken rule?
+
+Three rules were broken on purpose, one at a time, and the module was run each time. The tests failed every time, and the code was put back afterwards.
+
+| Rule removed | Tests that failed |
+| --- | --- |
+| The chosen rates and shipping are saved before the approval is applied (the bug found on LHQ-2026-0449: Frappe reloads the quotation from the database, so an unsaved choice was lost) | Approve with Factory Proposal, Approve with CS Proposal, a missing CS rate keeps the item's price |
+| CS Rate and CS shipping are required before Send for Approval | Factory rate without a CS rate is blocked, Factory shipping without CS shipping is blocked |
+| Price List Rate and fixed charges are locked after feasibility | CS cannot change Price List Rate after feasibility, CS cannot change a fixed charge after feasibility |
+
+### Other modules, run on the same branch
+
+The six existing modules were run again on the feature branch (`feat/quotation-factory-cs-rates`) to check nothing else broke. **The branch is 11 commits behind production**, so its older test files do not match the 212-test counts at the top of this report (for example, test\_api\_access is not on the branch, and test\_integrations has 50 tests instead of 78). These numbers are not a replacement for the full run above.
+
+| Module | Tests | Pass | Fail | Note |
+| --- | --- | --- | --- | --- |
+| test\_lifecycle | 49 | 48 | 1 | `test_fee_only_quote_blocked_from_sales_user_review` fails. It fails the same way on the branch without any of the Factory vs CS changes (checked), so it is not caused by them |
+| test\_payments | 35 | 35 | 0 |  |
+| test\_integrations | 50 | 50 | 0 | Includes the Slack approval security tests |
+| test\_validate | 26 | 23 | 3 | The 3 `CombinedBoxTest` tests, which were removed from the suite on production on Nov 3 because combined box / parcel packing was switched off on Oct 28 |
+| test\_drawings | 21 | 20 | 0 | 1 expected failure, as above |
+| test\_api\_access | 0 |  |  | Not on this branch |
+
+One existing test was changed: `test_factory_cannot_approve_inquiry` in test\_lifecycle. A Factory user can no longer open an Inquiry quotation at all, so refusing the action now gives a permission error instead of "Not a valid Workflow Action". The test accepts either.
+
+### Not covered by these tests
+
+These behaviours happen only in the browser, so an automated server test cannot check them. They are covered by the manual test guide (`docs/quotation-feasibility-rates-test-guide.md`) with screenshots:
+
+- The Factory Rate and CS Rate columns, Price List Rate locked, Taxes amount locked, and the grid staying lined up
+- The Factory and CS proposed shipping fields showing only after feasibility
+- The Send for Approval dialog (the CS rate and shipping messages, the instant block of a negative number)
+- A negative number being refused the moment it is typed
+- Only Price List Rate showing once the quotation is approved
+- The Slack buttons on a real card: the site runs in developer mode, so cards go to the test webhook and the buttons cannot be clicked there. The approval itself is tested by calling the same code the button runs
+
+### How to run
+
+```bash
+bench --site lyfelocal.com run-tests --app lh --module lh.tests.quotation_e2e.test_feasibility_rates
+```
+
+### Test case catalogue: test\_feasibility\_rates (50)
+
+Each test is labelled **Positive** (the normal case works) or **Negative** (bad input or a disallowed action is stopped, or something must not happen). "Called directly" means the test runs one server check on its own, because that situation cannot be reached with a normal save.
+
+#### FeasibilityFlagTest
+
+The sticky flag that switches the Factory Rate / CS Rate columns on, and the CS Rate default.
+
+**1. Asking for a feasibility test turns the flag on** · Positive
+
+`test_flag_set_when_feasibility_test_required`
+
+- **What it checks:** Ticking Feasibility Test Required marks the quotation as having gone through feasibility.
+- **Starting point:** A standard quotation.
+- **Steps:**
+  1. Tick **Feasibility Test Required**.
+  2. Save.
+- **Expected result:**
+  - **Feasibility Flow Used** is 1.
+
+**2. Production Details Review turns the flag on** · Positive
+
+`test_flag_set_on_production_details_review`
+
+- **What it checks:** A quotation that is with the Factory for feasibility is marked as having gone through it.
+- **Starting point:** A standard quotation jumped to **Production Details Review**.
+- **Steps:**
+  1. Save.
+- **Expected result:**
+  - **Feasibility Flow Used** is 1.
+
+**3. Not Feasible turns the flag on** · Positive
+
+`test_flag_set_when_not_feasible`
+
+- **What it checks:** A quotation the Factory marked Not Feasible still shows the rate columns.
+- **Starting point:** A standard quotation jumped to **Not Feasible**, with a Not Feasible Reason.
+- **Steps:**
+  1. Save.
+- **Expected result:**
+  - **Feasibility Flow Used** is 1.
+
+**4. No feasibility, no flag** · Negative
+
+`test_flag_stays_off_without_feasibility`
+
+- **What it checks:** A quotation that never went through feasibility does not get the flag, so it never shows the rate columns.
+- **Starting point:** A standard quotation.
+- **Steps:**
+  1. Save.
+- **Expected result:**
+  - **Feasibility Flow Used** is 0.
+
+**5. CS Rate defaults to 0** · Positive
+
+`test_cs_rate_defaults_to_zero`
+
+- **What it checks:** The CS Rate field starts at 0 on a new item row.
+- **Starting point:** None (reads the field definition).
+- **Steps:**
+  1. Look up the default of the CS Rate field on Quotation Item.
+- **Expected result:**
+  - The default is 0.
+
+#### NegativeAmountTest
+
+Negative amounts are refused on save, whatever route the save takes.
+
+**6. Negative Factory Rate is rejected** · Negative
+
+`test_negative_factory_rate_rejected`
+
+- **What it checks:** A Factory Rate below 0 cannot be saved.
+- **Starting point:** A **feasibility quotation**: a ready-to-send quotation (item at rate 12,000, COGS 5,000) marked as having gone through feasibility, with a Factory Rate, a CS Rate, a Factory Proposed Shipping Rate and a CS Proposed Shipping Rate filled in, put into **Feasibility Approved**.
+- **Steps:**
+  1. Set the item's Factory Rate to -5.
+  2. Save.
+- **Expected result:**
+  - Blocked: "Rate for Item … cannot be negative."
+
+**7. Negative CS Rate is rejected** · Negative
+
+`test_negative_cs_rate_rejected`
+
+- **What it checks:** A CS Rate below 0 cannot be saved.
+- **Starting point:** A **feasibility quotation**: a ready-to-send quotation (item at rate 12,000, COGS 5,000) marked as having gone through feasibility, with a Factory Rate, a CS Rate, a Factory Proposed Shipping Rate and a CS Proposed Shipping Rate filled in, put into **Feasibility Approved**.
+- **Steps:**
+  1. Set the item's CS Rate to -5.
+  2. Save.
+- **Expected result:**
+  - Blocked: "Rate for Item … cannot be negative."
+
+**8. Negative Factory Proposed Shipping is rejected** · Negative
+
+`test_negative_factory_shipping_rejected`
+
+- **What it checks:** A Factory Proposed Shipping Rate below 0 cannot be saved.
+- **Starting point:** A **feasibility quotation**: a ready-to-send quotation (item at rate 12,000, COGS 5,000) marked as having gone through feasibility, with a Factory Rate, a CS Rate, a Factory Proposed Shipping Rate and a CS Proposed Shipping Rate filled in, put into **Feasibility Approved**.
+- **Steps:**
+  1. Set Factory Proposed Shipping Rate to -5.
+  2. Save.
+- **Expected result:**
+  - Blocked: "Proposed shipping rates cannot be negative."
+
+**9. Negative CS Proposed Shipping is rejected** · Negative
+
+`test_negative_cs_shipping_rejected`
+
+- **What it checks:** A CS Proposed Shipping Rate below 0 cannot be saved.
+- **Starting point:** A **feasibility quotation**: a ready-to-send quotation (item at rate 12,000, COGS 5,000) marked as having gone through feasibility, with a Factory Rate, a CS Rate, a Factory Proposed Shipping Rate and a CS Proposed Shipping Rate filled in, put into **Feasibility Approved**.
+- **Steps:**
+  1. Set CS Proposed Shipping Rate to -5.
+  2. Save.
+- **Expected result:**
+  - Blocked: "Proposed shipping rates cannot be negative."
+
+**10. Zero amounts are allowed** · Positive
+
+`test_zero_amounts_allowed`
+
+- **What it checks:** 0 is a valid rate and shipping amount.
+- **Starting point:** A feasibility quotation with all four amounts set to 0.
+- **Steps:**
+  1. Save.
+- **Expected result:**
+  - The save works and the CS Rate stays 0.
+
+#### CsRateRequiredTest
+
+Send for Approval needs a CS Rate for every item the Factory priced, and a CS Proposed Shipping Rate when the Factory proposed shipping. CS may match the Factory's number. Where the Factory gave nothing, CS may leave 0 or blank.
+
+**11. Factory rate without a CS rate is blocked** · Negative
+
+`test_factory_rate_without_cs_rate_blocked`
+
+- **What it checks:** A quotation cannot be sent for approval while a Factory-priced item has no CS Rate.
+- **Starting point:** A **feasibility quotation**: a ready-to-send quotation (item at rate 12,000, COGS 5,000) marked as having gone through feasibility, with a Factory Rate, a CS Rate of 0, a Factory Proposed Shipping Rate and a CS Proposed Shipping Rate filled in, put into **Feasibility Approved**.
+- **Steps:**
+  1. Click **Send for Approval**.
+- **Expected result:**
+  - Blocked: "CS Rate is required before sending for approval…"
+  - The quotation stays in Feasibility Approved.
+
+**12. CS rate equal to the Factory rate is allowed** · Positive
+
+`test_cs_rate_equal_to_factory_rate_allowed`
+
+- **What it checks:** CS can simply match the Factory's rate.
+- **Starting point:** A **feasibility quotation**: a ready-to-send quotation (item at rate 12,000, COGS 5,000) marked as having gone through feasibility, with a Factory Rate, a CS Rate, a Factory Proposed Shipping Rate and a CS Proposed Shipping Rate filled in, put into **Feasibility Approved**. CS Rate = Factory Rate.
+- **Steps:**
+  1. Click **Send for Approval**.
+- **Expected result:**
+  - The quotation moves to **Pending Approval**.
+
+**13. CS rate different from the Factory rate is allowed** · Positive
+
+`test_cs_rate_different_from_factory_rate_allowed`
+
+- **What it checks:** CS can give its own, different rate.
+- **Starting point:** A **feasibility quotation**: a ready-to-send quotation (item at rate 12,000, COGS 5,000) marked as having gone through feasibility, with a Factory Rate, a CS Rate, a Factory Proposed Shipping Rate and a CS Proposed Shipping Rate filled in, put into **Feasibility Approved**.
+- **Steps:**
+  1. Click **Send for Approval**.
+- **Expected result:**
+  - The quotation moves to **Pending Approval**.
+
+**14. No Factory rate, CS rate may stay 0** · Positive
+
+`test_no_factory_rate_lets_cs_rate_stay_zero`
+
+- **What it checks:** If the Factory never priced the item, CS does not have to.
+- **Starting point:** A feasibility quotation where Factory Rate, CS Rate and both shipping amounts are 0.
+- **Steps:**
+  1. Click **Send for Approval**.
+- **Expected result:**
+  - The quotation moves to **Pending Approval**.
+
+**15. A blank CS rate is blocked when the Factory priced the item** · Negative
+
+`test_blank_cs_rate_blocked`
+
+- **What it checks:** Blank counts the same as 0.
+- **Starting point:** A feasibility quotation whose CS Rate is blank on the form. **Called directly**: the database stores 0, so blank exists only on the form.
+- **Steps:**
+  1. Run the Send for Approval check.
+- **Expected result:**
+  - Blocked: CS Rate is required.
+
+**16. A blank CS rate is allowed when the Factory gave none** · Positive
+
+`test_blank_cs_rate_allowed_when_factory_has_no_rate`
+
+- **What it checks:** Blank is fine when there is nothing to match.
+- **Starting point:** A feasibility quotation where every rate and shipping amount is blank. **Called directly.**
+- **Steps:**
+  1. Run the Send for Approval check.
+- **Expected result:**
+  - No error.
+
+**17. Factory shipping without CS shipping is blocked** · Negative
+
+`test_factory_shipping_without_cs_shipping_blocked`
+
+- **What it checks:** CS must answer the Factory's proposed shipping.
+- **Starting point:** A feasibility quotation with Factory Proposed Shipping 500 and CS Proposed Shipping 0.
+- **Steps:**
+  1. Click **Send for Approval**.
+- **Expected result:**
+  - Blocked: "CS Proposed Shipping Rate is required…"
+
+**18. A blank CS shipping is blocked when the Factory proposed shipping** · Negative
+
+`test_blank_cs_shipping_blocked`
+
+- **What it checks:** Blank counts the same as 0.
+- **Starting point:** A feasibility quotation with Factory Proposed Shipping 500 and CS Proposed Shipping blank on the form. **Called directly.**
+- **Steps:**
+  1. Run the Send for Approval check.
+- **Expected result:**
+  - Blocked: CS Proposed Shipping Rate is required.
+
+**19. CS shipping equal to Factory shipping is allowed** · Positive
+
+`test_cs_shipping_equal_to_factory_shipping_allowed`
+
+- **What it checks:** CS can match the Factory's shipping.
+- **Starting point:** A feasibility quotation with both shipping amounts 500.
+- **Steps:**
+  1. Click **Send for Approval**.
+- **Expected result:**
+  - The quotation moves to **Pending Approval**.
+
+**20. No Factory shipping, CS shipping may stay 0** · Positive
+
+`test_no_factory_shipping_lets_cs_shipping_stay_zero`
+
+- **What it checks:** If the Factory proposed no shipping, CS does not have to.
+- **Starting point:** A feasibility quotation with both shipping amounts 0.
+- **Steps:**
+  1. Click **Send for Approval**.
+- **Expected result:**
+  - The quotation moves to **Pending Approval**.
+
+**21. Factory's own Feasibility Approve is exempt** · Positive
+
+`test_factory_feasibility_approve_is_exempt`
+
+- **What it checks:** When the Factory approves feasibility on a quotation of 10,000 or more it goes straight to Pending Approval before CS has had a turn, so the CS rule must not block it.
+- **Starting point:** A feasibility quotation in **Production Details Review** with a Factory Rate and no CS Rate, free shipping ticked.
+- **Steps:**
+  1. Click **Feasibility Approve** as the Factory.
+- **Expected result:**
+  - The quotation moves to **Pending Approval**.
+
+**22. A quotation without feasibility is not checked** · Positive
+
+`test_quotation_without_feasibility_is_not_checked`
+
+- **What it checks:** The CS rule only applies after feasibility.
+- **Starting point:** A ready-to-send quotation that never went through feasibility.
+- **Steps:**
+  1. Click **Send for Approval**.
+- **Expected result:**
+  - The quotation moves to **Pending Approval**.
+
+#### RateLockTest
+
+Price List Rate, fixed charges and Factory Rate are locked once feasibility is involved, for users outside Factory, System Manager and Super Admin.
+
+**23. CS cannot change Price List Rate after feasibility** · Negative
+
+`test_cs_cannot_change_price_list_rate_after_feasibility`
+
+- **What it checks:** The server undoes a Price List Rate edit by Customer Service after feasibility.
+- **Starting point:** A **feasibility quotation**: a ready-to-send quotation (item at rate 12,000, COGS 5,000) marked as having gone through feasibility, with a Factory Rate, a CS Rate, a Factory Proposed Shipping Rate and a CS Proposed Shipping Rate filled in, put into **Feasibility Approved**.
+- **Steps:**
+  1. As a Customer Service user, set the item's Price List Rate to 1.
+  2. Save.
+- **Expected result:**
+  - The save goes through but Price List Rate keeps its old value.
+
+**24. CS can change Price List Rate without feasibility** · Positive
+
+`test_cs_can_change_price_list_rate_without_feasibility`
+
+- **What it checks:** Before feasibility Price List Rate is the normal editable rate.
+- **Starting point:** A ready-to-send quotation that never went through feasibility.
+- **Steps:**
+  1. As a Customer Service user, set Price List Rate to 13,000.
+  2. Save.
+- **Expected result:**
+  - Price List Rate is 13,000.
+
+**25. Administrator can change Price List Rate after feasibility** · Positive
+
+`test_administrator_can_change_price_list_rate_after_feasibility`
+
+- **What it checks:** The lock does not apply to System Manager / Super Admin / Factory.
+- **Starting point:** A **feasibility quotation**: a ready-to-send quotation (item at rate 12,000, COGS 5,000) marked as having gone through feasibility, with a Factory Rate, a CS Rate, a Factory Proposed Shipping Rate and a CS Proposed Shipping Rate filled in, put into **Feasibility Approved**.
+- **Steps:**
+  1. As Administrator, set Price List Rate to 9,000.
+  2. Save.
+- **Expected result:**
+  - Price List Rate is 9,000.
+
+**26. CS cannot change a fixed charge after feasibility** · Negative
+
+`test_cs_cannot_change_fixed_charge_after_feasibility`
+
+- **What it checks:** The Taxes table amount cannot be typed over by Customer Service after feasibility.
+- **Starting point:** A **feasibility quotation**: a ready-to-send quotation (item at rate 12,000, COGS 5,000) marked as having gone through feasibility, with a Factory Rate, a CS Rate, a Factory Proposed Shipping Rate and a CS Proposed Shipping Rate filled in, put into **Feasibility Approved**.
+- **Steps:**
+  1. As a Customer Service user, set the fixed (Actual) charge amount to 777.
+  2. Save.
+- **Expected result:**
+  - The charge keeps its old amount.
+
+**27. CS cannot change the Factory Rate** · Negative
+
+`test_cs_cannot_change_factory_rate`
+
+- **What it checks:** Factory Rate belongs to the Factory.
+- **Starting point:** A **feasibility quotation**: a ready-to-send quotation (item at rate 12,000, COGS 5,000) marked as having gone through feasibility, with a Factory Rate, a CS Rate, a Factory Proposed Shipping Rate and a CS Proposed Shipping Rate filled in, put into **Feasibility Approved**.
+- **Steps:**
+  1. As a Customer Service user, set the Factory Rate to 1.
+  2. Save.
+- **Expected result:**
+  - Factory Rate keeps its old value.
+
+#### FactoryVisibilityTest
+
+A user with the Factory role only (no System Manager, no Super Admin) cannot see quotations in Inquiry, Inquiry Approved, Won or Sent to Customer.
+
+**28. The Factory list leaves out the four sales-stage states** · Negative
+
+`test_factory_list_excludes_sales_stage_states`
+
+- **What it checks:** The list filter for a Factory user excludes Inquiry, Inquiry Approved, Won and Sent to Customer.
+- **Starting point:** A user with the Factory role only.
+- **Steps:**
+  1. Ask for the Quotation list filter for that user.
+- **Expected result:**
+  - The filter excludes all four states.
+
+**29. Factory cannot open a hidden-state quotation** · Negative
+
+`test_factory_cannot_open_hidden_state_quotation`
+
+- **What it checks:** Opening a quotation in a hidden state by link is refused.
+- **Starting point:** A Factory-only user and a quotation in **Inquiry**.
+- **Steps:**
+  1. Ask whether the user may open it.
+- **Expected result:**
+  - Refused.
+
+**30. Factory can open other states** · Positive
+
+`test_factory_can_open_other_states`
+
+- **What it checks:** Only the four sales states are hidden.
+- **Starting point:** A Factory-only user and a quotation in **Production Details Review**.
+- **Steps:**
+  1. Ask whether the user may open it.
+- **Expected result:**
+  - No restriction.
+
+**31. System Manager is not restricted** · Positive
+
+`test_system_manager_is_not_restricted`
+
+- **What it checks:** Factory plus System Manager sees everything.
+- **Starting point:** A user with Factory and System Manager.
+- **Steps:**
+  1. Ask for the list filter and for access to an Inquiry quotation.
+- **Expected result:**
+  - No filter; access allowed.
+
+**32. Other roles are not restricted** · Positive
+
+`test_other_roles_are_not_restricted`
+
+- **What it checks:** The rule only affects Factory.
+- **Starting point:** A Customer Service user.
+- **Steps:**
+  1. Ask for the list filter and for access to an Inquiry quotation.
+- **Expected result:**
+  - No filter; access allowed.
+
+#### SlackCardTest
+
+What the approval card in Slack looks like.
+
+**33. A feasibility card has two approve buttons** · Positive
+
+`test_feasibility_card_has_two_approve_buttons`
+
+- **What it checks:** The approver can choose Factory or CS.
+- **Starting point:** A feasibility quotation in **Pending Approval**.
+- **Steps:**
+  1. Build the Slack card.
+- **Expected result:**
+  - Buttons: Approve with Factory Proposal, Approve with CS Proposal, Send Back to Sales User, in that order.
+
+**34. A normal card keeps one Approve button** · Positive
+
+`test_plain_card_has_one_approve_button`
+
+- **What it checks:** Without feasibility there is nothing to choose between.
+- **Starting point:** A ready-to-send quotation, no feasibility, in Pending Approval.
+- **Steps:**
+  1. Build the Slack card.
+- **Expected result:**
+  - Buttons: Approve and Send Back to Sales User.
+
+**35. The card shows rate and amount for each side** · Positive
+
+`test_feasibility_card_shows_rate_and_amount_for_each_side`
+
+- **What it checks:** The items table compares Factory and CS.
+- **Starting point:** A feasibility quotation, Factory Rate 11,000 and CS Rate 12,500, in Pending Approval.
+- **Steps:**
+  1. Build the Slack card.
+- **Expected result:**
+  - Columns: Factory Rate, Factory Amount, CS Rate, CS Amount.
+  - There is **no** Final Rate column.
+  - 11,000.00 and 12,500.00 appear.
+
+**36. The card shows shipping and grand total per side** · Positive
+
+`test_feasibility_card_shows_shipping_and_total_per_side`
+
+- **What it checks:** Taxes & Charges and the Grand Total are shown for both sides.
+- **Starting point:** A feasibility quotation: Factory 11,000 + shipping 500, CS 12,500 + shipping 700.
+- **Steps:**
+  1. Build the Slack card.
+- **Expected result:**
+  - Taxes & Charges shows Factory and CS shipping ($ 500.00 and $ 700.00).
+  - Grand Total — Factory: $ 11,500.00 | CS: $ 13,200.00.
+
+**37. The card has no separate comparison block** · Negative
+
+`test_card_has_no_duplicate_comparison_block`
+
+- **What it checks:** The "Factory vs Customer Service Pricing" block was removed because it repeated the totals.
+- **Starting point:** A feasibility quotation in Pending Approval.
+- **Steps:**
+  1. Build the Slack card.
+- **Expected result:**
+  - The text "Factory vs Customer Service Pricing" is not on the card.
+
+**38. A normal card keeps a single Grand Total** · Positive
+
+`test_plain_card_keeps_single_grand_total`
+
+- **What it checks:** Without feasibility the card is unchanged.
+- **Starting point:** A ready-to-send quotation, no feasibility, in Pending Approval.
+- **Steps:**
+  1. Build the Slack card.
+- **Expected result:**
+  - "Grand Total:" appears once.
+  - No Factory Rate column.
+
+#### SlackApprovalSecurityTest
+
+Who can use the buttons.
+
+**39. An approver's click carries the choice through** · Positive
+
+`test_approver_click_passes_choice_through`
+
+- **What it checks:** Each button tells the approval which proposal was chosen.
+- **Starting point:** A feasibility quotation in Pending Approval; a Slack user who holds the Approver Role.
+- **Steps:**
+  1. Click Approve with Factory Proposal, Approve with CS Proposal, and plain Approve.
+- **Expected result:**
+  - The choice passed on is factory, cs, and none, respectively.
+
+**40. A non-approver cannot use the new buttons** · Negative
+
+`test_non_approver_cannot_use_new_buttons`
+
+- **What it checks:** Only the Approver Role in LH Slack Settings may approve.
+- **Starting point:** A Customer Service user without the Approver Role.
+- **Steps:**
+  1. Click each Approve with … button.
+- **Expected result:**
+  - A private "not authorized" message.
+  - Nothing is approved; the quotation stays in Pending Approval.
+
+**41. An unknown Slack user cannot act** · Negative
+
+`test_unknown_slack_user_cannot_act`
+
+- **What it checks:** A Slack account with no matching ERPNext user is refused.
+- **Starting point:** A Slack user whose email matches no ERPNext user.
+- **Steps:**
+  1. Click Approve with CS Proposal.
+- **Expected result:**
+  - A private "not authorized" message; nothing happens.
+
+**42. Send Back re-checks the role at submit** · Negative
+
+`test_send_back_submit_rechecks_role`
+
+- **What it checks:** The reason window re-checks the Approver Role when it is submitted.
+- **Starting point:** A reason window opened for a user who no longer holds the Approver Role.
+- **Steps:**
+  1. Submit the reason.
+- **Expected result:**
+  - A private "not authorized" message; nothing happens.
+
+#### ApproveWithChoiceTest
+
+What the approval does to the quotation. Slack calls are stubbed; the real approval code runs.
+
+**43. Approve with Factory Proposal** · Positive
+
+`test_approve_with_factory_proposal`
+
+- **What it checks:** The Factory's rates and shipping become the quotation's rates and shipping.
+- **Starting point:** A feasibility quotation in Pending Approval: Factory 11,000 + shipping 500, CS 12,500 + shipping 700.
+- **Steps:**
+  1. Click Approve with Factory Proposal.
+- **Expected result:**
+  - State is **Approved – Pending Send**.
+  - Price List Rate and Amount are 11,000.
+  - The fixed shipping charge is 500.
+  - Grand Total is 11,500.
+  - **Approved With** shows Factory Amount.
+
+**44. Approve with CS Proposal** · Positive
+
+`test_approve_with_cs_proposal`
+
+- **What it checks:** The CS rates and shipping become the quotation's rates and shipping.
+- **Starting point:** The same quotation.
+- **Steps:**
+  1. Click Approve with CS Proposal.
+- **Expected result:**
+  - State is **Approved – Pending Send**.
+  - Price List Rate and Amount are 12,500.
+  - The fixed shipping charge is 700.
+  - Grand Total is 13,200.
+  - **Approved With** shows CS Amount.
+
+**45. A missing CS rate keeps the item's price** · Negative
+
+`test_cs_proposal_without_cs_rate_keeps_row_price`
+
+- **What it checks:** An item with no CS Rate must not drop to 0 when the CS Proposal is chosen.
+- **Starting point:** A feasibility quotation where Factory Rate, CS Rate and both shipping amounts are 0 (item price 12,000).
+- **Steps:**
+  1. Click Approve with CS Proposal.
+- **Expected result:**
+  - Price List Rate stays 12,000.
+  - Approved With shows CS Amount.
+
+**46. A missing CS shipping keeps the shipping charge** · Negative
+
+`test_cs_proposal_without_cs_shipping_keeps_shipping`
+
+- **What it checks:** A missing shipping proposal must not wipe the shipping charge.
+- **Starting point:** A feasibility quotation with no shipping proposals and a shipping charge of 250.
+- **Steps:**
+  1. Click Approve with CS Proposal.
+- **Expected result:**
+  - The shipping charge stays 250.
+
+**47. Plain Approve leaves Approved With blank** · Negative
+
+`test_plain_approve_leaves_approved_with_blank`
+
+- **What it checks:** Without a choice there is nothing to record.
+- **Starting point:** A feasibility quotation in Pending Approval.
+- **Steps:**
+  1. Click plain Approve (no Factory / CS choice).
+- **Expected result:**
+  - State is Approved – Pending Send.
+  - Approved With is blank.
+
+**48. A rejected approval does not keep the choice** · Negative
+
+`test_rejected_approval_rolls_back_choice`
+
+- **What it checks:** If ERPNext refuses the approval, the CS rates must not stay on the quotation.
+- **Starting point:** A feasibility quotation in Pending Approval; the approval is made to fail.
+- **Steps:**
+  1. Click Approve with CS Proposal.
+- **Expected result:**
+  - The quotation stays in Pending Approval.
+  - Price List Rate is still 12,000.
+  - Approved With is blank.
+  - The card keeps its buttons.
+
+**49. Approved With is cleared when it goes back to Pending Approval** · Negative
+
+`test_approved_with_cleared_on_next_pending_approval`
+
+- **What it checks:** A new approval round does not show the previous choice.
+- **Starting point:** A quotation in Pending Approval with Approved With set to CS Amount.
+- **Steps:**
+  1. Send Back to Sales User.
+  2. Send for Approval again.
+- **Expected result:**
+  - The quotation is in Pending Approval.
+  - Approved With is blank.
+
+**50. An old card does not apply a choice** · Negative
+
+`test_stale_card_does_not_apply_choice`
+
+- **What it checks:** A card clicked after the quotation was already approved in ERPNext changes nothing.
+- **Starting point:** A quotation approved in ERPNext; a Slack card for it still open.
+- **Steps:**
+  1. Click Approve with CS Proposal on the old card.
+- **Expected result:**
+  - Price List Rate is unchanged.
+
 ## How to run
 
 The suite lives in `apps/lh/lh/tests/quotation_e2e/` and runs one module at a time on a site with tests allowed:
