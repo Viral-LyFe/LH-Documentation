@@ -1,69 +1,86 @@
 Quotation E2E test run — lyfelocal.com (staging: copy of the production database), Frappe 15.121 / ERPNext 15.121, developer mode
-Started 2026-11-03 07:06 UTC. One command per module:
+Started 2026-11-03 09:07 UTC. One command per module:
   bench --site lyfelocal.com run-tests --app lh --module lh.tests.quotation_e2e.test_<module>
-test_validate was re-run after removing the 3 CombinedBoxTest tests (packing switched off on Oct 28); its first run had those 3 failing.
+Run after adding test_api_access (tests 79-86).
 
 =================== test_lifecycle ===================
 
-test_erp_approve_closes_slack_card (lh.tests.quotation_e2e.test_lifecycle.ApprovalPathTest.test_erp_approve_closes_slack_card) (2.85s)
-..........
-test_slack_card_from_every_route (lh.tests.quotation_e2e.test_lifecycle.ApprovalPathTest.test_slack_card_from_every_route) (2.51s)
-..................
-test_inquiry_to_won_to_cancelled (lh.tests.quotation_e2e.test_lifecycle.HappyPathTest.test_inquiry_to_won_to_cancelled) (2.01s)
+test_erp_approve_closes_slack_card (lh.tests.quotation_e2e.test_lifecycle.ApprovalPathTest.test_erp_approve_closes_slack_card) (2.55s)
+............................
+test_inquiry_to_won_to_cancelled (lh.tests.quotation_e2e.test_lifecycle.HappyPathTest.test_inquiry_to_won_to_cancelled) (3.55s)
 .....................
 ----------------------------------------------------------------------
-Ran 49 tests in 40.015s
+Ran 49 tests in 38.149s
 
 OK
 
-real	0m42.642s
-user	0m29.463s
-sys	0m2.858s
+real	0m41.310s
+user	0m26.350s
+sys	0m3.681s
 
 =================== test_payments ===================
 
-test_already_won_rejected (lh.tests.quotation_e2e.test_payments.ConfirmPaymentGuardTest.test_already_won_rejected) (2.74s)
+test_already_won_rejected (lh.tests.quotation_e2e.test_payments.ConfirmPaymentGuardTest.test_already_won_rejected) (2.44s)
 ...................................
 ----------------------------------------------------------------------
-Ran 35 tests in 18.775s
+Ran 35 tests in 18.597s
 
 OK
 
-real	0m20.625s
-user	0m14.347s
-sys	0m1.551s
+real	0m20.284s
+user	0m14.175s
+sys	0m1.799s
 
 =================== test_integrations ===================
 
-test_completed_draft_blocks_cancel_and_is_not_deleted (lh.tests.quotation_e2e.test_integrations.CancelDeletesDraftOrderTest.test_completed_draft_blocks_cancel_and_is_not_deleted) (2.46s)
-..................................................................
+test_completed_draft_blocks_cancel_and_is_not_deleted (lh.tests.quotation_e2e.test_integrations.CancelDeletesDraftOrderTest.test_completed_draft_blocks_cancel_and_is_not_deleted) (3.16s)
+..
+test_draft_already_gone_from_shopify_still_cancels (lh.tests.quotation_e2e.test_integrations.CancelDeletesDraftOrderTest.test_draft_already_gone_from_shopify_still_cancels) (2.23s)
+...........................................
+test_only_sent_card_quotations_without_a_link_are_picked (lh.tests.quotation_e2e.test_integrations.PaymentLinkSweeperTest.test_only_sent_card_quotations_without_a_link_are_picked) (3.01s)
+.................................
 ----------------------------------------------------------------------
-Ran 66 tests in 45.134s
+Ran 78 tests in 69.180s
 
 OK
 
-real	0m47.233s
-user	0m33.586s
-sys	0m3.036s
+real	1m13.918s
+user	0m51.578s
+sys	0m4.634s
 
 =================== test_validate ===================
+
+test_approval_not_reraised_once_approved (lh.tests.quotation_e2e.test_validate.ApprovalAndCogsFlagTest.test_approval_not_reraised_once_approved) (2.23s)
 .....................
 ----------------------------------------------------------------------
-Ran 21 tests in 7.523s
+Ran 21 tests in 8.635s
 
 OK
 
-real	0m9.021s
-user	0m5.663s
-sys	0m1.043s
+real	0m11.278s
+user	0m6.740s
+sys	0m1.366s
 
 =================== test_drawings ===================
-.............x.......
+....
+test_popup_flow_mark_pending_then_submit_details (lh.tests.quotation_e2e.test_drawings.DrawingChangeDetailsTest.test_popup_flow_mark_pending_then_submit_details) (2.11s)
+.........x.......
 ----------------------------------------------------------------------
-Ran 21 tests in 13.809s
+Ran 21 tests in 14.230s
 
 OK (expected failures=1)
 
-real	0m15.171s
-user	0m8.459s
-sys	0m0.770s
+real	0m15.627s
+user	0m8.922s
+sys	0m0.871s
+
+=================== test_api_access ===================
+........
+----------------------------------------------------------------------
+Ran 8 tests in 3.422s
+
+OK
+
+real	0m4.669s
+user	0m3.361s
+sys	0m0.523s

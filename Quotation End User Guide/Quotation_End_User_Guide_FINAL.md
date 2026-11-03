@@ -408,6 +408,10 @@ The system also requires a **contact email** and an **address** (section 21).
 3. “Sending quotation email…” appears, then “Quotation email sent.”
 4. The quotation becomes **Sent to Customer** and is **locked**.
 
+A card quotation **cannot be sent without a payment link**. If the link cannot be created (for example Shopify is down), you see an error and the quotation stays unsent; try again in a few minutes, and tell the technical team if it keeps failing. The system also refuses to send the email, or to move the quotation to Sent to Customer, by any other route if the link is missing. Bank-transfer quotations do not need a link.
+
+**Safety net:** every 5 minutes the system looks for sent card quotations that have no payment link and creates the link by itself (the “Pay by card” button in an email already sent starts working too). If a link is still missing 15 minutes after it was found, a **“Payment Link Generation Failed”** alert is posted in Slack with the quotation number, and the quotation owner or the technical team should act on it.
+
 [IMAGE PLACEHOLDER: Send Quotation to Client button and progress messages]
 
 ### What the customer receives
@@ -628,6 +632,7 @@ Priority and Order Type carry over to the Lyfe Order. The Order Drawing is copie
 | “No default outgoing email account is configured …” | Email not set up. | Ask the administrator. |
 | “Failed to generate payment link.” / “Shopify API error …” | Payment link could not be created. | Try again; if it persists, contact the administrator. |
 | “A payment link has already been generated for this quotation. Please reload the form …” | Link exists. | Reload the form. |
+| “Payment Link Missing — This quotation has no payment link yet …” | A card quotation was about to be sent (or emailed) without a payment link. | Click **Generate Payment Link** (or send from the form, which creates it first). If it fails, wait a few minutes and try again. |
 | “You do not have permission to edit Cost of Goods.” | A non-Factory user edited Cost of Goods. | Leave it to Factory. **[CONFIRM WITH TEAM: whether CS sees this each time an item is added]** |
 | “Payment required before <stage> …” / “This order cannot proceed — payment is pending …” | The order is waiting for payment per the Payment Schedule. | Record the payment received, or follow up with the customer. |
 
@@ -748,4 +753,4 @@ It is created when the Shopify order syncs from the shipping system. Contact the
 
 ---
 
-*Last updated: November 2026 (section 16: Cancel and the payment link) • Lyfe Hardware Internal Documentation*
+*Last updated: November 2026 (sections 13 and 16: sending needs a payment link; Cancel and the payment link) • Lyfe Hardware Internal Documentation*

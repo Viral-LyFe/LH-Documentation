@@ -2,7 +2,7 @@
 
 Oct 21, 2026 · updated Nov 3, 2026 · @Viral kansodiya
 
-192 automated end-to-end tests cover every LH Quotation customisation. On the latest run (Nov 3) 191 pass, none fail and 1 is a known expected failure. The changes covered here are live in production; the suite runs on lyfelocal.com, a copy of the production database that serves as staging.
+212 automated end-to-end tests cover every LH Quotation customisation. On the latest run (Nov 3) 211 pass, none fail and 1 is a known expected failure. The changes covered here are live in production; the suite runs on lyfelocal.com, a copy of the production database that serves as staging.
 
 ## Results
 
@@ -12,14 +12,47 @@ Full run on lyfelocal.com (Frappe 15.121, ERPNext 15.121) on Tuesday, Nov 3 (see
 | --- | --- | --- | --- | --- | --- |
 | test\_lifecycle | Workflow walks, transition guards, role checks, approval, revisions | 49 | 49 | 0 | 0 |
 | test\_payments | Payment schedule, fee, stage blocks, milestones, reminders, payment recording and Confirm Payment guards | 35 | 35 | 0 | 0 |
-| test\_integrations | Email, approval and tracking links, payment link guards and retry, cancel deleting the Shopify draft order, Resend Email, Shopify webhooks, Slack approval security, follow-up, SLA, COGS benchmark, permissions | 66 | 66 | 0 | 0 |
+| test\_integrations | Email, approval and tracking links, payment link guards and retry, cancel deleting the Shopify draft order, Resend Email, payment link required before sending, payment link sweeper, Shopify webhooks, Slack approval security, follow-up, SLA, COGS benchmark, permissions | 78 | 78 | 0 | 0 |
 | test\_validate | Order type, item box sizes, qty / rate, discounts, approval / COGS flags | 21 | 21 | 0 | 0 |
 | test\_drawings | Upload gate, Engineering Task gate, PDF BOM stripper, change details, Senior Review | 21 | 20 | 0 | 1 |
-| **Total** |  | **192** | **191** | **0** | **1** |
+| test\_api\_access | POST-only APIs, who may call the Shopify, 1Click and email APIs, CS pricing API | 8 | 8 | 0 | 0 |
+| **Total** |  | **212** | **211** | **0** | **1** |
 
 The expected failure is drawings test 8, a local-storage-only issue described in that test.
 
-Every test runs inside one database transaction that is rolled back at the end. Outbound effects (background jobs, email, Slack, Shopify, S3, PDF rendering) are stubbed, so a run sends nothing. Quotation, Lyfe Order, File and Comment counts were identical before and after a full run.
+Every test runs inside one database transaction that is rolled back at the end, and starts with Shopify payment links switched off (the site has them on, which would block sending a quotation that has no link); a test that needs them on switches them on itself. Outbound effects (background jobs, email, Slack, Shopify, S3, PDF rendering) are stubbed, so a run sends nothing. Quotation, Lyfe Order, File and Comment counts were identical before and after a full run.
+
+## Changes since the Oct 27 report (Nov 3)
+
+| What | Result |
+| --- | --- |
+| Cancel deletes the Shopify draft order (Nov 2 change, `e5db0a55`, `1e26bbfe`) | 9 tests added (51 to 59): paid draft blocks cancel, Shopify down blocks cancel, delete failure blocks cancel, retries, logging |
+| Resend Email | 8 tests added (60 to 67), including the browser check behind the Oct 27 bug (`1d63cfd1`), which now fails if the old condition comes back |
+| Combined box / parcel packing | 3 tests removed: the feature was switched off on Oct 28 (`93290118`) |
+| Cancelled quotations checked for payments | 16 cancelled quotations checked against payments and Lyfe Orders (see below) |
+| Open payment links of earlier cancelled quotations | One-off patch (`20e8166a`) deletes the open Shopify draft orders and clears the link; run in production, output to be reviewed from the Error Log |
+| Payment link required before sending (new rule, Nov 3) | 5 tests added (68 to 72): a card quotation cannot move to Sent to Customer, or be emailed, without a payment link; bank transfer and payment-links-off are exempt |
+| Payment link sweeper (new background job, Nov 3) | 6 tests added (73 to 78): every 5 minutes it creates any missing link and alerts Slack if it is still missing after 15 minutes |
+| API access rules from Oct 29 to Nov 2 | 8 tests added in a new module, test\_api\_access (1 to 8): 57 state-changing APIs accept only POST, the payment link, 1Click retry and email APIs refuse people who may not use them, and the CS pricing API returns a price and never the Cost of Goods. Each test was checked to fail when its rule is removed |
+| Suite | 212 tests, 211 pass, 1 expected failure, 0 fail |
+
+## Checks on live data and code (Nov 3)
+
+Done on lyfelocal.com, which holds a copy of the production database. These are not automated tests.
+
+**Payments on cancelled quotations.** All 16 cancelled quotations were checked.
+
+- 5 had their payment recorded on the amended replacement quotation: LHQ-0161, 0266-1, 0278, 0384, 0385.
+- 2 customers paid through the payment link of a quotation that was already cancelled. **LHQ-2026-0247** is already handled by CS: the customer split the payment, so CS created the invoice in Shopify (order LH#6519), and the Lyfe Order LYF-SH-2026-1874 exists and is Shipped. It is not linked to the quotation. The replacement LHQ-2026-0247-1 has a different amount and is Inquiry Rejected, to be deleted. A second Shopify payment on the old link was logged on Oct 26; this is probably the $1,500 shipping fee the customer said they would pay later. **LHQ-2026-0154** was paid on Shopify order LH#6187 (Lyfe Order LYF-SH-2026-1544, Completed, also not linked to the quotation); to confirm with CS whether it is the same kind of case.
+- The other 9 have no payment and no linked order. Older Error Logs were not available, so a payment before Oct 20 would not show here.
+
+**Is a background retry for payment link generation needed?** Assessed from the code and the data, not from documents. The browser attempt (5 tries, about 112 s) is unchanged.
+
+- **How a link is created.** CS clicks Send Quotation to Client (or Resend Email) in the browser, and the browser asks Shopify for the link first. If that fails, the quotation does not move to Sent and CS sees the error straight away, so a Shopify outage of a few minutes does not leave a quietly broken quotation. The 5-attempt retry (about 112 s, close to the 120 s limit) only decides how long CS waits before seeing that error.
+- **What the data shows.** Since May, 5 submitted quotations have no payment link: LHQ-0080, 0185 and 0206 were never emailed; LHQ-0309 and 0343 were emailed and later Won. LHQ-0309 was moved to Sent by a CS user on Oct 9 with no draft order at all. LHQ-0343 was moved by Administrator within seconds of creation, so a script or API, not a person using the form. Neither shows a failed Shopify call, and no Error Log or Integration Request exists from that period (Error Logs start Oct 20, payment-link Integration Requests start Nov 2). The cause of 0309 is not established.
+- **A gap that is not covered by a test.** Nothing on the server stops a card quotation from moving to Sent to Customer without a payment link. Only the browser makes the link first, so any other route (script, API, an old cached page) can send one. If the link is missing, the email's **Pay by card** button opens the Lyfe Hardware home page, which is what a customer sees as "cannot choose a payment option".
+- **Where a background retry would help.** Only the revision update (`update_draft_order`), which runs in the background with nobody watching: if Shopify fails, the link is cleared and the quotation owner is notified. That is rare, because a sent quotation is locked and now changes by Cancel and Amend.
+- **Conclusion and what was built (Nov 3).** A longer retry would fix only the rare case, so a server-side rule and a background check were built instead, and they work whatever the cause. The server now refuses to send, or move to Sent to Customer, a card quotation that has no payment link. A job runs every 5 minutes, creates the link for any sent card quotation that is missing one (which also fixes an email already sent, because the Pay by card button looks up the link when it is clicked), and alerts Slack once if it is still missing 15 minutes after it was found. Tests 68 to 78 cover this.
 
 ## Live timeout test (Oct 27)
 
@@ -126,6 +159,11 @@ Every item in the Asana scope is covered by at least one test class.
 | Payment recording and Confirm Payment | PaymentRecordingGuardTest, ConfirmPaymentGuardTest |
 | Quotation cancel: Shopify draft order deleted, cancel blocked if the draft is not open | CancelDeletesDraftOrderTest |
 | Resend Email button (payment link recovery + email) | ResendEmailTest |
+| Payment link required before sending | PaymentLinkRequiredTest |
+| Missing payment links created and alerted automatically | PaymentLinkSweeperTest |
+| State-changing APIs accept only POST (57 APIs) | PostOnlyApisTest |
+| Shopify, 1Click and email APIs check who may call them | OutsideServiceGatesTest |
+| CS pricing API (price from Cost of Goods without exposing it) | CsPricingApiTest |
 | Workflow role permissions | WorkflowRoleGuardTest |
 | Follow-up scheduler | FollowupSchedulerTest |
 | Linked Lyfe Orders, dashboard data | LinkedOrdersAndDashboardTest |
@@ -133,9 +171,9 @@ Every item in the Asana scope is covered by at least one test class.
 
 ## Negative test cases
 
-109 of the 192 tests are negative tests: they feed in bad data or a disallowed action, or check that something does not happen. Numbers match the test case catalogue below.
+121 of the 212 tests are negative tests: they feed in bad data or a disallowed action, or check that something does not happen. Numbers match the test case catalogue below.
 
-### Blocked, rejected or flagged (75)
+### Blocked, rejected or flagged (82)
 
 | Module | # | Test | Negative case |
 | --- | --- | --- | --- |
@@ -214,8 +252,15 @@ Every item in the Asana scope is covered by at least one test class.
 | test\_integrations | 64 | test\_resend\_when\_link\_generation\_fails\_sends\_no\_email | Resend when the payment link cannot be generated |
 | test\_integrations | 65 | test\_resend\_without\_contact\_email\_is\_rejected | Resend with no contact email |
 | test\_integrations | 66 | test\_user\_without\_write\_access\_cannot\_resend | Resend by a user without access to the quotation |
+| test\_integrations | 67 | test\_browser\_check\_after\_send\_handles\_empty\_and\_unexpected\_replies | Resend or Send button when the server reply is empty or not "sent" |
+| test\_integrations | 68 | test\_card\_quotation\_cannot\_be\_sent\_without\_a\_link | Send a card quotation that has no payment link |
+| test\_integrations | 72 | test\_email\_is\_not\_sent\_without\_a\_link | Email a card quotation that has no payment link |
+| test\_api\_access | 1 | test\_each\_api\_accepts\_only\_post | Any of the 57 state-changing APIs called with GET |
+| test\_api\_access | 2 | test\_create\_payment\_link\_needs\_write\_access\_to\_the\_quotation | Generate Payment Link by a user with no access to the quotation |
+| test\_api\_access | 3 | test\_retry\_1click\_create\_order\_is\_limited\_to\_order\_roles | Retry a 1Click create-order by a user without an order role |
+| test\_api\_access | 7 | test\_user\_without\_quotation\_access\_is\_refused | CS pricing API called by a user with no quotation access |
 
-### Must not happen (34)
+### Must not happen (39)
 
 | Module | # | Test | Negative case |
 | --- | --- | --- | --- |
@@ -253,6 +298,11 @@ Every item in the Asana scope is covered by at least one test class.
 | test\_integrations | 54 | test\_quotation\_without\_draft\_order\_cancels\_without\_calling\_shopify | Cancel does not call Shopify when there is no draft order |
 | test\_integrations | 61 | test\_resend\_with\_existing\_link\_does\_not\_create\_another\_draft\_order | Resend does not create a second draft order |
 | test\_integrations | 63 | test\_resend\_bank\_transfer\_has\_no\_card\_link\_and\_no\_draft\_order | Resend of a bank-transfer quotation gets no card link |
+| test\_integrations | 74 | test\_only\_sent\_card\_quotations\_without\_a\_link\_are\_picked | Sweeper leaves bank-transfer, already-linked and non-sent quotations alone |
+| test\_integrations | 75 | test\_nothing\_happens\_when\_payment\_links\_are\_switched\_off | Sweeper does nothing when payment links are off |
+| test\_integrations | 76 | test\_failure\_does\_not\_alert\_before\_15\_minutes | No Slack alert in the first 15 minutes of a missing link |
+| test\_integrations | 78 | test\_failed\_refresh\_of\_an\_existing\_draft\_is\_not\_counted\_as\_fixed\_and\_does\_not\_spam\_the\_owner | Failed link refresh is not reported as fixed and does not notify the owner every 5 minutes |
+| test\_api\_access | 5 | test\_returns\_the\_price\_not\_the\_cost | CS pricing API never returns the Cost of Goods |
 
 ### Not covered by a test, and why
 
@@ -261,9 +311,9 @@ Every item in the Asana scope is covered by at least one test class.
 | "Order Type must be set before saving a High / Urgent / VIP quotation" | Cannot happen: the system always sets the Order Type (Standard, Custom or Export) just before this check runs, so the error can never be shown. |
 | Generate Payment Link / Track Payment Status by a user without the right role | There is no role rule to test: these buttons' server calls do not check the user's role (anyone who can open the quotation can call them). Add a rule first if this should be restricted. |
 | Combined box / parcel packing when a quotation is saved | Switched off on Oct 28 (commit `93290118`, "not in use"). The 3 tests that covered it were removed on Nov 3. Add them back if packing is switched on again. |
-| Resend Email button: when it shows, its confirm dialog, the progress and success messages | These run in the browser. The two server calls the button makes are tested (ResendEmailTest); the button itself is not. |
+| Browser side of the CS pricing change (picking an item sets the price) | Runs in the browser. Tested by hand by the developer; only the server function is automated (test\_api\_access). |
+| Resend Email button: when it shows, its confirm dialog, the progress and success messages | These run in the browser. The two server calls the button makes and its "did it send?" check are tested (ResendEmailTest, including test 67); the display rules, dialog and messages are not. |
 | Payment link disabled when a quotation is marked **Lost** or **Expired** | Not built: only Cancel deletes the Shopify draft order. A Lost or Expired quotation keeps a live payment link, so there is nothing to test yet. |
-| Background retry of payment link generation | Not built: only the 5-attempt retry inside the request exists (about 112 s, close to the 120 s limit). Nothing to test yet. |
 | Who acts on the "Payment Link Generation Failed" alert, and how fast | A people and process question, not code. The alert itself is tested (PaymentLinkRetryTest). |
 | Shipping Charges required before Send Quotation to Client | The check is switched off in the code (commented out), so there is nothing to test. Feasibility Approve still requires shipping (lifecycle test 30). |
 
@@ -304,7 +354,7 @@ Each test lists **What it checks** (the business rule in one sentence), the **St
 
 ## Test case catalogue
 
-All 192 test cases, grouped by module and test class. Each test is labelled **Positive** (the normal case works), **Negative** (bad input or a disallowed action is stopped, or something must not happen) or **Expected failure**.
+All 212 test cases, grouped by module and test class. Each test is labelled **Positive** (the normal case works), **Negative** (bad input or a disallowed action is stopped, or something must not happen) or **Expected failure**.
 
 ### test\_lifecycle (49)
 
@@ -1405,7 +1455,7 @@ The **Confirm Payment** / **Confirm Remaining Payment** button for bank transfer
   - Blocked with **Received Amount must be greater than zero**.
   - No payment row is added; state stays **Bank Transfer Selected**.
 
-### test\_integrations (66)
+### test\_integrations (78)
 
 Quotation email, email-open tracking, the customer approval link, the Shopify payment link and payment checks, follow-ups, SLA, the COGS benchmark, list permissions and the dashboard.
 
@@ -2160,7 +2210,7 @@ Cancelling a quotation. The Shopify draft order behind its payment link must be 
 
 #### ResendEmailTest
 
-The Resend Email button on a sent quotation. It makes two server calls in order: generate the payment link (only when the quotation has none and is not bank transfer), then send the email. The test makes the same two calls. The button's own display, dialog and messages run in the browser and are not part of this test. Shopify's replies are simulated.
+The Resend Email button on a sent quotation. It makes two server calls in order: generate the payment link (only when the quotation has none and is not bank transfer), then send the email. The test makes the same two calls. The check the button makes after sending (did the server say "sent"?) is tested with Node (test 67). The button's display rules, dialog and messages run in the browser and are not tested. Shopify's replies are simulated.
 
 **60. Resend recovers a quotation that has no payment link** · Positive
 
@@ -2248,6 +2298,157 @@ The Resend Email button on a sent quotation. It makes two server calls in order:
 - **Expected result:**
   - Permission error.
   - No email is sent.
+
+**67. The button treats an empty or unexpected server reply as "not sent"** · Negative
+
+`test_browser_check_after_send_handles_empty_and_unexpected_replies`
+
+- **What it checks:** After Send Quotation or Resend Email, the button decides whether the email went out from the server's reply. An empty reply or any status other than "sent" must show "Failed to send", never a crash. This is the bug fixed on Oct 27 (`1d63cfd1`): an empty reply threw an error instead of showing the message.
+- **How it runs:** The check is one small function in the browser code. This test runs it with Node (a separate script, `tests/js/test_quotation_email_status.js`) as part of the suite, and is skipped if Node is not installed.
+- **Steps:**
+  1. Feed the check a "sent" reply, a "dev\_mode" reply, several empty replies, and other statuses such as "no\_email\_account".
+  2. Check that Send and Resend both use the function and the old inline condition is gone.
+- **Expected result:**
+  - "sent" and "dev\_mode" count as sent.
+  - Empty replies and other statuses count as not sent, with no error thrown.
+  - Both buttons use the check. With the old condition put back, 2 of the 4 checks fail.
+
+#### PaymentLinkRequiredTest
+
+A card quotation must have a Shopify payment link before it can be sent. The send button in the browser creates the link first; these tests cover the rule on the server, which also stops any other route (a script, the API, an old cached page) from sending a card quotation without one.
+
+**68. A card quotation cannot be sent without a payment link** · Negative
+
+`test_card_quotation_cannot_be_sent_without_a_link`
+
+- **What it checks:** Without a payment link the email's "Pay by card" button would open the home page, so the quotation is not allowed to move to Sent to Customer.
+- **Starting point:** An approved quotation waiting to be sent, payment links switched on, no payment link.
+- **Steps:**
+  1. Apply **Send Quotation to Client**.
+- **Expected result:**
+  - Blocked with "Payment Link Missing" ("This quotation has no payment link yet…").
+  - The quotation stays unsent.
+
+**69. A quotation with a payment link can be sent** · Positive
+
+`test_quotation_with_a_link_can_be_sent`
+
+- **What it checks:** The rule does not get in the way of a normal send.
+- **Starting point:** The same quotation, but it has a payment link.
+- **Steps:**
+  1. Apply **Send Quotation to Client**.
+- **Expected result:**
+  - The quotation becomes **Sent to Customer**.
+
+**70. A bank-transfer quotation needs no payment link** · Positive
+
+`test_bank_transfer_quotation_needs_no_link`
+
+- **What it checks:** Bank-transfer quotations never use the card link, so they can be sent without one.
+- **Starting point:** An approved bank-transfer quotation with no payment link, payment links switched on.
+- **Steps:**
+  1. Apply **Send Quotation to Client**.
+- **Expected result:**
+  - The quotation becomes **Sent to Customer**.
+
+**71. Nothing is required when payment links are switched off** · Positive
+
+`test_nothing_required_when_payment_links_are_switched_off`
+
+- **What it checks:** With payment links turned off in Shopify Tax Settings, no link is needed.
+- **Starting point:** An approved quotation with no payment link, payment links switched off.
+- **Steps:**
+  1. Apply **Send Quotation to Client**.
+- **Expected result:**
+  - The quotation becomes **Sent to Customer**.
+
+**72. The email is not sent without a payment link** · Negative
+
+`test_email_is_not_sent_without_a_link`
+
+- **What it checks:** The email function refuses a card quotation that has no link, so a broken "Pay by card" button can never go to a customer.
+- **Starting point:** A sent quotation with no payment link, payment links switched on, outgoing email set up.
+- **Steps:**
+  1. Send the quotation email.
+- **Expected result:**
+  - Rejected with "no payment link".
+  - No email is sent.
+
+#### PaymentLinkSweeperTest
+
+A background job that runs every 5 minutes. It finds sent card quotations that have no payment link and creates the link. If a quotation is still without a link 15 minutes after it was first found, Slack is told once (and again every 4 hours while it stays broken). Shopify's replies are simulated and the waits are skipped.
+
+**73. A missing payment link is created and noted** · Positive
+
+`test_missing_link_is_created_and_noted`
+
+- **What it checks:** A sent quotation that has no link gets one automatically, with no person involved.
+- **Starting point:** A sent card quotation with no payment link, payment links switched on.
+- **Steps:**
+  1. Run the job; Shopify accepts the new draft order.
+- **Expected result:**
+  - The draft order ID and payment link are saved on the quotation.
+  - The quotation gets a note: "Payment link was missing on a sent quotation; created automatically."
+  - No Slack alert.
+
+**74. Only sent card quotations without a link are picked** · Negative
+
+`test_only_sent_card_quotations_without_a_link_are_picked`
+
+- **What it checks:** The job leaves everything else alone.
+- **Starting point:** Four sent quotations: one with no link, one bank-transfer, one that already has a link, one that is Won.
+- **Steps:**
+  1. Ask the job which quotations it will fix.
+- **Expected result:**
+  - Only the one with no link is picked.
+
+**75. The job does nothing when payment links are switched off** · Negative
+
+`test_nothing_happens_when_payment_links_are_switched_off`
+
+- **What it checks:** No Shopify calls and no alerts when payment links are turned off.
+- **Starting point:** A sent quotation with no link, payment links switched off.
+- **Steps:**
+  1. Run the job.
+- **Expected result:**
+  - No request to Shopify and no Slack alert.
+
+**76. No Slack alert in the first 15 minutes** · Negative
+
+`test_failure_does_not_alert_before_15_minutes`
+
+- **What it checks:** A short Shopify problem is retried quietly; people are only told when it lasts.
+- **Starting point:** A sent card quotation with no link, just found.
+- **Steps:**
+  1. Run the job while Shopify times out every time.
+- **Expected result:**
+  - No Slack alert.
+  - Still no payment link; the job tries again 5 minutes later.
+
+**77. Slack is alerted once after 15 minutes** · Positive
+
+`test_failure_alerts_once_after_15_minutes`
+
+- **What it checks:** If the link is still missing after 15 minutes, the team is told once, not every 5 minutes.
+- **Starting point:** A sent card quotation with no link that was first found 20 minutes ago.
+- **Steps:**
+  1. Run the job while Shopify times out every time.
+  2. Run it again.
+- **Expected result:**
+  - The first run sends the alert, "Still no payment link … after it was found missing".
+  - The second run sends no further alert.
+
+**78. A failed link refresh is not reported as fixed and does not spam the owner** · Negative
+
+`test_failed_refresh_of_an_existing_draft_is_not_counted_as_fixed_and_does_not_spam_the_owner`
+
+- **What it checks:** When Shopify already has a draft order but its link is missing and refreshing it fails, the job does not claim success and does not send the quotation owner a notification every 5 minutes.
+- **Starting point:** A sent card quotation with a draft order ID but no link.
+- **Steps:**
+  1. Run the job while Shopify times out every time.
+- **Expected result:**
+  - The owner is not notified.
+  - No "created automatically" note is added.
 
 ### test\_validate (21)
 
@@ -2767,6 +2968,110 @@ Senior Drawing Review for Custom orders, and the lock on approved items.
 - **Expected result:**
   - State stays **Approved – Pending Send**.
 
+### test\_api\_access (8)
+
+API access rules added from Oct 29 to Nov 2.
+
+#### PostOnlyApisTest
+
+State-changing actions the browser triggers were made POST-only so that a plain link or GET request cannot trigger them.
+
+**1. The 57 state-changing APIs accept only POST** · Negative
+
+`test_each_api_accepts_only_post`
+
+- **What it checks:** None of the 57 APIs changed on Oct 30 (Daily Work Log, Lyfe Order, Gate Pass, Material Issue, Transfer Order, ShipStation settings and others) can be called with GET.
+- **Steps:**
+  1. For each API in the list, look up the allowed request methods.
+- **Expected result:**
+  - Every one allows **POST** only.
+  - If an API is renamed or loses its rule, the test names it.
+
+#### OutsideServiceGatesTest
+
+APIs that spend money or call outside services check who is calling.
+
+**2. Generate Payment Link needs access to the quotation** · Negative
+
+`test_create_payment_link_needs_write_access_to_the_quotation`
+
+- **What it checks:** A user who cannot edit the quotation cannot create its Shopify payment link.
+- **Starting point:** A saved quotation and a user with no access to quotations.
+- **Steps:**
+  1. That user calls Generate Payment Link.
+- **Expected result:**
+  - Permission error; no Shopify call.
+
+**3. Retrying a 1Click create-order is limited to order roles** · Negative
+
+`test_retry_1click_create_order_is_limited_to_order_roles`
+
+- **What it checks:** Only Factory, Customer Service, System Manager and Super Admin can re-send an order to 1Click with the live key.
+- **Starting point:** A user with only the Sales User role.
+- **Steps:**
+  1. That user retries a 1Click create-order from a log.
+- **Expected result:**
+  - Permission error.
+
+**4. Order roles get past the gate** · Positive
+
+`test_order_roles_get_past_the_gate`
+
+- **What it checks:** The role check lets an allowed role through.
+- **Starting point:** System Manager (Administrator).
+- **Steps:**
+  1. Retry a create-order for a log that does not exist.
+- **Expected result:**
+  - The call gets past the role check and fails only because the log is not found.
+
+#### CsPricingApiTest
+
+The price a Customer Service user sees when picking an item. CS cannot read Cost of Goods; the server works out the price (Cost of Goods x Item Group x Finish multiplier) and returns only that.
+
+**5. The API returns the price, never the cost** · Negative
+
+`test_returns_the_price_not_the_cost`
+
+- **What it checks:** The Cost of Goods is never sent to the user, only the price calculated from it.
+- **Starting point:** An item with Cost of Goods 40 and an Item Group multiplier of 2.
+- **Steps:**
+  1. Ask for the item's price.
+- **Expected result:**
+  - The price is 40 x 2 x the default finish multiplier, not 40.
+
+**6. An item without Cost of Goods gets no price** · Positive
+
+`test_item_without_cogs_gets_no_price`
+
+- **What it checks:** With no Cost of Goods there is nothing to price from, so no price is returned.
+- **Starting point:** The same item with Cost of Goods 0.
+- **Steps:**
+  1. Ask for the item's price.
+- **Expected result:**
+  - No price (empty).
+
+**7. A user without quotation access is refused** · Negative
+
+`test_user_without_quotation_access_is_refused`
+
+- **What it checks:** Only people who can read quotations can ask for a price.
+- **Starting point:** A user with no access to quotations.
+- **Steps:**
+  1. That user asks for the price.
+- **Expected result:**
+  - Permission error.
+
+**8. Customer Service gets the same price** · Positive
+
+`test_customer_service_gets_the_same_price`
+
+- **What it checks:** A Customer Service user gets the same price Factory gets, without being able to read Cost of Goods.
+- **Starting point:** A Customer Service user.
+- **Steps:**
+  1. Ask for the item's price as Factory/Administrator, then as the Customer Service user.
+- **Expected result:**
+  - Both prices are the same.
+
 ## How to run
 
 The suite lives in `apps/lh/lh/tests/quotation_e2e/` and runs one module at a time on a site with tests allowed:
@@ -2777,6 +3082,7 @@ bench --site lyfelocal.com run-tests --app lh --module lh.tests.quotation_e2e.te
 bench --site lyfelocal.com run-tests --app lh --module lh.tests.quotation_e2e.test_integrations
 bench --site lyfelocal.com run-tests --app lh --module lh.tests.quotation_e2e.test_validate
 bench --site lyfelocal.com run-tests --app lh --module lh.tests.quotation_e2e.test_drawings
+bench --site lyfelocal.com run-tests --app lh --module lh.tests.quotation_e2e.test_api_access
 ```
 
 The site needs `allow_tests` enabled, the active Quotation-3 workflow, and the LH custom fields from the app's patches. Shared setup (base test class, factories, stubs) is in `_helpers.py`.
@@ -2789,21 +3095,22 @@ Before the next change to the quotation or payment flow goes to production:
 
 ## Test run result
 
-**Tuesday, November 3, 2026**, from about 07:06 UTC, on lyfelocal.com (Frappe 15.121, ERPNext 15.121, developer mode), which is staging: it holds a copy of the production database. All five modules were run in full, one module per command (see **How to run**). The full console output of this run is in `Quotation E2E Test Run 2026-11-03.log`, next to this report.
+**Tuesday, November 3, 2026**, from about 09:07 UTC, on lyfelocal.com (Frappe 15.121, ERPNext 15.121, developer mode), which is staging: it holds a copy of the production database. All six modules were run in full, one module per command (see **How to run**). The full console output of this run is in `Quotation E2E Test Run 2026-11-03.log`, next to this report.
 
 | Module | Tests | Pass | Fail | Expected failure | Time |
 | --- | --- | --- | --- | --- | --- |
-| test\_lifecycle | 49 | 49 | 0 | 0 | 40.0 s |
-| test\_payments | 35 | 35 | 0 | 0 | 18.8 s |
-| test\_integrations | 66 | 66 | 0 | 0 | 45.1 s |
-| test\_validate | 21 | 21 | 0 | 0 | 10.0 s |
-| test\_drawings | 21 | 20 | 0 | 1 | 13.8 s |
-| **Total** | **192** | **191** | **0** | **1** | **127.7 s** |
+| test\_lifecycle | 49 | 49 | 0 | 0 | 38.1 s |
+| test\_payments | 35 | 35 | 0 | 0 | 18.6 s |
+| test\_integrations | 78 | 78 | 0 | 0 | 69.2 s |
+| test\_validate | 21 | 21 | 0 | 0 | 8.6 s |
+| test\_drawings | 21 | 20 | 0 | 1 | 14.2 s |
+| test\_api\_access | 8 | 8 | 0 | 0 | 3.4 s |
+| **Total** | **212** | **211** | **0** | **1** | **152.1 s** |
 
-**Result: PASS.** 192 tests, 109 of them negative. No failures. The 1 expected failure is drawings test 8 (local file storage only).
+**Result: PASS.** 212 tests, 121 of them negative. No failures. The 1 expected failure is drawings test 8 (local file storage only).
 
 **Removed:** the 3 `CombinedBoxTest` tests (previously test\_validate 7, 8 and 9). Combined box / parcel packing on save was switched off on Oct 28 (commit `93290118`, "not in use"), so they failed from that date. They were removed on Nov 3; the remaining test\_validate tests were renumbered 7 to 21.
 
-**Added since the Oct 27 run:** 16 tests in test\_integrations (51 to 66): 9 for cancel deleting the Shopify draft order (the Nov 2 change, commits `e5db0a55` and `1e26bbfe`) and 7 for Resend Email. 7 of them are negative cases that block or reject, and 3 check that something does not happen.
+**Added since the Oct 27 run:** 8 tests in the new test\_api\_access module (1 to 8: POST-only APIs, who may call the Shopify, 1Click and email APIs, the CS pricing API), and 28 tests in test\_integrations (51 to 78): 9 for cancel deleting the Shopify draft order (the Nov 2 change, commits `e5db0a55` and `1e26bbfe`), 8 for Resend Email (including the browser check behind the Oct 27 bug), 5 for the new rule that a card quotation needs a payment link before it is sent, and 6 for the new payment link sweeper. 22 of the 36 are negative: 14 block or reject something and 8 check that something does not happen.
 
 **Earlier addition (Oct 27 run):** 30 negative tests covering workflow role checks, payment recording and Confirm Payment, Generate Payment Link guards, Shopify webhook security, Slack approval security, email button links, the Engineering drawing Task and Senior Review.

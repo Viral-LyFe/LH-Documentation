@@ -105,3 +105,4 @@ Source of truth for every item: code in `apps/lh/lh` (`QPY` = `lyfe_hardware/doc
 | 27 Oct 2026 | A linked Timesheet no longer blocks Cancel; the employee is emailed (`702689bf`) | 16 |
 | 2 Nov 2026 | Cancel deletes the Shopify payment link; blocked if the customer already paid or Shopify cannot be reached (`e5db0a55`, `1e26bbfe`) | 16 |
 | 3 Nov 2026 | One-off patch deleted the open payment links of earlier cancelled quotations (`20e8166a`) | 16 |
+| 3 Nov 2026 | A card quotation cannot be sent, or emailed, without a payment link; a background job creates missing links every 5 minutes and alerts Slack after 15 minutes | 13, messages table |
