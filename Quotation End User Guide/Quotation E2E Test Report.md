@@ -2,7 +2,7 @@
 
 Oct 21, 2026 · updated Nov 3, 2026 · @Viral kansodiya
 
-195 automated end-to-end tests cover every LH Quotation customisation. On the latest run (Nov 3) 191 pass, 3 fail and 1 is a known expected failure. The 3 failures are the Combined Box tests (7, 8, 9 in test\_validate): packing was switched off on Oct 28 and the tests were not updated (see **Test run result**). The changes covered here are live in production; the suite runs on lyfelocal.com, a copy of the production database that serves as staging.
+192 automated end-to-end tests cover every LH Quotation customisation. On the latest run (Nov 3) 191 pass, none fail and 1 is a known expected failure. The changes covered here are live in production; the suite runs on lyfelocal.com, a copy of the production database that serves as staging.
 
 ## Results
 
@@ -13,11 +13,11 @@ Full run on lyfelocal.com (Frappe 15.121, ERPNext 15.121) on Tuesday, Nov 3 (see
 | test\_lifecycle | Workflow walks, transition guards, role checks, approval, revisions | 49 | 49 | 0 | 0 |
 | test\_payments | Payment schedule, fee, stage blocks, milestones, reminders, payment recording and Confirm Payment guards | 35 | 35 | 0 | 0 |
 | test\_integrations | Email, approval and tracking links, payment link guards and retry, cancel deleting the Shopify draft order, Resend Email, Shopify webhooks, Slack approval security, follow-up, SLA, COGS benchmark, permissions | 66 | 66 | 0 | 0 |
-| test\_validate | Order type, box sizes, qty / rate, discounts, approval / COGS flags | 24 | 21 | 3 | 0 |
+| test\_validate | Order type, item box sizes, qty / rate, discounts, approval / COGS flags | 21 | 21 | 0 | 0 |
 | test\_drawings | Upload gate, Engineering Task gate, PDF BOM stripper, change details, Senior Review | 21 | 20 | 0 | 1 |
-| **Total** |  | **195** | **191** | **3** | **1** |
+| **Total** |  | **192** | **191** | **0** | **1** |
 
-The expected failure is drawings test 8, a local-storage-only issue described in that test. The 3 failures are test\_validate tests 7, 8 and 9 (Combined Box): commit `93290118` (Oct 28) switched off combined box / parcel packing in `validate`, so these tests now fail whether or not anything else changes. They need to be updated or removed, or packing switched back on.
+The expected failure is drawings test 8, a local-storage-only issue described in that test.
 
 Every test runs inside one database transaction that is rolled back at the end. Outbound effects (background jobs, email, Slack, Shopify, S3, PDF rendering) are stubbed, so a run sends nothing. Quotation, Lyfe Order, File and Comment counts were identical before and after a full run.
 
@@ -106,7 +106,6 @@ Every item in the Asana scope is covered by at least one test class.
 | Custom-quotation detection | OrderTypeDetectionTest |
 | Item qty / rate limits | QtyAndRateTest |
 | Item dimension fill | ItemDimensionTest |
-| Combined box update | CombinedBoxTest |
 | Order value change check | PaymentScheduleTest (amounts follow the total) |
 | Payment schedule recalc, validation, stage checkbox sync | PaymentScheduleTest |
 | Payment processing fee | ProcessingFeeTest |
@@ -134,7 +133,7 @@ Every item in the Asana scope is covered by at least one test class.
 
 ## Negative test cases
 
-109 of the 195 tests are negative tests: they feed in bad data or a disallowed action, or check that something does not happen. Numbers match the test case catalogue below.
+109 of the 192 tests are negative tests: they feed in bad data or a disallowed action, or check that something does not happen. Numbers match the test case catalogue below.
 
 ### Blocked, rejected or flagged (75)
 
@@ -193,11 +192,11 @@ Every item in the Asana scope is covered by at least one test class.
 | test\_integrations | 31 | test\_unsigned\_stale\_or\_forged\_slack\_request\_rejected | Slack request old, unsigned or forged |
 | test\_integrations | 32 | test\_slack\_user\_without\_approver\_role\_cannot\_act | Approve clicked in Slack by a non-approver |
 | test\_validate | 6 | test\_bom\_with\_missing\_child\_dims\_is\_flagged | BOM part with missing box size (flagged) |
-| test\_validate | 10 | test\_missing\_cogs\_sets\_cogs\_pending | Missing COGS (COGS Pending flagged) |
-| test\_validate | 14 | test\_negative\_rate\_rejected | Negative item rate |
-| test\_validate | 15 | test\_zero\_qty\_rejected | Zero quantity |
-| test\_validate | 16 | test\_card\_payment\_over\_5pct\_needs\_approval | Card discount over 5% (approval flagged) |
-| test\_validate | 18 | test\_item\_group\_limit\_applies\_when\_item\_has\_none | Discount over the Item Group limit (approval flagged) |
+| test\_validate | 7 | test\_missing\_cogs\_sets\_cogs\_pending | Missing COGS (COGS Pending flagged) |
+| test\_validate | 11 | test\_negative\_rate\_rejected | Negative item rate |
+| test\_validate | 12 | test\_zero\_qty\_rejected | Zero quantity |
+| test\_validate | 13 | test\_card\_payment\_over\_5pct\_needs\_approval | Card discount over 5% (approval flagged) |
+| test\_validate | 15 | test\_item\_group\_limit\_applies\_when\_item\_has\_none | Discount over the Item Group limit (approval flagged) |
 | test\_drawings | 1 | test\_engineer\_without\_timesheet\_is\_blocked | Engineer upload without a Timesheet |
 | test\_drawings | 5 | test\_timesheet\_check\_rejects\_unknown\_doctype | Drawing timesheet check on a non-drawing document type |
 | test\_drawings | 6 | test\_engineering\_task\_cannot\_complete\_without\_timesheet | Engineering drawing Task completed without a Timesheet |
@@ -261,6 +260,7 @@ Every item in the Asana scope is covered by at least one test class.
 | --- | --- |
 | "Order Type must be set before saving a High / Urgent / VIP quotation" | Cannot happen: the system always sets the Order Type (Standard, Custom or Export) just before this check runs, so the error can never be shown. |
 | Generate Payment Link / Track Payment Status by a user without the right role | There is no role rule to test: these buttons' server calls do not check the user's role (anyone who can open the quotation can call them). Add a rule first if this should be restricted. |
+| Combined box / parcel packing when a quotation is saved | Switched off on Oct 28 (commit `93290118`, "not in use"). The 3 tests that covered it were removed on Nov 3. Add them back if packing is switched on again. |
 | Resend Email button: when it shows, its confirm dialog, the progress and success messages | These run in the browser. The two server calls the button makes are tested (ResendEmailTest); the button itself is not. |
 | Payment link disabled when a quotation is marked **Lost** or **Expired** | Not built: only Cancel deletes the Shopify draft order. A Lost or Expired quotation keeps a live payment link, so there is nothing to test yet. |
 | Background retry of payment link generation | Not built: only the 5-attempt retry inside the request exists (about 112 s, close to the 120 s limit). Nothing to test yet. |
@@ -304,7 +304,7 @@ Each test lists **What it checks** (the business rule in one sentence), the **St
 
 ## Test case catalogue
 
-All 195 test cases, grouped by module and test class. Each test is labelled **Positive** (the normal case works), **Negative** (bad input or a disallowed action is stopped, or something must not happen) or **Expected failure**.
+All 192 test cases, grouped by module and test class. Each test is labelled **Positive** (the normal case works), **Negative** (bad input or a disallowed action is stopped, or something must not happen) or **Expected failure**.
 
 ### test\_lifecycle (49)
 
@@ -2249,7 +2249,7 @@ The Resend Email button on a sent quotation. It makes two server calls in order:
   - Permission error.
   - No email is sent.
 
-### test\_validate (24)
+### test\_validate (21)
 
 Rules that run every time a quotation is saved.
 
@@ -2322,48 +2322,11 @@ Box size and weight on each item line, used for shipping.
   - The line is **flagged**, and the reason mentions **CHILD-1**.
   - No partial box size is filled in.
 
-#### CombinedBoxTest
-
-Packing all items into boxes for shipping. Each test uses an item of 30 × 20 × 10 cm, 2 kg, qty 2. Packing can come from 3D Bin Packing, Paccurate, or the built-in packer.
-
-**7. Built-in packer picks a box from the Box Catalogue** · Positive · **Failing since Oct 28** (combined box packing was switched off)
-
-`test_combined_box_and_parcels_from_catalogue`
-
-- **What it checks:** With both outside services off, the built-in packer still produces a box and parcel plan.
-- **Steps:**
-  1. Turn 3D Bin Packing and Paccurate off; create the quotation.
-- **Expected result:**
-  - A combined box size is set on the quotation.
-  - A Box Catalogue box is selected and the suggestions include **"Best fit"**.
-  - The line's Single Box Size is filled.
-  - A parcel plan is built.
-
-**8. 3D Bin Packing is used first when switched on** · Positive · **Failing since Oct 28** (combined box packing was switched off)
-
-`test_3dbinpacking_takes_priority_when_enabled`
-
-- **What it checks:** When 3D Bin Packing is on, its result is used.
-- **Steps:**
-  1. Turn 3D Bin Packing on (it returns one 40 cm box); create the quotation.
-- **Expected result:**
-  - 3D Bin Packing is called; the parcel plan is **one 40 cm box**.
-
-**9. Paccurate is used when 3D Bin Packing is off** · Positive · **Failing since Oct 28** (combined box packing was switched off)
-
-`test_paccurate_used_when_3dbin_off`
-
-- **What it checks:** When only Paccurate is on, its result and its packing picture are used.
-- **Steps:**
-  1. Turn only Paccurate on (it returns two 50 cm boxes and a picture); create the quotation.
-- **Expected result:**
-  - The parcel plan is **two 50 cm boxes**; the Paccurate picture is saved.
-
 #### ApprovalAndCogsFlagTest
 
 The COGS Pending and Approval Required flags.
 
-**10. Missing COGS ticks COGS Pending** · Negative
+**7. Missing COGS ticks COGS Pending** · Negative
 
 `test_missing_cogs_sets_cogs_pending`
 
@@ -2373,7 +2336,7 @@ The COGS Pending and Approval Required flags.
 - **Expected result:**
   - **COGS Pending** is ticked.
 
-**11. Total of 10,000+ ticks Approval Required** · Positive
+**8. Total of 10,000+ ticks Approval Required** · Positive
 
 `test_grand_total_over_10k_requires_approval`
 
@@ -2383,7 +2346,7 @@ The COGS Pending and Approval Required flags.
 - **Expected result:**
   - **Approval Required** is ticked.
 
-**12. Approval is not asked again once approved** · Positive
+**9. Approval is not asked again once approved** · Positive
 
 `test_approval_not_reraised_once_approved`
 
@@ -2397,7 +2360,7 @@ The COGS Pending and Approval Required flags.
 
 Limits on item quantity and rate.
 
-**13. Rate 0 is allowed** · Positive
+**10. Rate 0 is allowed** · Positive
 
 `test_zero_rate_is_allowed`
 
@@ -2407,7 +2370,7 @@ Limits on item quantity and rate.
 - **Expected result:**
   - Saved; the line rate is **0**.
 
-**14. Negative rate is rejected** · Negative
+**11. Negative rate is rejected** · Negative
 
 `test_negative_rate_rejected`
 
@@ -2417,7 +2380,7 @@ Limits on item quantity and rate.
 - **Expected result:**
   - Blocked with "cannot be negative".
 
-**15. Quantity 0 is rejected** · Negative
+**12. Quantity 0 is rejected** · Negative
 
 `test_zero_qty_rejected`
 
@@ -2431,7 +2394,7 @@ Limits on item quantity and rate.
 
 A discount above the allowed limit ticks Approval Required. Limits: card payment **5%**, bank transfer **8%**, unless the Item or Item Group sets its own limit (the Item limit wins over the Item Group).
 
-**16. Card payment: discount over 5% needs approval** · Negative
+**13. Card payment: discount over 5% needs approval** · Negative
 
 `test_card_payment_over_5pct_needs_approval`
 
@@ -2441,7 +2404,7 @@ A discount above the allowed limit ticks Approval Required. Limits: card payment
 - **Expected result:**
   - **Approval Required** is ticked.
 
-**17. Bank transfer: up to 8% discount is allowed** · Positive
+**14. Bank transfer: up to 8% discount is allowed** · Positive
 
 `test_bank_transfer_allows_up_to_8pct`
 
@@ -2451,7 +2414,7 @@ A discount above the allowed limit ticks Approval Required. Limits: card payment
 - **Expected result:**
   - **Approval Required** stays unticked.
 
-**18. Item Group limit is used when the Item has none** · Negative
+**15. Item Group limit is used when the Item has none** · Negative
 
 `test_item_group_limit_applies_when_item_has_none`
 
@@ -2461,7 +2424,7 @@ A discount above the allowed limit ticks Approval Required. Limits: card payment
 - **Expected result:**
   - 12% is allowed; 16% is over the limit.
 
-**19. Item limit wins over the Item Group limit** · Positive
+**16. Item limit wins over the Item Group limit** · Positive
 
 `test_item_limit_beats_item_group`
 
@@ -2475,7 +2438,7 @@ A discount above the allowed limit ticks Approval Required. Limits: card payment
 
 Fields and rows the system fills or clears automatically.
 
-**20. Attaching the drawing clears Drawing Required and Photo Required** · Positive
+**17. Attaching the drawing clears Drawing Required and Photo Required** · Positive
 
 `test_drawing_clears_drawing_and_photo_required`
 
@@ -2485,7 +2448,7 @@ Fields and rows the system fills or clears automatically.
 - **Expected result:**
   - Both flags are unticked.
 
-**21. IGST tax row is removed** · Positive
+**18. IGST tax row is removed** · Positive
 
 `test_igst_row_is_stripped`
 
@@ -2495,7 +2458,7 @@ Fields and rows the system fills or clears automatically.
 - **Expected result:**
   - The IGST row is removed.
 
-**22. Default payment terms and T&C are filled** · Positive
+**19. Default payment terms and T&C are filled** · Positive
 
 `test_defaults_terms_template`
 
@@ -2505,7 +2468,7 @@ Fields and rows the system fills or clears automatically.
 - **Expected result:**
   - Payment terms **"100 % Advance"**; T&C **"Terms and Conditions template"**.
 
-**23. Shipping and Custom Fee rows are added only once** · Positive
+**20. Shipping and Custom Fee rows are added only once** · Positive
 
 `test_after_insert_rows_added_once`
 
@@ -2515,7 +2478,7 @@ Fields and rows the system fills or clears automatically.
 - **Expected result:**
   - One Shipping Charges row and one Custom Fee row.
 
-**24. A duplicated quotation does not keep the old payment link** · Positive
+**21. A duplicated quotation does not keep the old payment link** · Positive
 
 `test_after_insert_clears_copied_shopify_and_email_fields`
 
@@ -2833,13 +2796,13 @@ Before the next change to the quotation or payment flow goes to production:
 | test\_lifecycle | 49 | 49 | 0 | 0 | 40.0 s |
 | test\_payments | 35 | 35 | 0 | 0 | 18.8 s |
 | test\_integrations | 66 | 66 | 0 | 0 | 45.1 s |
-| test\_validate | 24 | 21 | 3 | 0 | 9.6 s |
+| test\_validate | 21 | 21 | 0 | 0 | 10.0 s |
 | test\_drawings | 21 | 20 | 0 | 1 | 13.8 s |
-| **Total** | **195** | **191** | **3** | **1** | **127.3 s** |
+| **Total** | **192** | **191** | **0** | **1** | **127.7 s** |
 
-**Result: FAIL, 3 tests.** 195 tests, 109 of them negative. The 1 expected failure is drawings test 8 (local file storage only).
+**Result: PASS.** 192 tests, 109 of them negative. No failures. The 1 expected failure is drawings test 8 (local file storage only).
 
-**The 3 failures** are all in `CombinedBoxTest` (test\_validate 7, 8 and 9): `test_combined_box_and_parcels_from_catalogue`, `test_3dbinpacking_takes_priority_when_enabled` and `test_paccurate_used_when_3dbin_off`. Cause: commit `93290118` (Oct 28, "disable combined box update in validate") commented out the `_update_combined_box` call, because combined box / parcel packing is not in use. The tests still expect packing to run. The same 3 fail with the new tests removed, so they are not caused by this update. They passed in the Oct 27 run, before that commit. Decision needed: update the tests to match the switched-off feature, or switch packing back on.
+**Removed:** the 3 `CombinedBoxTest` tests (previously test\_validate 7, 8 and 9). Combined box / parcel packing on save was switched off on Oct 28 (commit `93290118`, "not in use"), so they failed from that date. They were removed on Nov 3; the remaining test\_validate tests were renumbered 7 to 21.
 
 **Added since the Oct 27 run:** 16 tests in test\_integrations (51 to 66): 9 for cancel deleting the Shopify draft order (the Nov 2 change, commits `e5db0a55` and `1e26bbfe`) and 7 for Resend Email. 7 of them are negative cases that block or reject, and 3 check that something does not happen.
 

@@ -517,7 +517,21 @@ Once sent, a quotation is locked: **items cannot be edited**. To change a sent q
 2. Click **Amend** on the cancelled quotation. A new quotation is created with the same name plus **-1** (then -2, …).
 3. Make the changes. The amended quotation **starts again at Inquiry** and goes through the normal flow, including approval and sending.
 
-> **Important:** The earlier payment link is **not** cancelled automatically. If a customer pays through the old link after you cancel, the payment is **not recorded** on the cancelled quotation and an alert is sent to Slack. Tell the customer to use the link in the new email, and check Shopify if they have already paid.
+> **Important:** Cancelling also **deletes the quotation's Shopify payment link**, so the customer can no longer pay through it. Tell the customer to use the link in the new email after you amend.
+
+What can stop a Cancel (the quotation stays as it was):
+
+| Message | What it means | What to do |
+| --- | --- | --- |
+| *Shopify draft order … is no longer a draft (order created/paid), so this Quotation cannot be cancelled.* | The customer has already paid through the link. | Do not cancel. Check the payment in Shopify and record it on this quotation. |
+| *Could not reach Shopify to verify the draft order. Try cancelling again.* | Shopify is down or slow, so the system cannot confirm the link is safe to delete. | Wait a few minutes and try again. If it still fails after about 15 minutes, tell the technical team. Do not tell the customer it is cancelled until it is. |
+| *Could not delete Shopify draft order … Cancel aborted; try again.* | Shopify did not accept the delete. | Same as above. |
+
+A quotation with no payment link (for example a bank-transfer quotation) cancels without Shopify being involved, so a Shopify outage does not affect it.
+
+A linked **Timesheet** no longer blocks a Cancel. The Timesheet stays unchanged and its employee is emailed that the quotation was cancelled, so they can review it.
+
+Quotations cancelled before 2 November 2026 kept a live payment link. On 3 November the leftover open payment links of those quotations were deleted; any that had already been paid were left for manual review.
 
 Quotations that have not yet been sent (before **Sent to Customer**) have no Cancel button; edit them directly.
 
@@ -734,4 +748,4 @@ It is created when the Shopify order syncs from the shipping system. Contact the
 
 ---
 
-*Last updated: October 2026 • Lyfe Hardware Internal Documentation*
+*Last updated: November 2026 (section 16: Cancel and the payment link) • Lyfe Hardware Internal Documentation*
