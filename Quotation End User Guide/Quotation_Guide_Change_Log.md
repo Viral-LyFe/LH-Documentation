@@ -95,7 +95,7 @@ Source of truth for every item: code in `apps/lh/lh` (`QPY` = `lyfe_hardware/doc
 - Realtime toast says “Marked as Won” for partial payments.
 - Bank-transfer internal email still says to set “Payment Received”.
 - Approval messages hard-code “₹10,000” though the comparison ignores currency.
-- ~~Old Shopify payment link is not cancelled on Cancel/Amend.~~ **Fixed 2 Nov 2026** (`e5db0a55`, `1e26bbfe`): Cancel now deletes the Shopify draft order, and is blocked if the draft is already paid or Shopify cannot be reached. Guide section 16 updated. Leftover drafts of earlier cancelled quotations were removed by patch on 3 Nov.
+- ~~Old Shopify payment link is not cancelled on Cancel/Amend.~~ **Fixed 2 Nov 2026** (`e5db0a55`, `1e26bbfe`): Cancel now deletes the Shopify draft order, and is blocked if the draft is already paid or Shopify cannot be reached. Guide section 16 updated. On 3 Nov a one-off patch checked every earlier cancelled quotation in Shopify: none still had an open payment link (14 already gone, 2 already paid and left for review).
 - Quotation docs `docs/quotation_request_technical_details_validations.md` and `docs/Quotation_End_User_Guide_v2.md` contain statements that no longer match the code.
 
 ## G. Updates after v3.0
@@ -104,5 +104,5 @@ Source of truth for every item: code in `apps/lh/lh` (`QPY` = `lyfe_hardware/doc
 | --- | --- | --- |
 | 27 Oct 2026 | A linked Timesheet no longer blocks Cancel; the employee is emailed (`702689bf`) | 16 |
 | 2 Nov 2026 | Cancel deletes the Shopify payment link; blocked if the customer already paid or Shopify cannot be reached (`e5db0a55`, `1e26bbfe`) | 16 |
-| 3 Nov 2026 | One-off patch deleted the open payment links of earlier cancelled quotations (`20e8166a`) | 16 |
+| 3 Nov 2026 | One-off patch (`20e8166a`) checked all 16 earlier cancelled quotations in Shopify: no open payment link was left (14 already gone, 2 already paid and left for review) | 16 |
 | 3 Nov 2026 | A card quotation cannot be sent, or emailed, without a payment link; a background job creates missing links every 5 minutes and alerts Slack after 15 minutes | 13, messages table |

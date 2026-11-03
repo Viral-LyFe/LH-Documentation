@@ -535,7 +535,7 @@ A quotation with no payment link (for example a bank-transfer quotation) cancels
 
 A linked **Timesheet** no longer blocks a Cancel. The Timesheet stays unchanged and its employee is emailed that the quotation was cancelled, so they can review it.
 
-Quotations cancelled before 2 November 2026 kept a live payment link. On 3 November the leftover open payment links of those quotations were deleted; any that had already been paid were left for manual review.
+Quotations cancelled before 2 November 2026 could keep a live payment link. On 3 November every cancelled quotation was checked in Shopify: none still had an open payment link, and 2 (LHQ-2026-0154 and LHQ-2026-0247) had already been paid, so they were left for manual review.
 
 Quotations that have not yet been sent (before **Sent to Customer**) have no Cancel button; edit them directly.
 

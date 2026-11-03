@@ -30,7 +30,7 @@ Every test runs inside one database transaction that is rolled back at the end, 
 | Resend Email | 8 tests added (60 to 67), including the browser check behind the Oct 27 bug (`1d63cfd1`), which now fails if the old condition comes back |
 | Combined box / parcel packing | 3 tests removed: the feature was switched off on Oct 28 (`93290118`) |
 | Cancelled quotations checked for payments | 16 cancelled quotations checked against payments and Lyfe Orders (see below) |
-| Open payment links of earlier cancelled quotations | One-off patch (`20e8166a`) deletes the open Shopify draft orders and clears the link; run in production, output to be reviewed from the Error Log |
+| Open payment links of earlier cancelled quotations | One-off patch (`20e8166a`), run in production on Nov 3: 14 of the 16 drafts were already gone from Shopify, 2 (LHQ-2026-0154 and LHQ-2026-0247) were completed paid orders and were left untouched. No open payment link remains on any cancelled quotation |
 | Payment link required before sending (new rule, Nov 3) | 5 tests added (68 to 72): a card quotation cannot move to Sent to Customer, or be emailed, without a payment link; bank transfer and payment-links-off are exempt |
 | Payment link sweeper (new background job, Nov 3) | 6 tests added (73 to 78): every 5 minutes it creates any missing link and alerts Slack if it is still missing after 15 minutes |
 | API access rules from Oct 29 to Nov 2 | 8 tests added in a new module, test\_api\_access (1 to 8): 57 state-changing APIs accept only POST, the payment link, 1Click retry and email APIs refuse people who may not use them, and the CS pricing API returns a price and never the Cost of Goods. Each test was checked to fail when its rule is removed |
