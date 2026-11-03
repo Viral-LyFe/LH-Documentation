@@ -1,23 +1,23 @@
 # Quotation E2E Test Report
 
-Oct 21, 2026 · updated Oct 27, 2026 · @Viral kansodiya
+Oct 21, 2026 · updated Nov 3, 2026 · @Viral kansodiya
 
-179 automated end-to-end tests cover every LH Quotation customisation. On the latest run (Oct 27) 178 pass and 1 is a known expected failure. Nothing is deployed to production yet.
+195 automated end-to-end tests cover every LH Quotation customisation. On the latest run (Nov 3) 191 pass, 3 fail and 1 is a known expected failure. The 3 failures are the Combined Box tests (7, 8, 9 in test\_validate): packing was switched off on Oct 28 and the tests were not updated (see **Test run result**). The changes covered here are live in production; the suite runs on lyfelocal.com, a copy of the production database that serves as staging.
 
 ## Results
 
-Full run on lyfelocal.com (Frappe 15.121, ERPNext 15.121) on Tuesday, Oct 27 (see **Test run result** at the end). A full run takes about 2 minutes and leaves the database and disk exactly as it found them.
+Full run on lyfelocal.com (Frappe 15.121, ERPNext 15.121) on Tuesday, Nov 3 (see **Test run result** at the end). A full run takes about 2 minutes and leaves the database and disk exactly as it found them.
 
 | Module | Area | Tests | Pass | Fail | Expected failure |
 | --- | --- | --- | --- | --- | --- |
 | test\_lifecycle | Workflow walks, transition guards, role checks, approval, revisions | 49 | 49 | 0 | 0 |
 | test\_payments | Payment schedule, fee, stage blocks, milestones, reminders, payment recording and Confirm Payment guards | 35 | 35 | 0 | 0 |
-| test\_integrations | Email, approval and tracking links, payment link guards and retry, Shopify webhooks, Slack approval security, follow-up, SLA, COGS benchmark, permissions | 50 | 50 | 0 | 0 |
-| test\_validate | Order type, box sizes, qty / rate, discounts, approval / COGS flags | 24 | 24 | 0 | 0 |
+| test\_integrations | Email, approval and tracking links, payment link guards and retry, cancel deleting the Shopify draft order, Resend Email, Shopify webhooks, Slack approval security, follow-up, SLA, COGS benchmark, permissions | 66 | 66 | 0 | 0 |
+| test\_validate | Order type, box sizes, qty / rate, discounts, approval / COGS flags | 24 | 21 | 3 | 0 |
 | test\_drawings | Upload gate, Engineering Task gate, PDF BOM stripper, change details, Senior Review | 21 | 20 | 0 | 1 |
-| **Total** |  | **179** | **178** | **0** | **1** |
+| **Total** |  | **195** | **191** | **3** | **1** |
 
-The expected failure is drawings test 8, a local-storage-only issue described in that test.
+The expected failure is drawings test 8, a local-storage-only issue described in that test. The 3 failures are test\_validate tests 7, 8 and 9 (Combined Box): commit `93290118` (Oct 28) switched off combined box / parcel packing in `validate`, so these tests now fail whether or not anything else changes. They need to be updated or removed, or packing switched back on.
 
 Every test runs inside one database transaction that is rolled back at the end. Outbound effects (background jobs, email, Slack, Shopify, S3, PDF rendering) are stubbed, so a run sends nothing. Quotation, Lyfe Order, File and Comment counts were identical before and after a full run.
 
@@ -125,6 +125,8 @@ Every item in the Asana scope is covered by at least one test class.
 | Email: send, open tracking, approval token + approve\_quotation | SendQuotationEmailTest, EmailOpenTrackingTest, CustomerApprovalLinkTest |
 | Shopify payment link + payment status polling | ShopifyLinkTest, PaymentLinkRetryTest, PaymentLinkGuardTest, ShopifyPollingTest, ShopifyWebhookGuardTest |
 | Payment recording and Confirm Payment | PaymentRecordingGuardTest, ConfirmPaymentGuardTest |
+| Quotation cancel: Shopify draft order deleted, cancel blocked if the draft is not open | CancelDeletesDraftOrderTest |
+| Resend Email button (payment link recovery + email) | ResendEmailTest |
 | Workflow role permissions | WorkflowRoleGuardTest |
 | Follow-up scheduler | FollowupSchedulerTest |
 | Linked Lyfe Orders, dashboard data | LinkedOrdersAndDashboardTest |
@@ -132,9 +134,9 @@ Every item in the Asana scope is covered by at least one test class.
 
 ## Negative test cases
 
-99 of the 179 tests are negative tests: they feed in bad data or a disallowed action, or check that something does not happen. Numbers match the test case catalogue below.
+109 of the 195 tests are negative tests: they feed in bad data or a disallowed action, or check that something does not happen. Numbers match the test case catalogue below.
 
-### Blocked, rejected or flagged (68)
+### Blocked, rejected or flagged (75)
 
 | Module | # | Test | Negative case |
 | --- | --- | --- | --- |
@@ -206,8 +208,15 @@ Every item in the Asana scope is covered by at least one test class.
 | test\_drawings | 17 | test\_request\_and\_complete\_senior\_review | Senior Review without a Reason Code, and a duplicate request |
 | test\_drawings | 18 | test\_senior\_review\_needs\_a\_note | Senior Review requested with no note |
 | test\_drawings | 19 | test\_senior\_review\_bad\_outcome\_or\_second\_submit\_rejected | Senior Review with an invalid outcome, or submitted twice |
+| test\_integrations | 52 | test\_completed\_draft\_blocks\_cancel\_and\_is\_not\_deleted | Cancel when the Shopify draft order is already paid or completed |
+| test\_integrations | 55 | test\_shopify\_unreachable\_blocks\_cancel | Cancel while Shopify cannot be reached |
+| test\_integrations | 56 | test\_verify\_error\_blocks\_cancel\_without\_retrying\_client\_errors | Cancel when Shopify refuses the draft order check (401) |
+| test\_integrations | 57 | test\_delete\_failure\_blocks\_cancel | Cancel when the draft order delete fails |
+| test\_integrations | 64 | test\_resend\_when\_link\_generation\_fails\_sends\_no\_email | Resend when the payment link cannot be generated |
+| test\_integrations | 65 | test\_resend\_without\_contact\_email\_is\_rejected | Resend with no contact email |
+| test\_integrations | 66 | test\_user\_without\_write\_access\_cannot\_resend | Resend by a user without access to the quotation |
 
-### Must not happen (31)
+### Must not happen (34)
 
 | Module | # | Test | Negative case |
 | --- | --- | --- | --- |
@@ -242,6 +251,9 @@ Every item in the Asana scope is covered by at least one test class.
 | test\_drawings | 9 | test\_pdf\_without\_bom\_left\_alone | PDF without a BOM page left untouched |
 | test\_drawings | 10 | test\_unchanged\_drawing\_not\_reprocessed | Unchanged drawing not reprocessed |
 | test\_drawings | 16 | test\_sweep | Unanswered upload undone by the scheduled job |
+| test\_integrations | 54 | test\_quotation\_without\_draft\_order\_cancels\_without\_calling\_shopify | Cancel does not call Shopify when there is no draft order |
+| test\_integrations | 61 | test\_resend\_with\_existing\_link\_does\_not\_create\_another\_draft\_order | Resend does not create a second draft order |
+| test\_integrations | 63 | test\_resend\_bank\_transfer\_has\_no\_card\_link\_and\_no\_draft\_order | Resend of a bank-transfer quotation gets no card link |
 
 ### Not covered by a test, and why
 
@@ -249,6 +261,10 @@ Every item in the Asana scope is covered by at least one test class.
 | --- | --- |
 | "Order Type must be set before saving a High / Urgent / VIP quotation" | Cannot happen: the system always sets the Order Type (Standard, Custom or Export) just before this check runs, so the error can never be shown. |
 | Generate Payment Link / Track Payment Status by a user without the right role | There is no role rule to test: these buttons' server calls do not check the user's role (anyone who can open the quotation can call them). Add a rule first if this should be restricted. |
+| Resend Email button: when it shows, its confirm dialog, the progress and success messages | These run in the browser. The two server calls the button makes are tested (ResendEmailTest); the button itself is not. |
+| Payment link disabled when a quotation is marked **Lost** or **Expired** | Not built: only Cancel deletes the Shopify draft order. A Lost or Expired quotation keeps a live payment link, so there is nothing to test yet. |
+| Background retry of payment link generation | Not built: only the 5-attempt retry inside the request exists (about 112 s, close to the 120 s limit). Nothing to test yet. |
+| Who acts on the "Payment Link Generation Failed" alert, and how fast | A people and process question, not code. The alert itself is tested (PaymentLinkRetryTest). |
 | Shipping Charges required before Send Quotation to Client | The check is switched off in the code (commented out), so there is nothing to test. Feasibility Approve still requires shipping (lifecycle test 30). |
 
 ## Terms used in this report
@@ -288,7 +304,7 @@ Each test lists **What it checks** (the business rule in one sentence), the **St
 
 ## Test case catalogue
 
-All 179 test cases, grouped by module and test class. Each test is labelled **Positive** (the normal case works), **Negative** (bad input or a disallowed action is stopped, or something must not happen) or **Expected failure**.
+All 195 test cases, grouped by module and test class. Each test is labelled **Positive** (the normal case works), **Negative** (bad input or a disallowed action is stopped, or something must not happen) or **Expected failure**.
 
 ### test\_lifecycle (49)
 
@@ -1389,7 +1405,7 @@ The **Confirm Payment** / **Confirm Remaining Payment** button for bank transfer
   - Blocked with **Received Amount must be greater than zero**.
   - No payment row is added; state stays **Bank Transfer Selected**.
 
-### test\_integrations (50)
+### test\_integrations (66)
 
 Quotation email, email-open tracking, the customer approval link, the Shopify payment link and payment checks, follow-ups, SLA, the COGS benchmark, list permissions and the dashboard.
 
@@ -2022,6 +2038,217 @@ Links shown on the quotation form.
 - **Expected result:**
   - **Timesheet** is listed, linked through the custom Quotation field.
 
+#### CancelDeletesDraftOrderTest
+
+Cancelling a quotation. The Shopify draft order behind its payment link must be deleted, so a customer can never pay a cancelled quotation. Before cancelling, the system checks the draft is still an open draft; a draft that is already paid or completed is a real order and blocks the cancel. Shopify's replies are simulated and the waits are skipped in the test.
+
+**51. Cancel deletes the open Shopify draft order** · Positive
+
+`test_open_draft_is_deleted_on_cancel`
+
+- **What it checks:** Cancelling a quotation kills its payment link by deleting the draft order.
+- **Starting point:** A sent quotation with a Shopify draft order and payment link.
+- **Steps:**
+  1. Shopify reports the draft as **open**, then accepts the delete.
+  2. Apply the **Cancel** workflow action.
+- **Expected result:**
+  - Shopify is asked to check the draft, then to delete it, both for this quotation's draft order.
+  - The quotation is **Cancelled**.
+
+**52. Cancel is blocked when the draft order is already paid** · Negative
+
+`test_completed_draft_blocks_cancel_and_is_not_deleted`
+
+- **What it checks:** A paid or completed draft is a real order, so the quotation cannot be cancelled and the order is never deleted.
+- **Starting point:** A sent quotation with a Shopify draft order.
+- **Steps:**
+  1. Shopify reports the draft as **completed**.
+  2. Apply the **Cancel** workflow action.
+- **Expected result:**
+  - Blocked with "no longer a draft".
+  - The quotation stays submitted.
+  - Only the check is sent to Shopify; nothing is deleted.
+
+**53. Cancel still works when the draft order is already gone** · Positive
+
+`test_draft_already_gone_from_shopify_still_cancels`
+
+- **What it checks:** A draft order that no longer exists in Shopify does not stop the cancel.
+- **Starting point:** A sent quotation with a Shopify draft order.
+- **Steps:**
+  1. Shopify answers "not found" to both the check and the delete.
+  2. Apply the **Cancel** workflow action.
+- **Expected result:**
+  - The quotation is **Cancelled**.
+
+**54. Cancel does not call Shopify when there is no draft order** · Negative
+
+`test_quotation_without_draft_order_cancels_without_calling_shopify`
+
+- **What it checks:** A quotation that never had a payment link (for example a bank-transfer quotation) cancels without any Shopify call.
+- **Starting point:** A sent quotation with no draft order.
+- **Steps:**
+  1. Apply the **Cancel** workflow action.
+- **Expected result:**
+  - No request is sent to Shopify.
+  - The quotation is **Cancelled**.
+
+**55. Cancel is blocked while Shopify cannot be reached** · Negative
+
+`test_shopify_unreachable_blocks_cancel`
+
+- **What it checks:** If Shopify cannot confirm the draft order is still open, the quotation is not cancelled, because the payment link might still be live.
+- **Starting point:** A sent quotation with a Shopify draft order.
+- **Steps:**
+  1. Every call to Shopify times out.
+  2. Apply the **Cancel** workflow action.
+- **Expected result:**
+  - **3** attempts, then blocked with "Could not reach Shopify".
+  - The quotation stays submitted.
+
+**56. Cancel is blocked when Shopify refuses the check, and a refusal is not retried** · Negative
+
+`test_verify_error_blocks_cancel_without_retrying_client_errors`
+
+- **What it checks:** An error such as 401 (wrong token) stops the cancel straight away; only network errors, 429 and 5xx are retried.
+- **Starting point:** A sent quotation with a Shopify draft order.
+- **Steps:**
+  1. Shopify answers the check with 401.
+  2. Apply the **Cancel** workflow action.
+- **Expected result:**
+  - Blocked with "Could not verify Shopify draft order … 401".
+  - Only **1** request was sent.
+  - The quotation stays submitted.
+
+**57. Cancel is blocked when the delete fails** · Negative
+
+`test_delete_failure_blocks_cancel`
+
+- **What it checks:** If the draft order cannot be deleted, the quotation is not cancelled, so the payment link is never left live on a cancelled quotation.
+- **Starting point:** A sent quotation with a Shopify draft order.
+- **Steps:**
+  1. Shopify reports the draft as open, then answers the delete with a server error (500) every time.
+  2. Apply the **Cancel** workflow action.
+- **Expected result:**
+  - One check, then **3** delete attempts, then blocked with "Could not delete Shopify draft order … 500".
+  - The quotation stays submitted.
+
+**58. Temporary Shopify errors are retried, then the cancel succeeds** · Positive
+
+`test_transient_errors_are_retried_then_cancel_succeeds`
+
+- **What it checks:** A short Shopify problem during cancel does not stop it.
+- **Starting point:** A sent quotation with a Shopify draft order.
+- **Steps:**
+  1. The check times out, then gets 429, then succeeds with an open draft.
+  2. The delete gets a server error (503), then succeeds.
+  3. Apply the **Cancel** workflow action.
+- **Expected result:**
+  - 3 attempts for the check and 2 for the delete.
+  - The quotation is **Cancelled**.
+
+**59. Every cancel call is logged as an Integration Request** · Positive
+
+`test_each_cancel_call_logs_an_integration_request`
+
+- **What it checks:** Each call to Shopify during a cancel leaves a record that can be reviewed.
+- **Starting point:** A sent quotation with a Shopify draft order.
+- **Steps:**
+  1. Cancel with an open draft and a successful delete.
+- **Expected result:**
+  - Two Integration Requests on the quotation: "Shopify Cancel GET - Attempt 1/3" and "Shopify Cancel DELETE - Attempt 1/3", both **Completed**.
+
+#### ResendEmailTest
+
+The Resend Email button on a sent quotation. It makes two server calls in order: generate the payment link (only when the quotation has none and is not bank transfer), then send the email. The test makes the same two calls. The button's own display, dialog and messages run in the browser and are not part of this test. Shopify's replies are simulated.
+
+**60. Resend recovers a quotation that has no payment link** · Positive
+
+`test_resend_recovers_quotation_that_has_no_payment_link`
+
+- **What it checks:** The case that happened on LHQ-2026-0309: a quotation was sent but its payment link was never generated. Resend creates the link and emails it.
+- **Starting point:** A sent quotation with no draft order and no payment link; payment links switched on.
+- **Steps:**
+  1. Shopify accepts the new draft order.
+  2. Resend: generate the link, then send the email.
+- **Expected result:**
+  - The draft order ID and payment link are saved on the quotation.
+  - The email is sent to the customer's contact email and includes the card payment link.
+
+**61. Resend does not create a second draft order when a link exists** · Negative
+
+`test_resend_with_existing_link_does_not_create_another_draft_order`
+
+- **What it checks:** Resending an email never creates a duplicate Shopify draft order.
+- **Starting point:** A sent quotation that already has a draft order and payment link.
+- **Steps:**
+  1. Resend.
+- **Expected result:**
+  - The email is sent.
+  - No request goes to Shopify.
+  - The draft order ID is unchanged.
+
+**62. Resend sends a second email** · Positive
+
+`test_resend_after_first_send_sends_a_second_email`
+
+- **What it checks:** A quotation whose email was already sent can be sent again.
+- **Starting point:** A sent quotation with a payment link, emailed once.
+- **Steps:**
+  1. Resend.
+- **Expected result:**
+  - The second email is sent (2 emails in total).
+  - The email sent time is set.
+
+**63. Resend of a bank-transfer quotation has no card link** · Negative
+
+`test_resend_bank_transfer_has_no_card_link_and_no_draft_order`
+
+- **What it checks:** A bank-transfer quotation never gets a card payment link, even on resend.
+- **Starting point:** A sent bank-transfer quotation with no payment link.
+- **Steps:**
+  1. Resend.
+- **Expected result:**
+  - The email is sent with the bank-transfer link only.
+  - No draft order is created and no request goes to Shopify.
+
+**64. Resend sends no email when the link cannot be generated** · Negative
+
+`test_resend_when_link_generation_fails_sends_no_email`
+
+- **What it checks:** If the payment link cannot be created, the customer is not emailed a quotation without one, and the team is alerted.
+- **Starting point:** A sent quotation with no payment link.
+- **Steps:**
+  1. Shopify times out on all 5 attempts.
+  2. Resend.
+- **Expected result:**
+  - The timeout error is raised and the "Payment Link Generation Failed" alert is sent once.
+  - No payment link is saved and no email is sent.
+
+**65. Resend is rejected when there is no contact email** · Negative
+
+`test_resend_without_contact_email_is_rejected`
+
+- **What it checks:** The email cannot be sent to nobody.
+- **Starting point:** A quotation with no contact.
+- **Steps:**
+  1. Resend.
+- **Expected result:**
+  - Rejected with "No contact email".
+  - No email is sent.
+
+**66. A user without access to the quotation cannot resend** · Negative
+
+`test_user_without_write_access_cannot_resend`
+
+- **What it checks:** Only people who can edit the quotation can send its email.
+- **Starting point:** A sent quotation and a user who has no access to quotations.
+- **Steps:**
+  1. That user tries to resend.
+- **Expected result:**
+  - Permission error.
+  - No email is sent.
+
 ### test\_validate (24)
 
 Rules that run every time a quotation is saved.
@@ -2099,7 +2326,7 @@ Box size and weight on each item line, used for shipping.
 
 Packing all items into boxes for shipping. Each test uses an item of 30 × 20 × 10 cm, 2 kg, qty 2. Packing can come from 3D Bin Packing, Paccurate, or the built-in packer.
 
-**7. Built-in packer picks a box from the Box Catalogue** · Positive
+**7. Built-in packer picks a box from the Box Catalogue** · Positive · **Failing since Oct 28** (combined box packing was switched off)
 
 `test_combined_box_and_parcels_from_catalogue`
 
@@ -2112,7 +2339,7 @@ Packing all items into boxes for shipping. Each test uses an item of 30 × 20 ×
   - The line's Single Box Size is filled.
   - A parcel plan is built.
 
-**8. 3D Bin Packing is used first when switched on** · Positive
+**8. 3D Bin Packing is used first when switched on** · Positive · **Failing since Oct 28** (combined box packing was switched off)
 
 `test_3dbinpacking_takes_priority_when_enabled`
 
@@ -2122,7 +2349,7 @@ Packing all items into boxes for shipping. Each test uses an item of 30 × 20 ×
 - **Expected result:**
   - 3D Bin Packing is called; the parcel plan is **one 40 cm box**.
 
-**9. Paccurate is used when 3D Bin Packing is off** · Positive
+**9. Paccurate is used when 3D Bin Packing is off** · Positive · **Failing since Oct 28** (combined box packing was switched off)
 
 `test_paccurate_used_when_3dbin_off`
 
@@ -2591,23 +2818,29 @@ bench --site lyfelocal.com run-tests --app lh --module lh.tests.quotation_e2e.te
 
 The site needs `allow_tests` enabled, the active Quotation-3 workflow, and the LH custom fields from the app's patches. Shared setup (base test class, factories, stubs) is in `_helpers.py`.
 
-Before production:
+Before the next change to the quotation or payment flow goes to production:
 
-- [ ] Commit the test suite and code, deploy, then `bench migrate` and `bench restart`
+- [ ] Run all five modules on staging (lyfelocal.com, a copy of the production database) and keep the console output
+- [ ] Share this report and the output log in Asana and Slack first
+- [ ] Then deploy, run `bench migrate` and `bench restart`
 
 ## Test run result
 
-**Tuesday, October 27, 2026**, about 09:00 UTC, on lyfelocal.com (Frappe 15.121, ERPNext 15.121, developer mode). All five modules were run in full.
+**Tuesday, November 3, 2026**, from about 07:06 UTC, on lyfelocal.com (Frappe 15.121, ERPNext 15.121, developer mode), which is staging: it holds a copy of the production database. All five modules were run in full, one module per command (see **How to run**). The full console output of this run is in `Quotation E2E Test Run 2026-11-03.log`, next to this report.
 
 | Module | Tests | Pass | Fail | Expected failure | Time |
 | --- | --- | --- | --- | --- | --- |
-| test\_lifecycle | 49 | 49 | 0 | 0 | 37.2 s |
-| test\_payments | 35 | 35 | 0 | 0 | 18.7 s |
-| test\_integrations | 50 | 50 | 0 | 0 | 34.9 s |
-| test\_validate | 24 | 24 | 0 | 0 | 9.3 s |
-| test\_drawings | 21 | 20 | 0 | 1 | 11.8 s |
-| **Total** | **179** | **178** | **0** | **1** | **111.9 s** |
+| test\_lifecycle | 49 | 49 | 0 | 0 | 40.0 s |
+| test\_payments | 35 | 35 | 0 | 0 | 18.8 s |
+| test\_integrations | 66 | 66 | 0 | 0 | 45.1 s |
+| test\_validate | 24 | 21 | 3 | 0 | 9.6 s |
+| test\_drawings | 21 | 20 | 0 | 1 | 13.8 s |
+| **Total** | **195** | **191** | **3** | **1** | **127.3 s** |
 
-**Result: PASS.** 179 tests, 99 of them negative. No failures. The 1 expected failure is drawings test 8 (local file storage only).
+**Result: FAIL, 3 tests.** 195 tests, 109 of them negative. The 1 expected failure is drawings test 8 (local file storage only).
 
-Added in this run: 30 negative tests covering workflow role checks, payment recording and Confirm Payment, Generate Payment Link guards, Shopify webhook security, Slack approval security, email button links, the Engineering drawing Task and Senior Review.
+**The 3 failures** are all in `CombinedBoxTest` (test\_validate 7, 8 and 9): `test_combined_box_and_parcels_from_catalogue`, `test_3dbinpacking_takes_priority_when_enabled` and `test_paccurate_used_when_3dbin_off`. Cause: commit `93290118` (Oct 28, "disable combined box update in validate") commented out the `_update_combined_box` call, because combined box / parcel packing is not in use. The tests still expect packing to run. The same 3 fail with the new tests removed, so they are not caused by this update. They passed in the Oct 27 run, before that commit. Decision needed: update the tests to match the switched-off feature, or switch packing back on.
+
+**Added since the Oct 27 run:** 16 tests in test\_integrations (51 to 66): 9 for cancel deleting the Shopify draft order (the Nov 2 change, commits `e5db0a55` and `1e26bbfe`) and 7 for Resend Email. 7 of them are negative cases that block or reject, and 3 check that something does not happen.
+
+**Earlier addition (Oct 27 run):** 30 negative tests covering workflow role checks, payment recording and Confirm Payment, Generate Payment Link guards, Shopify webhook security, Slack approval security, email button links, the Engineering drawing Task and Senior Review.

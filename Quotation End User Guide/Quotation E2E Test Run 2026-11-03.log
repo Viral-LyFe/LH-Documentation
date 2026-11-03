@@ -1,0 +1,101 @@
+Quotation E2E test run — lyfelocal.com, Frappe 15.121 / ERPNext 15.121, developer mode
+Started 2026-11-03 07:06 UTC. One command per module:
+  bench --site lyfelocal.com run-tests --app lh --module lh.tests.quotation_e2e.test_<module>
+
+=================== test_lifecycle ===================
+
+test_erp_approve_closes_slack_card (lh.tests.quotation_e2e.test_lifecycle.ApprovalPathTest.test_erp_approve_closes_slack_card) (2.85s)
+..........
+test_slack_card_from_every_route (lh.tests.quotation_e2e.test_lifecycle.ApprovalPathTest.test_slack_card_from_every_route) (2.51s)
+..................
+test_inquiry_to_won_to_cancelled (lh.tests.quotation_e2e.test_lifecycle.HappyPathTest.test_inquiry_to_won_to_cancelled) (2.01s)
+.....................
+----------------------------------------------------------------------
+Ran 49 tests in 40.015s
+
+OK
+
+real	0m42.642s
+user	0m29.463s
+sys	0m2.858s
+
+=================== test_payments ===================
+
+test_already_won_rejected (lh.tests.quotation_e2e.test_payments.ConfirmPaymentGuardTest.test_already_won_rejected) (2.74s)
+...................................
+----------------------------------------------------------------------
+Ran 35 tests in 18.775s
+
+OK
+
+real	0m20.625s
+user	0m14.347s
+sys	0m1.551s
+
+=================== test_integrations ===================
+
+test_completed_draft_blocks_cancel_and_is_not_deleted (lh.tests.quotation_e2e.test_integrations.CancelDeletesDraftOrderTest.test_completed_draft_blocks_cancel_and_is_not_deleted) (2.46s)
+..................................................................
+----------------------------------------------------------------------
+Ran 66 tests in 45.134s
+
+OK
+
+real	0m47.233s
+user	0m33.586s
+sys	0m3.036s
+
+=================== test_validate ===================
+........FFF.............
+======================================================================
+FAIL: test_3dbinpacking_takes_priority_when_enabled (lh.tests.quotation_e2e.test_validate.CombinedBoxTest.test_3dbinpacking_takes_priority_when_enabled)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/frappe/frappe-bench/apps/lh/lh/tests/quotation_e2e/test_validate.py", line 98, in test_3dbinpacking_takes_priority_when_enabled
+    api.assert_called()
+  File "/usr/lib/python3.11/unittest/mock.py", line 908, in assert_called
+    raise AssertionError(msg)
+AssertionError: Expected 'call_3dbinpacking' to have been called.
+
+======================================================================
+FAIL: test_combined_box_and_parcels_from_catalogue (lh.tests.quotation_e2e.test_validate.CombinedBoxTest.test_combined_box_and_parcels_from_catalogue)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/frappe/frappe-bench/apps/lh/lh/tests/quotation_e2e/test_validate.py", line 83, in test_combined_box_and_parcels_from_catalogue
+    self.assertTrue(q.custom_box_length and q.custom_box_width and q.custom_box_height)
+AssertionError: 0.0 is not true
+
+======================================================================
+FAIL: test_paccurate_used_when_3dbin_off (lh.tests.quotation_e2e.test_validate.CombinedBoxTest.test_paccurate_used_when_3dbin_off)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/frappe/frappe-bench/apps/lh/lh/tests/quotation_e2e/test_validate.py", line 110, in test_paccurate_used_when_3dbin_off
+    self.assertEqual([(p.length, p.count) for p in q.custom_parcels], [(50, 2)])
+AssertionError: Lists differ: [] != [(50, 2)]
+
+Second list contains 1 additional elements.
+First extra element 0:
+(50, 2)
+
+- []
++ [(50, 2)]
+
+----------------------------------------------------------------------
+Ran 24 tests in 9.576s
+
+FAILED (failures=3)
+
+real	0m10.975s
+user	0m6.963s
+sys	0m0.935s
+
+=================== test_drawings ===================
+.............x.......
+----------------------------------------------------------------------
+Ran 21 tests in 13.809s
+
+OK (expected failures=1)
+
+real	0m15.171s
+user	0m8.459s
+sys	0m0.770s
