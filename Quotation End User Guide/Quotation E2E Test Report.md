@@ -1,6 +1,6 @@
 # Quotation E2E Test Report
 
-Oct 21, 2026 · updated Nov 3, 2026 · @Viral kansodiya
+Oct 21, 2026 · updated Nov 4, 2026 · @Viral kansodiya
 
 212 automated end-to-end tests cover every LH Quotation customisation. On the latest run (Nov 3) 211 pass, none fail and 1 is a known expected failure. The changes covered here are live in production; the suite runs on lyfelocal.com, a copy of the production database that serves as staging.
 
@@ -35,6 +35,19 @@ Every test runs inside one database transaction that is rolled back at the end, 
 | Payment link sweeper (new background job, Nov 3) | 6 tests added (73 to 78): every 5 minutes it creates any missing link and alerts Slack if it is still missing after 15 minutes |
 | API access rules from Oct 29 to Nov 2 | 8 tests added in a new module, test\_api\_access (1 to 8): 57 state-changing APIs accept only POST, the payment link, 1Click retry and email APIs refuse people who may not use them, and the CS pricing API returns a price and never the Cost of Goods. Each test was checked to fail when its rule is removed |
 | Suite | 212 tests, 211 pass, 1 expected failure, 0 fail |
+
+## Changes since the Nov 3 report (Nov 4)
+
+| What | Result |
+| --- | --- |
+| Approve with the Factory or the CS proposal from the quotation (a window with Approve with Factory Rates / Approve with CS Rates / Cancel), sharing one server method with the Slack buttons | 14 tests added to test\_feasibility\_rates (51 to 64), including one that approves the same quotation both ways and checks the results are identical |
+| Factory Proposed Grand Total and CS Proposed Grand Total on the quotation, the CS total hidden from Factory; the four company-currency total fields hidden | Tests 51 to 56, 69 to 71 |
+| Proposed Grand Totals strictly from each side's own rate and shipping (a side with nothing is 0, no fallback to the item's rate) | Test 52 |
+| Discount on the Slack card (only Items — after discount, with a Disc % column) and in the totals | 4 tests added (65 to 68) |
+| Bank Transfer quotations keep exactly 8% when the Price List Rate changes | 2 tests added in test\_validate (see Factory vs CS section) |
+| New quotations no longer get a Custom Fee row; the CUSTOM FEE item never needs COGS | Existing tests updated: HappyPathTest (taxes table), the fee-only quotations (lifecycle 12 and 13), test\_validate 20 |
+| Slack bot messages go to the 1Click webhook when the site is in developer mode | Not in the automated suite: it needs a live webhook. Checked by hand by sending a card for LHQ-2026-0436 |
+| Suite | test\_feasibility\_rates now has 71 tests, all pass (71 of 71) |
 
 ## Checks on live data and code (Nov 3)
 
@@ -105,7 +118,9 @@ The tests check these business rules.
 | Payment stage unpaid: Before Shipped, On Delivery | Reminder only, never a block |
 | Quotation Lost or Cancelled (any route, including the follow-up scheduler) | No collection reminders; payment blocks on linked Lyfe Orders are released |
 | Partial payment recorded | Advance stage becomes Due and CS gets the Due reminder |
-| Send for Approval from Inquiry Approved or Feasibility Approved | COGS not required (0-rate quotations carrying only Custom Fee and Shipping) |
+| Send for Approval from Inquiry Approved or Feasibility Approved | COGS not required (0-rate quotations carrying only a fee item row and Shipping) |
+| New quotation | Gets an empty Shipping Charges row only. The Custom Fee row is no longer added (Nov 4); a custom fee is a separate item row. Older quotations keep their Custom Fee row |
+| Item named CUSTOM FEE | Never needs Cost of Goods: it does not set COGS Pending and does not block Send for Approval or Feasibility Approve |
 | Send for Approval from Sales User Review | COGS required: the workflow condition is `doc.cogs_pending == 0 and doc.approval_required == 1` (intentional) |
 | Production Details Review → Feasibility Approve, to any state | COGS required |
 | Production Details Review → Not Feasible | COGS not required |
@@ -142,7 +157,8 @@ Every item in the Asana scope is covered by at least one test class.
 | Order value change check | PaymentScheduleTest (amounts follow the total) |
 | Payment schedule recalc, validation, stage checkbox sync | PaymentScheduleTest |
 | Payment processing fee | ProcessingFeeTest |
-| Shipping charges + custom fee rows | AutoClearAndCleanupTest, HappyPathTest |
+| Shipping charges row (the Custom Fee row is no longer added to new quotations) | AutoClearAndCleanupTest, HappyPathTest |
+| Fixed 8% bank transfer discount when the Price List Rate changes | BankTransferDiscountTest (in the Factory vs CS section) |
 | Revision handling, items-changed detection | RevisionTest |
 | Item discount violation (incl. bank transfer) | DiscountViolationE2ETest |
 | Workflow: before\_workflow\_action, urgent flag | BeforeWorkflowActionTest, EngineeringBranchTest, ApprovalPathTest |
@@ -341,7 +357,7 @@ Every item in the Asana scope is covered by at least one test class.
 
 The steps use these starting points:
 
-- **Standard quotation**: one item (qty 1, rate 100, COGS 40), payment terms "100 % Advance". Saving it moves it from Draft to **Inquiry** and adds empty Shipping Charges and Custom Fee rows.
+- **Standard quotation**: one item (qty 1, rate 100, COGS 40), payment terms "100 % Advance". Saving it moves it from Draft to **Inquiry** and adds an empty Shipping Charges row (no Custom Fee row since Nov 4).
 - **Staged quotation**: one item at rate 1,000 (COGS 400) with a 40 / 30 / 30 schedule = 400 / 300 / 300, stages Advance / Photo Approval / Before Dispatch unless the test says otherwise.
 - **Ready-to-send quotation**: a standard quotation with a contact email and a customer address, moved to **Inquiry Approved**.
 - **Sent quotation**: a ready-to-send quotation after **Send Quotation to Client** (state Sent to Customer, submitted).
@@ -376,7 +392,7 @@ The normal sales journey from inquiry to payment.
   4. Click **Bank Transfer Selected**, record a payment for the full grand total, then click **Confirm Payment**.
   5. Click **Cancel**.
 - **Expected result:**
-  - After step 1: state is **Inquiry**, and the taxes table has a Shipping Charges row and a Custom Fee row.
+  - After step 1: state is **Inquiry**, and the taxes table has a Shipping Charges row and no Custom Fee row.
   - After step 2: state is **Inquiry Approved**; Approval Required is not ticked (total is under 10,000).
   - After step 3: state is **Sent to Customer** and the quotation is submitted.
   - After step 4: state is **Won**.
@@ -518,8 +534,8 @@ Quotations of 10,000 or more need manager approval before they can be sent. Appr
 
 `test_fee_only_quote_sent_for_approval_from_inquiry_approved`
 
-- **What it checks:** A quotation whose price is carried only by the Custom Fee (item at rate 0, no COGS) can still be sent for approval.
-- **Starting point:** A fee-only quotation: one item at rate 0 with no COGS, and a Custom Fee of 12,000; moved to Inquiry Approved.
+- **What it checks:** A quotation whose whole price is carried by one fee-like item row (no COGS) can still be sent for approval.
+- **Starting point:** A fee-only quotation: one item at 12,000 with no COGS; moved to Inquiry Approved.
 - **Steps:**
   1. Check the flags.
   2. Click **Send for Approval**.
@@ -2669,15 +2685,15 @@ Fields and rows the system fills or clears automatically.
 - **Expected result:**
   - Payment terms **"100 % Advance"**; T&C **"Terms and Conditions template"**.
 
-**20. Shipping and Custom Fee rows are added only once** · Positive
+**20. The Shipping Charges row is added only once, and no Custom Fee row** · Positive
 
 `test_after_insert_rows_added_once`
 
-- **What it checks:** Saving again does not add duplicate rows.
+- **What it checks:** Saving again does not add a duplicate row, and the Custom Fee row is not added.
 - **Steps:**
   1. Create a standard quotation and save it again.
 - **Expected result:**
-  - One Shipping Charges row and one Custom Fee row.
+  - One Shipping Charges row and no Custom Fee row.
 
 **21. A duplicated quotation does not keep the old payment link** · Positive
 
@@ -3074,38 +3090,42 @@ The price a Customer Service user sees when picking an item. CS cannot read Cost
 
 ## Factory vs CS Rate comparison (Nov 3)
 
-New automated tests for the Factory vs CS Rate comparison on the Quotation: the feasibility flag, negative amounts, the CS Rate and CS shipping that must be filled in before Send for Approval, the rate locks, what a Factory user can see, the Slack approval card, and approving with the Factory or the CS proposal. They are in a new module, `test_feasibility_rates`, and are kept separate from the module counts above.
+New automated tests for the Factory vs CS Rate comparison on the Quotation: the feasibility flag, negative amounts, the CS Rate and CS shipping that must be filled in before Send for Approval, the rate locks, what a Factory user can see, the Slack approval card, and approving with the Factory or the CS proposal. On Nov 4 it was extended to approving from the quotation itself, the Factory and CS Proposed Grand Totals, and discounts. They are in a new module, `test_feasibility_rates`, and are kept separate from the module counts above.
 
 ### Result
 
-Run on lyfelocal.com (Frappe 15.121, ERPNext 15.121, developer mode), which is staging: a copy of the production database. Tuesday, November 3, 2026, about 13:28 UTC. The full console output is in `Quotation E2E Test Run 2026-11-03 (Factory vs CS Rate).log`, next to this report.
+Run on lyfelocal.com (Frappe 15.121, ERPNext 15.121, developer mode), which is staging: a copy of the production database. First run Tuesday, November 3, 2026, about 13:28 UTC (50 tests); re-run Wednesday, November 4, 2026 with the tests added that day (71 tests). The console output is in `Quotation E2E Test Run 2026-11-03 (Factory vs CS Rate).log` and `Quotation E2E Test Run 2026-11-04 (Factory vs CS Rate).log`, next to this report.
 
 | Module | Tests | Pass | Fail | Positive | Negative | Time |
 | --- | --- | --- | --- | --- | --- | --- |
-| test\_feasibility\_rates | 50 | 50 | 0 | 26 | 24 | 30.4 s |
+| test\_feasibility\_rates | 71 | 71 | 0 | 42 | 29 | 54.9 s |
 
-**Result: PASS.** 50 tests, 24 of them negative (a bad input or a disallowed action is stopped, or something must not happen). Every test runs in one database transaction that is rolled back at the end, and Slack, email and background jobs are stubbed, so the run sends nothing and leaves the database as it found it.
+**Result: PASS.** 71 tests, 29 of them negative (a bad input or a disallowed action is stopped, or something must not happen). Every test runs in one database transaction that is rolled back at the end, and Slack, email and background jobs are stubbed, so the run sends nothing and leaves the database as it found it.
 
 ### Do the tests catch a broken rule?
 
-Three rules were broken on purpose, one at a time, and the module was run each time. The tests failed every time, and the code was put back afterwards.
+Seven rules were broken on purpose, one at a time (three on Nov 3, four on Nov 4), and the module was run each time. The tests failed every time, and the code was put back afterwards.
 
 | Rule removed | Tests that failed |
 | --- | --- |
 | The chosen rates and shipping are saved before the approval is applied (the bug found on LHQ-2026-0449: Frappe reloads the quotation from the database, so an unsaved choice was lost) | Approve with Factory Proposal, Approve with CS Proposal, a missing CS rate keeps the item's price |
 | CS Rate and CS shipping are required before Send for Approval | Factory rate without a CS rate is blocked, Factory shipping without CS shipping is blocked |
 | Price List Rate and fixed charges are locked after feasibility | CS cannot change Price List Rate after feasibility, CS cannot change a fixed charge after feasibility |
+| Approving with a choice needs the Approver role | test\_non\_approver\_blocked |
+| A side with no rate and no shipping totals 0 (the item's rate is not borrowed) | test\_side\_without\_rates\_totals\_zero |
+| Side totals are after the item's discount | test\_dialog\_rows\_are\_after\_discount, test\_proposed\_totals\_are\_after\_discount\_and\_match\_approval, test\_slack\_card\_shows\_discount\_and\_after\_discount\_amounts |
+| CS Proposed Grand Total is hidden from Factory (permission level 5) | test\_factory\_sees\_only\_its\_own\_total |
 
 ### Other modules, run on the same branch
 
-The six existing modules were run again on the feature branch (`feat/quotation-factory-cs-rates`) to check nothing else broke. **The branch is 11 commits behind production**, so its older test files do not match the 212-test counts at the top of this report (for example, test\_api\_access is not on the branch, and test\_integrations has 50 tests instead of 78). These numbers are not a replacement for the full run above.
+The six existing modules were run again on the feature branch (Nov 3 and again Nov 4) (`feat/quotation-factory-cs-rates`) to check nothing else broke. **The branch is 16 commits behind production**, so its older test files do not match the 212-test counts at the top of this report (for example, test\_api\_access is not on the branch, and test\_integrations has 50 tests instead of 78). These numbers are not a replacement for the full run above.
 
 | Module | Tests | Pass | Fail | Note |
 | --- | --- | --- | --- | --- |
 | test\_lifecycle | 49 | 48 | 1 | `test_fee_only_quote_blocked_from_sales_user_review` fails. It fails the same way on the branch without any of the Factory vs CS changes (checked), so it is not caused by them |
 | test\_payments | 35 | 35 | 0 |  |
 | test\_integrations | 50 | 50 | 0 | Includes the Slack approval security tests |
-| test\_validate | 26 | 23 | 3 | The 3 `CombinedBoxTest` tests, which were removed from the suite on production on Nov 3 because combined box / parcel packing was switched off on Oct 28 |
+| test\_validate | 28 | 25 | 3 | Includes the 2 bank transfer discount tests added Nov 4. The 3 failures are the 3 `CombinedBoxTest` tests, which were removed from the suite on production on Nov 3 because combined box / parcel packing was switched off on Oct 28 |
 | test\_drawings | 21 | 20 | 0 | 1 expected failure, as above |
 | test\_api\_access | 0 |  |  | Not on this branch |
 
@@ -3120,6 +3140,9 @@ These behaviours happen only in the browser, so an automated server test cannot 
 - The Send for Approval dialog (the CS rate and shipping messages, the instant block of a negative number)
 - A negative number being refused the moment it is typed
 - Only Price List Rate showing once the quotation is approved
+- The Approve window itself: its layout, the three buttons, numbers staying on one line, the Disc % column, the page reloading after the approval (the server method behind it is tested)
+- The **Same as Factory** tick boxes in the Send for Approval window (ticking copies the Factory value and locks the field, unticking empties it)
+- The Factory and CS Proposed Grand Total fields on the form, and the four hidden company-currency total fields (the permission on each total is tested)
 - The Slack buttons on a real card: the site runs in developer mode, so cards go to the test webhook and the buttons cannot be clicked there. The approval itself is tested by calling the same code the button runs
 
 ### How to run
@@ -3128,7 +3151,7 @@ These behaviours happen only in the browser, so an automated server test cannot 
 bench --site lyfelocal.com run-tests --app lh --module lh.tests.quotation_e2e.test_feasibility_rates
 ```
 
-### Test case catalogue: test\_feasibility\_rates (50)
+### Test case catalogue: test\_feasibility\_rates (71)
 
 Each test is labelled **Positive** (the normal case works) or **Negative** (bad input or a disallowed action is stopped, or something must not happen). "Called directly" means the test runs one server check on its own, because that situation cannot be reached with a normal save.
 
@@ -3745,6 +3768,296 @@ What the approval does to the quotation. Slack calls are stubbed; the real appro
 - **Expected result:**
   - Price List Rate is unchanged.
 
+#### ApprovalDialogTest
+
+The Approve window on the quotation, the Factory and CS Proposed Grand Totals, and the one server method that Desk and Slack share. Slack calls are stubbed; the real approval code runs.
+
+**51. Proposed Grand Totals are worked out when the quotation is saved** · Positive
+
+`test_proposed_grand_totals_computed_on_save`
+
+- **What it checks:** Each Proposed Grand Total is that side's rate × quantity plus that side's proposed shipping.
+- **Starting point:** A feasibility quotation: Factory 11,000 + shipping 500, CS 12,500 + shipping 700.
+- **Steps:**
+  1. Save the quotation.
+- **Expected result:**
+  - **Factory Proposed Grand Total** is 11,500.
+  - **CS Proposed Grand Total** is 13,200.
+
+**52. A side with no rate and no shipping totals 0** · Positive
+
+`test_side_without_rates_totals_zero`
+
+- **What it checks:** A side that gave no rate does not borrow the item's current rate (the LHQ-2026-0439 case: CS Proposed Grand Total showed 100 when CS had entered nothing).
+- **Starting point:** A feasibility quotation: Factory 11,000 + shipping 500, CS rate 0 and CS shipping 0.
+- **Steps:**
+  1. Save the quotation.
+- **Expected result:**
+  - **Factory Proposed Grand Total** is 11,500.
+  - **CS Proposed Grand Total** is 0.
+
+**53. No Proposed Grand Totals without feasibility** · Positive
+
+`test_proposed_grand_totals_zero_without_feasibility`
+
+- **What it checks:** A quotation that never went through feasibility has no Factory or CS proposal to total.
+- **Starting point:** A standard quotation in Inquiry Approved.
+- **Steps:**
+  1. Look at the two totals.
+- **Expected result:**
+  - Both are 0.
+
+**54. The approval window shows the same numbers as the totals** · Positive
+
+`test_comparison_numbers_match_totals`
+
+- **What it checks:** What the approver sees in the window matches the saved totals.
+- **Starting point:** A feasibility quotation in Pending Approval: Factory 11,000 + 500, CS 12,500 + 700.
+- **Steps:**
+  1. Ask the server for the comparison the window shows.
+- **Expected result:**
+  - Totals: Factory 11,500, CS 13,200.
+  - Item: Factory Rate 11,000, CS Rate 12,500. Shipping: 500 and 700.
+  - No item is flagged as missing a rate.
+
+**55. The window flags a side that has no rate** · Positive
+
+`test_comparison_flags_side_without_rate`
+
+- **What it checks:** An item where Factory or CS gave no rate is marked, so the approver knows it keeps its current Price List Rate if that side is chosen.
+- **Starting point:** A feasibility quotation in Pending Approval with Factory and CS rates both 0.
+- **Steps:**
+  1. Ask the server for the comparison.
+- **Expected result:**
+  - The item is flagged as missing both the Factory and the CS rate.
+
+**56. No comparison without a feasibility test** · Positive
+
+`test_no_comparison_without_feasibility`
+
+- **What it checks:** A quotation with no feasibility test shows no Approve window; it is approved the plain way.
+- **Starting point:** A standard quotation in Pending Approval.
+- **Steps:**
+  1. Ask the server for the comparison.
+- **Expected result:**
+  - The answer is "no comparison".
+
+**57. Approve with Factory Rates (from the quotation)** · Positive
+
+`test_approve_with_factory`
+
+- **What it checks:** The approver's choice in the window applies the Factory rates and shipping and approves.
+- **Starting point:** A feasibility quotation in Pending Approval: Factory 11,000 + 500, CS 12,500 + 700.
+- **Steps:**
+  1. Approve with the Factory proposal.
+- **Expected result:**
+  - State is **Approved – Pending Send**.
+  - Price List Rate is 11,000 and the Grand Total is 11,500.
+  - **Approved With** is *Factory Amount*.
+
+**58. Approve with CS Rates (from the quotation)** · Positive
+
+`test_approve_with_cs`
+
+- **What it checks:** The same, with the CS rates and shipping.
+- **Starting point:** The same quotation.
+- **Steps:**
+  1. Approve with the CS proposal.
+- **Expected result:**
+  - State is **Approved – Pending Send**.
+  - Price List Rate is 12,500 and the Grand Total is 13,200.
+  - **Approved With** is *CS Amount*.
+
+**59. Desk and Slack give the same result** · Positive
+
+`test_desk_and_slack_give_the_same_result`
+
+- **What it checks:** Approving from the window and approving from the Slack button end in exactly the same quotation.
+- **Starting point:** Two identical feasibility quotations in Pending Approval, one per route.
+- **Steps:**
+  1. Approve the first from the window with the Factory proposal, the second from Slack with the Factory proposal.
+  2. Repeat with two new quotations and the CS proposal.
+- **Expected result:**
+  - State, Approved With, Grand Total, Price List Rate and the shipping line are identical for the two routes, for both choices.
+
+**60. A user with the Approver role can approve** · Positive
+
+`test_approver_role_user_can_approve`
+
+- **What it checks:** A user who holds the Approver role (and can edit quotations) can approve with a choice.
+- **Starting point:** A feasibility quotation in Pending Approval; a user with the Approver and Customer Service roles.
+- **Steps:**
+  1. That user approves with the CS proposal.
+- **Expected result:**
+  - State is **Approved – Pending Send**.
+
+**61. Someone who is not an Approver is refused** · Negative
+
+`test_non_approver_blocked`
+
+- **What it checks:** Approving with a choice needs the Approver role.
+- **Starting point:** A feasibility quotation in Pending Approval; a Customer Service user without the Approver role.
+- **Steps:**
+  1. That user tries to approve with the CS proposal.
+- **Expected result:**
+  - A permission error.
+  - The quotation stays in Pending Approval, Price List Rate is still 12,000, Approved With is blank.
+
+**62. Approving with a choice is refused when there was no comparison** · Negative
+
+`test_without_comparison_blocked`
+
+- **What it checks:** A quotation with no feasibility test cannot be approved "with Factory" or "with CS".
+- **Starting point:** A standard quotation in Pending Approval.
+- **Steps:**
+  1. Try to approve with the CS proposal.
+- **Expected result:**
+  - Refused: "no Factory vs CS comparison".
+  - The quotation stays in Pending Approval.
+
+**63. An unknown choice is refused** · Negative
+
+`test_invalid_choice_blocked`
+
+- **What it checks:** Only the Factory or the CS proposal can be chosen.
+- **Starting point:** A feasibility quotation in Pending Approval.
+- **Steps:**
+  1. Try to approve with the choice "both".
+- **Expected result:**
+  - Refused with a validation error.
+
+**64. Plain Approve still works when there was no comparison** · Positive
+
+`test_plain_approve_without_comparison_unchanged`
+
+- **What it checks:** Without a feasibility test, Approve behaves exactly as before.
+- **Starting point:** A standard quotation, sent for approval.
+- **Steps:**
+  1. Click **Approve**.
+- **Expected result:**
+  - State is **Approved – Pending Send**.
+  - **Approved With** stays blank.
+
+#### DiscountShownTest
+
+A discount is shown after discount, on the Slack card, in the Approve window and in the totals.
+
+**65. The Slack card shows only the after-discount items** · Positive
+
+`test_slack_card_shows_discount_and_after_discount_amounts`
+
+- **What it checks:** When a discount applies, the card lists Items — after discount with a Disc % column, and not the before-discount table.
+- **Starting point:** A feasibility quotation in Pending Approval: Factory 10,000, CS 12,000, 8% discount on the item.
+- **Steps:**
+  1. Build the Slack card.
+- **Expected result:**
+  - The table is titled **Items — after discount** and has a **Disc %** column with 8%.
+  - The amounts shown are 9,200 (Factory) and 11,040 (CS).
+  - The before-discount amounts 10,000 and 12,000 are not shown.
+
+**66. No discount, no discount column** · Negative
+
+`test_card_without_discount_has_no_discount_column`
+
+- **What it checks:** A quotation without a discount keeps the single plain Items table.
+- **Starting point:** A feasibility quotation in Pending Approval with no discount.
+- **Steps:**
+  1. Build the Slack card.
+- **Expected result:**
+  - The card has no **Disc %** column.
+
+**67. The Proposed Grand Totals are after discount and match the approval** · Positive
+
+`test_proposed_totals_are_after_discount_and_match_approval`
+
+- **What it checks:** What the totals promise is what approving delivers.
+- **Starting point:** The same discounted quotation: Factory 10,000 + 500, CS 12,000 + 700, 8% discount.
+- **Steps:**
+  1. Look at the totals.
+  2. Approve with the CS proposal.
+- **Expected result:**
+  - Totals: Factory 9,700 and CS 11,740.
+  - After approving, the quotation's Grand Total is 11,740.
+
+**68. The Approve window rows are after discount** · Positive
+
+`test_dialog_rows_are_after_discount`
+
+- **What it checks:** The window shows the discount and the after-discount rates.
+- **Starting point:** The same discounted quotation.
+- **Steps:**
+  1. Ask the server for the comparison.
+- **Expected result:**
+  - The item shows Disc % 8, Factory Rate 9,200 and CS Rate 11,040.
+
+#### ProposedTotalVisibilityTest
+
+Who can see each Proposed Grand Total.
+
+**69. Factory sees only its own total** · Negative
+
+`test_factory_sees_only_its_own_total`
+
+- **What it checks:** The CS Proposed Grand Total is on the same restricted permission level as CS Rate, which Factory does not have.
+- **Starting point:** A Factory user.
+- **Steps:**
+  1. List the Quotation fields that user is allowed to see.
+- **Expected result:**
+  - **Factory Proposed Grand Total** is in the list.
+  - **CS Proposed Grand Total** is not.
+
+**70. Customer Service sees both totals** · Positive
+
+`test_customer_service_sees_both_totals`
+
+- **What it checks:** CS sees the Factory and the CS total.
+- **Starting point:** A Customer Service user.
+- **Steps:**
+  1. List the Quotation fields that user is allowed to see.
+- **Expected result:**
+  - Both totals are in the list.
+
+**71. A Factory save still works out the CS total** · Positive
+
+`test_factory_save_still_calculates_cs_total`
+
+- **What it checks:** Hiding the CS total from Factory does not stop it being calculated when Factory saves.
+- **Starting point:** A feasibility quotation: Factory 11,000 + 500, CS 12,500 + 700.
+- **Steps:**
+  1. As a Factory user, change the Factory Proposed Shipping Rate to 600 and save.
+- **Expected result:**
+  - Factory Proposed Grand Total is 11,600.
+  - CS Proposed Grand Total is 13,200 (stored, though the Factory user cannot see it).
+
+#### BankTransferDiscountTest
+
+The fixed 8% discount on a Payment Via Bank Transfer quotation. Two tests in test\_validate (not part of the 50 above).
+
+**A. The Bank Transfer discount stays exactly 8%** · Positive
+
+`test_price_list_rate_change_keeps_fixed_8_percent`
+
+- **What it checks:** When an item's Price List Rate changes (the Factory's COGS rate replaces the Price List rate), the discount is re-derived from 8%, not recomputed from the old discount amount (it showed 8.081% on LHQ-2026-0439).
+- **Starting point:** A Payment Via Bank Transfer quotation, one item at Price List Rate 100 with 8% discount (discount amount 8, rate 92).
+- **Steps:**
+  1. Change the Price List Rate to 99 while the browser still sends the old discount amount 8 and a recomputed 8.081%.
+  2. Save.
+- **Expected result:**
+  - Discount is **8%**, discount amount 7.92, rate 91.08.
+  - The quotation total is 91.08.
+
+**B. A manual discount is left alone** · Negative
+
+`test_manual_discount_is_left_alone`
+
+- **What it checks:** Only the fixed 8% is restored; a discount the user typed by hand is not touched.
+- **Starting point:** A Payment Via Bank Transfer quotation, one item at Price List Rate 100 with a manual 5% discount.
+- **Steps:**
+  1. Change the Price List Rate to 99.
+  2. Save.
+- **Expected result:**
+  - The discount is still 5%.
+
 ## How to run
 
 The suite lives in `apps/lh/lh/tests/quotation_e2e/` and runs one module at a time on a site with tests allowed:
@@ -3756,13 +4069,14 @@ bench --site lyfelocal.com run-tests --app lh --module lh.tests.quotation_e2e.te
 bench --site lyfelocal.com run-tests --app lh --module lh.tests.quotation_e2e.test_validate
 bench --site lyfelocal.com run-tests --app lh --module lh.tests.quotation_e2e.test_drawings
 bench --site lyfelocal.com run-tests --app lh --module lh.tests.quotation_e2e.test_api_access
+bench --site lyfelocal.com run-tests --app lh --module lh.tests.quotation_e2e.test_feasibility_rates
 ```
 
 The site needs `allow_tests` enabled, the active Quotation-3 workflow, and the LH custom fields from the app's patches. Shared setup (base test class, factories, stubs) is in `_helpers.py`.
 
 Before the next change to the quotation or payment flow goes to production:
 
-- [ ] Run all five modules on staging (lyfelocal.com, a copy of the production database) and keep the console output
+- [ ] Run all modules on staging (lyfelocal.com, a copy of the production database) and keep the console output
 - [ ] Share this report and the output log in Asana and Slack first
 - [ ] Then deploy, run `bench migrate` and `bench restart`
 
@@ -3787,3 +4101,5 @@ Before the next change to the quotation or payment flow goes to production:
 **Added since the Oct 27 run:** 8 tests in the new test\_api\_access module (1 to 8: POST-only APIs, who may call the Shopify, 1Click and email APIs, the CS pricing API), and 28 tests in test\_integrations (51 to 78): 9 for cancel deleting the Shopify draft order (the Nov 2 change, commits `e5db0a55` and `1e26bbfe`), 8 for Resend Email (including the browser check behind the Oct 27 bug), 5 for the new rule that a card quotation needs a payment link before it is sent, and 6 for the new payment link sweeper. 22 of the 36 are negative: 14 block or reject something and 8 check that something does not happen.
 
 **Earlier addition (Oct 27 run):** 30 negative tests covering workflow role checks, payment recording and Confirm Payment, Generate Payment Link guards, Shopify webhook security, Slack approval security, email button links, the Engineering drawing Task and Senior Review.
+
+**Wednesday, November 4, 2026** (feature branch `feat/quotation-factory-cs-rates`, lyfelocal.com, staging): the Factory vs CS Rate module was run again with the tests added that day: **71 tests, 71 pass, 29 negative, 54.9 s**. The 2 bank transfer discount tests are in test\_validate (25 of 28 pass; the 3 failures are the `CombinedBoxTest` tests that were already removed on production). test\_lifecycle ran 49 with 1 failure, `test_fee_only_quote_blocked_from_sales_user_review`: the Quotation-3 workflow on the staging site currently lets Customer Service click Send for Approval from Sales User Review without the COGS condition, so the expected block does not happen. The failure is not caused by the Nov 4 changes; the Business rules table above still documents the COGS condition on this route, so either the workflow or that rule needs to be confirmed before the next release. The console output is in `Quotation E2E Test Run 2026-11-04 (Factory vs CS Rate).log`.

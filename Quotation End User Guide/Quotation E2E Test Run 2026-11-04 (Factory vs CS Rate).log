@@ -1,0 +1,48 @@
+Quotation E2E test run — Factory vs CS Rate comparison — lyfelocal.com (staging: copy of the production database), Frappe 15.121 / ERPNext 15.121, developer mode
+Started 2026-11-04 (feature branch feat/quotation-factory-cs-rates). One command per module:
+  bench --site lyfelocal.com run-tests --app lh --module lh.tests.quotation_e2e.test_<module>
+
+=================== test_feasibility_rates ===================
+----------------------------------------------------------------------
+Ran 71 tests in 54.878s
+OK
+real 59.61s
+
+=================== test_lifecycle ===================
+----------------------------------------------------------------------
+FAIL: test_fee_only_quote_blocked_from_sales_user_review
+Ran 49 tests in 36.708s
+FAILED (failures=1)
+real 42.24s
+
+=================== test_payments ===================
+----------------------------------------------------------------------
+Ran 35 tests in 15.957s
+OK
+real 17.81s
+
+=================== test_integrations ===================
+----------------------------------------------------------------------
+Ran 50 tests in 83.968s
+OK
+real 91.52s
+
+=================== test_validate ===================
+----------------------------------------------------------------------
+FAIL: test_3dbinpacking_takes_priority_when_enabled
+FAIL: test_combined_box_and_parcels_from_catalogue
+FAIL: test_paccurate_used_when_3dbin_off
+Ran 28 tests in 16.534s
+FAILED (failures=3)
+real 22.54s
+
+=================== test_drawings ===================
+----------------------------------------------------------------------
+Ran 21 tests in 15.845s
+OK (expected failures=1)
+real 18.16s
+
+=================== test_api_access ===================
+----------------------------------------------------------------------
+ModuleNotFoundError: No module named 'lh.tests.quotation_e2e.test_api_access'
+real 1.64s
