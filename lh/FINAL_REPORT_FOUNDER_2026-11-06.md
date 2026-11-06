@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **For** | Founder review |
+| **For** | Founder and management review |
 | **Prepared by** | Viral Kansodiya, with Claude (AI assistant) |
 | **Date** | Friday 6 November 2026 |
 | **Period covered** | 21 October – 6 November 2026 (206 code changes reviewed) |
@@ -33,7 +33,7 @@
 
 **What is still open, and why.** Everything still open is **pending on purpose**: a copy of the live (prod) site will be created on Frappe Cloud, and the remaining checks and any fixes will be done there rather than on the live site. Details are in section 7.
 
-**Two things the founder should know.**
+**Two things to know.**
 1. **Deployment status.** Every change made up to 5 November is already deployed to the live site. The changes made on 6 November (listed below) are on the production branch and will be deployed on 7 November. They are: the dashboard and MCP checks (3.6, 4.8), Slack unmapped-user naming (4.9), removal of two unused actions (5.8), the whole "every outside-callable action needs a permission check" set (2.1: forecast roles, S3 helpers, tracking buttons, record-access checks, markers, the CJ prefill), the H4 write checks, the invoice-PDF patch (3.5) and the two commit-time safeguards (permission check and secret scanner). The checks planned on the Frappe Cloud copy therefore verify code that is already live (up to 5 Nov) and code that goes live tomorrow.
 2. **Some people will notice changes.** Several buttons and permissions were tightened or removed (section 5). Viral Kansodiya, as business owner, approved each of these; the full list is in section 5 so support staff are not surprised.
 
@@ -325,13 +325,20 @@ Plus `test_make_invoice_pdfs_private` (4, new) and the older `test_quotation` (2
 
 ---
 
-## 11. Decisions we need from the founder
+## 11. Decisions already taken, and next steps (for your review)
 
-1. **Approve the plan:** leave the items in section 7 pending until the Frappe Cloud copy exists, then run the checks and fixes there.
-2. **Tomorrow's deploy (7 Nov):** confirm that the 6 November changes go out as planned, with the invoice-PDF patch and the S3/print-format checks verified on the Frappe Cloud copy straight after.
-3. **Accept the recorded risks** in section 7 (especially the old-key links for older quotations, and H8).
-4. **LMS and Insights:** decide whether to update or restrict them once the live-site versions are known.
-5. **Owner for the follow-up:** who runs the Frappe Cloud checks and by when.
+These decisions were taken by the product owner (Viral Kansodiya) during the work and are recorded here for your information. If you disagree with any of them, tell us and we will change it.
+
+| # | Decision or plan | Status |
+|---|---|---|
+| 1 | The remaining items (section 7) stay pending **on purpose** until a copy of the live site exists on Frappe Cloud; the checks and any fixes are done there | Decided 6 Nov |
+| 2 | Changes up to 5 Nov are deployed; the changes made on 6 Nov are deployed on 7 Nov (they include the invoice-PDF patch, which runs automatically and has a rollback command). The S3 and print-format checks follow on the Frappe Cloud copy | Planned for 7 Nov |
+| 3 | The recorded risks in section 7 are accepted, mainly: old quotations keep the old link key (not changed, because it is not certain a change would cause no problem for them), H8, and the other items listed there | Decided (30 Oct – 6 Nov) |
+| 4 | LMS (2.45.2, 2 published critical advisories) and Insights (2.2.14): update or restrict them once the live-site versions are known | **Still to be decided by us** after the Frappe Cloud copy shows the live versions |
+| 5 | Who runs the Frappe Cloud checks and by when | **Still to be set** once the copy exists |
+| 6 | One question for the quotation owner: should a quotation item with a zero list price also need approval? The code does not (since an earlier change); not confirmed as intended | Open question |
+
+No action is needed from you unless you want to change something above.
 
 ---
 
