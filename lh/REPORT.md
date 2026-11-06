@@ -165,7 +165,7 @@ Code changes on `prod` since the audit: `0e003915` (S3 secret encrypted) and `f9
 
 ## Re-check at `9cf8121a` (2026-11-06, task 6.1)
 
-**Repo:** `apps/lh` @ `9cf8121a` (branch `prod`; 8 commits not pushed yet, `a07c0ded` to `9cf8121a`). 175 commits and 304 files changed since `0e003915`.
+**Repo:** `apps/lh` (branch `prod`; the re-check ran at `9cf8121a`; later 6 Nov commits `89370477` H4 and `415c4583` 3.5 patch are included in the status tables above; all pushed). 175 commits and 304 files changed since `0e003915`.
 **Method:** a re-check of the 23 Oct findings against the current code, plus automated scans and a review of what changed. It is **not** a new line-by-line audit of the whole app. Local copy `lyfelocal.com` was used for tests; nothing was checked on prod.
 
 ### Automated scans
@@ -197,7 +197,7 @@ Code changes on `prod` since the audit: `0e003915` (S3 secret encrypted) and `f9
 | H1 | Webhooks fail open; HMAC logged | **Fixed.** Shopify and 17Track reject a blank secret (checked today: `_verify_shopify_hmac`, `_process_17track_push`); the expected HMAC is not logged | `1e1be4a7` |
 | H2 | SSRF and cookie leak in `File.get_content`; S3 `?key=` | **Fixed.** Part A no longer fetches `http(s)` or `/api/` URLs or sends `sid`; part B checks the File before serving an S3 key (needs a restart on deploy) | `1f073e60`, `a0611537` |
 | H3 | Guest `update_all_real_time_tracking` | **Fixed.** No longer an API; the button runs a deduplicated background job | `efc88a26` |
-| H4 | ~40 Lyfe Order and accounting actions without a check | **Fixed, with one loose end.** 124 functions decided and done (4 Nov); since 6 Nov the pre-commit check stops any new unguarded API. Not done: a hand review of writers hidden inside helper functions | `df92578f`, `10459745`, `a07c0ded` to `a3cadb7f` |
+| H4 | ~40 Lyfe Order and accounting actions without a check | **Fixed.** 124 functions decided and done (4 Nov); the pre-commit check (6 Nov) stops any new unguarded API; the 6 Nov review of writers behind read-only checks found 3 real cases, fixed in `89370477` | `df92578f`, `10459745`, `a07c0ded` to `a3cadb7f`, `89370477` |
 | H5 | Mass assignment via `run_doc_method` | **Fixed.** The two methods are no longer APIs | `1ffe7b1e` |
 | H6 | Financial data leaks | **Fixed.** P&L follows the page roles; COGS exports Factory / SM / SA; quotation detail needs read on that quotation and returns COGS only to Factory / SM / SA | `8d79ed5f`, `cee31478`, `20aed3db` |
 | H7 | Bulk customer PII | **Fixed.** Dashboards, exports, order legs and pick-pack need read on the order; status-overview backends and the returns dashboard check the caller (6 Nov) | `61cc5da0`, `5f4ffb09`, `8f956d99`, `07c68446` |
@@ -212,10 +212,10 @@ Code changes on `prod` since the audit: `0e003915` (S3 secret encrypted) and `f9
 
 | Finding | Status | Commit |
 |---|---|---|
-| Quotation approval link (key, expiry, GET) | **Partly.** Signed only with `approval_link_secret`, no fallback, 45-day expiry. GET still changes state (kept by decision). Old tracking tokens and the legacy verify code remain until pre-29-Oct quotations close (about 12 Dec) | `be7e3c9a` |
+| Quotation approval link (key, expiry, GET) | **Fixed for new quotations; closed by decision for old ones (6 Nov).** Signed only with `approval_link_secret`, no fallback, 45-day expiry. GET still changes state (kept by decision). Quotations created before 30 Oct keep working with the old key; no change, because it is not certain a change would cause no problem for them | `be7e3c9a` |
 | `safe_eval` receives `frappe` | **Fixed** | `f30f3d9f` |
 | S3 object read via `?key=`, `get_s3_image_url` | **Fixed.** Key access checks the File; `get_s3_image_url` is no longer an API (6 Nov) | `a0611537`, `20b0c718` |
-| Sales Invoice PDFs saved public | **Partly.** New PDFs are private; existing public PDFs are not changed (patch not written) | `78dbd84a` |
+| Sales Invoice PDFs saved public | **Fixed for new; patch for old committed (`415c4583`).** New PDFs are private; the patch makes existing public ones private on the next `bench migrate`, with a rollback command | `78dbd84a` |
 | MCP masked-field filter and sort bypass; status-overview tools | **Fixed** (JSON-string, 4-element and quoted forms; Lyfe Order read on the 4 tools) | `a2504e19`, `07c68446` |
 | Status overview, returns, factory step turnaround without role checks | **Fixed** | `07c68446` |
 | `set_column_terminal`, `save_task_with_overdue_reason` mass assignment | **Closed.** Column terminal gated; the rest left by decision | 4.6 |
@@ -274,7 +274,7 @@ Notes: `test_mcp_field_masking` (2 errors) and `test_mcp_dashboard_gates` (3 err
 
 ### Not verified (needs prod)
 
-- Whether the deployed code matches `origin/prod` and the 8 local commits.
+- Whether the deployed code matches `origin/prod`. Per the team, everything up to 5 Nov is deployed and the 6 Nov changes deploy on 7 Nov. All checks that need the real site will be run on a Frappe Cloud copy of prod (decision 6 Nov).
 - The two test users (`sec-test-forwarder`, `sec-test-employee`) against every Critical and High (task 6.2).
 - Custom DocPerm rows and the real role grants.
 - Print formats with a signature image and an S3 upload after the 6 Nov removal of two web APIs.
