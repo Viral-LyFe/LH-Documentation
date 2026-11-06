@@ -123,43 +123,43 @@
 
 | ID | Finding (short) | Day | Owner | Commit | Verified (403 as low-priv user) |
 |---|---|---|---|---|---|
-| C1 | Leaked 1Click keys in git history | Mon | | vendor | |
-| C2 | ShipStation webhook fail-open | Mon | | | |
-| C3 | Fake payments | Mon | | | |
-| C4 | Shopify webhook hijack | Mon | | | |
-| C5 | Forged ShipStation import | Mon | | | |
-| C6 | Billable CJ labels | Mon | | | |
-| H1 | Shopify / 17Track webhooks fail-open | Mon | | | |
-| H2 | File override SSRF + cookie leak | Wed | | | |
-| H3 | Guest mass 17Track trigger | Tue | | | |
-| H4 | ~40 order/accounting actions unguarded | Tue | | | |
-| H5 | `run_doc_method` mass assignment | Tue | | | |
-| H6 | P&L / COGS leak | Wed | | | |
-| H7 | Bulk PII + pick-pack | Wed | | | |
-| H8 | No `has_permission` for Task/Project/Quotation/CRM | Thu | | | |
-| H9 | Appraisal score read/write | Thu | | | |
-| H10 | Gorgias ticket id / reply | Thu | | | |
-| H11 | Project board task pull | Thu | | | |
-| H12 | Senior review bypass | Tue | | | |
-| H13 | Item/BOM overwrite | Tue | | | |
-| M | Quotation approval link | Fri | | | |
-| M | `safe_eval` gets `frappe` | Thu | | | |
-| M | S3 `?key=` read | Wed | | | |
-| M | Public Sales Invoice PDFs | Wed | | | |
-| M | MCP masked-field bypass + ungated tools | Thu | | | |
-| M | Status overview / returns dashboards ungated | Wed | | | |
-| M | Task mass-assign, column terminal, points, HR scope | Thu | | | |
-| M | Slack approval / lookup | Thu | | | |
-| M | `_assign LIKE`, ELR list, visibility default-allow | Thu | | | |
-| M | `backfill_item_group` | Wed | | | |
-| M | Hardcoded Slack webhook | Mon | | | |
-| M | AWS key rotation after S3 patch | Mon | | | |
-| L | Data → Password fields | Fri | | | |
-| L | Secrets in Error Log | Fri | | | |
-| L | Escaping (print, JS, email, OAuth) | Fri | | | |
-| L | POST-only for state changes | Fri | | | |
-| L | Link-search `doctype` | Fri | | | |
-| L | Misc small items (5.7) | Fri | | | |
+| C1 | Leaked 1Click keys in git history | Mon | Viral K with Claude | vendor; `6f8c2ff6` `f9f83402` `8e7f2410` | Code checked 6 Nov; keys revoked; prod: n/a |
+| C2 | ShipStation webhook fail-open | Mon | Viral K with Claude | `1e1be4a7` | Endpoint deleted; code checked 6 Nov |
+| C3 | Fake payments | Mon | Viral K with Claude | `9368226f` | Browser-tested locally; prod 403 test pending |
+| C4 | Shopify webhook hijack | Mon | Viral K with Claude | `753af930` | Code checked 6 Nov; script-tested locally; prod 403 pending |
+| C5 | Forged ShipStation import | Mon | Viral K with Claude | `6a977c35` | Code checked 6 Nov; prod 403 pending |
+| C6 | Billable CJ labels | Mon | Viral K with Claude | `b63895e8` `e73f7495` | Script-tested locally; prod 403 pending |
+| H1 | Shopify / 17Track webhooks fail-open | Mon | Viral K with Claude | `1e1be4a7` | Code checked 6 Nov; prod webhook tests pending |
+| H2 | File override SSRF + cookie leak | Wed | Viral K with Claude | `1f073e60` `a0611537` | Reproduced and fixed locally; 4 tests; prod pending |
+| H3 | Guest mass 17Track trigger | Tue | Viral K with Claude | `efc88a26` | Code checked 6 Nov; prod pending |
+| H4 | ~40 order/accounting actions unguarded | Tue | Viral K with Claude | `df92578f` `10459745` `a07c0ded`..`a3cadb7f` | AST check 433/433 guarded; helper-hidden writers not hand-reviewed; prod pending |
+| H5 | `run_doc_method` mass assignment | Tue | Viral K with Claude | `1ffe7b1e` | Not APIs any more; code checked 6 Nov |
+| H6 | P&L / COGS leak | Wed | Viral K with Claude | `8d79ed5f` `cee31478` `20aed3db` | 19 tests; browser as Customer Service pending |
+| H7 | Bulk PII + pick-pack | Wed | Viral K with Claude | `61cc5da0` `5f4ffb09` `8f956d99` `07c68446` | 4 tests; prod pending |
+| H8 | No `has_permission` for Task/Project/Quotation/CRM | Thu | Viral K with Claude | none (decision 30 Oct) | Closed by decision; risk accepted |
+| H9 | Appraisal score read/write | Thu | Viral K with Claude | `c9a49cf6` | Not an API any more; prod pending |
+| H10 | Gorgias ticket id / reply | Thu | Viral K with Claude | `b517ae90` | Needs `bench migrate`; prod pending |
+| H11 | Project board task pull | Thu | Viral K with Claude | `7fd178fc` | 216 board tests pass locally; prod pending |
+| H12 | Senior review bypass | Tue | Viral K with Claude | `f7a9f6b8` `016295d4` | Tested locally by role; prod pending |
+| H13 | Item/BOM overwrite | Tue | Viral K with Claude | `369d6dcf` `49f6f9c2` | Tested locally; prod pending |
+| M | Quotation approval link | Fri | Viral K with Claude | `be7e3c9a` | Partly: GET still changes state (decision); old-token blanking pending |
+| M | `safe_eval` gets `frappe` | Thu | Viral K with Claude | `f30f3d9f` | Tested locally |
+| M | S3 `?key=` read | Wed | Viral K with Claude | `a0611537` `20b0c718` | 4 tests; restart needed on deploy; prod pending |
+| M | Public Sales Invoice PDFs | Wed | Viral K with Claude | `78dbd84a` | New PDFs private; existing PDFs not changed (patch pending) |
+| M | MCP masked-field bypass + ungated tools | Thu | Viral K with Claude | `a2504e19` `07c68446` | 6 + 4 tests |
+| M | Status overview / returns dashboards ungated | Wed | Viral K with Claude | `07c68446` | 4 tests |
+| M | Task mass-assign, column terminal, points, HR scope | Thu | Viral K with Claude | 4.6 (`10459745`) | Closed; parts left by decision |
+| M | Slack approval / lookup | Thu | Viral K with Claude | `c6ef02d2` `cc108a9b` | 6 + 4 tests |
+| M | `_assign LIKE`, ELR list, visibility default-allow | Thu | Viral K with Claude | `8899faf6` `96df0650` | A fixed (6 tests), B none needed (2 tests), C by decision |
+| M | `backfill_item_group` | Wed | Viral K with Claude | `4b1d0824` | Removed as an API |
+| M | Hardcoded Slack webhook | Mon | Viral K with Claude | `026bb5c5` | Removed and rotated |
+| M | AWS key rotation after S3 patch | Mon | Viral K with Claude | per you (2 Nov) | Done; upload / download worked 2 Nov |
+| L | Data → Password fields | Fri | Viral K with Claude | none (decision 30 Oct) | Closed, no change |
+| L | Secrets in Error Log | Fri | Viral K with Claude | `8cb9d2ae` | 1 test |
+| L | Escaping (print, JS, email, OAuth) | Fri | Viral K with Claude | `93970d25` | Part done; Desk JS and print `|safe` pending (5.5 rest) |
+| L | POST-only for state changes | Fri | Viral K with Claude | `b8a94fe4` `a6786aa2` `4924aa55` | Mostly done |
+| L | Link-search `doctype` | Fri | Viral K with Claude | `0092e347` | 2 tests |
+| L | Misc small items (5.7) | Fri | Viral K with Claude | `10459745` `cee31478` | Done |
 
 ---
 

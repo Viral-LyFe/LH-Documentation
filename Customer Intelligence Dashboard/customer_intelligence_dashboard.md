@@ -215,10 +215,10 @@ read-only).
 quiet for too long?" aren't buried in code — they're editable settings any admin can tune,
 separately for B2B and Retail customers, without needing a developer.
 
-All thresholds live on the **Access Settings** singleton (`frappe.get_single("Access Settings")`,
+All thresholds live on the **LH Settings** singleton (`frappe.get_single("LH Settings")`,
 read throughout `classification.py`/`metrics.py`/`segments.py`/`cache_refresh.py`) — there is no
 separate `Customer Intelligence Settings` doctype or `/app/customer-intelligence-settings` route;
-these fields sit alongside the app's other access-control config on the existing Access Settings
+these fields sit alongside the app's other access-control config on the existing LH Settings
 doc:
 
 | Field | Default | In plain terms |

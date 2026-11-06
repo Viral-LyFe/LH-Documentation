@@ -159,3 +159,123 @@ Changes since `6f8c2ff6`: one commit plus uncommitted working-tree files.
 | C1: 1Click keys (`zXTs…`, `GbOI…`, `Ak7M…`, `OekL…`) | **Open** | Ask 1Click to revoke them and issue new keys, then update Oneclick Settings → `api_key`. |
 
 Code changes on `prod` since the audit: `0e003915` (S3 secret encrypted) and `f9f83402` (1Click key redacted from docs). This bench could not fetch `origin`, so fixes that were pushed but not pulled here are not reflected.
+
+
+---
+
+## Re-check at `9cf8121a` (2026-11-06, task 6.1)
+
+**Repo:** `apps/lh` @ `9cf8121a` (branch `prod`; 8 commits not pushed yet, `a07c0ded` to `9cf8121a`). 175 commits and 304 files changed since `0e003915`.
+**Method:** a re-check of the 23 Oct findings against the current code, plus automated scans and a review of what changed. It is **not** a new line-by-line audit of the whole app. Local copy `lyfelocal.com` was used for tests; nothing was checked on prod.
+
+### Automated scans
+
+| Scan | 23 Oct | 6 Nov |
+|---|---|---|
+| Whitelisted functions | 521 | **433** (437 before the S3 helpers and `rerun_validation` were removed) |
+| Whitelisted functions with no permission check or `# authz:` marker | ~205 (one-off scan, 29 Oct) | **0**. `scripts/check_whitelist_authz.py` follows helper calls and is now a pre-commit hook and a test |
+| Guest endpoints (`allow_guest=True`) | 16 | **15**. All verify a signature, token or secret (Shopify x4, 17Track x2, Slack x3, Gorgias, quotation approve and tracking links x3) or are deliberately public (`item_image`, `get_clarity_config` returns nothing to guests); each carries an `# authz:` marker. `update_all_real_time_tracking` and the ShipStation webhook are gone |
+| Dynamic SQL calls (f-string, `%`, `.format`) | 180 | 181. 5 changed: 2 on the project board wrap an internal query with an int-cast limit, 2 in Material Issue for Order build the search condition (the caller's `searchfield` is cleaned by `validate_and_sanitize_search_inputs`), 1 in `oneclick_posting.py` uses constants. **No new injection found** |
+| Secrets (gitleaks v8.30.1, 2,750 commits) | Leaks found in history | 9 findings, all in old commits (Shopify token and secrets, 2 Slack webhooks, a signed S3 URL, all rotated); **0 in the current files** apart from 1 false positive (a field name). Pre-commit hook added; old findings listed in `.gitleaksignore` |
+| New guest endpoints, new unauthenticated webhooks | n/a | **None** since `0e003915` |
+
+### Critical findings
+
+| # | Finding | Status at `9cf8121a` | Commit |
+|---|---|---|---|
+| C1 | Leaked 1Click keys / Shopify secrets | **Fixed.** No key in current code; keys revoked, new token issued; Shopify secrets rotated | `6f8c2ff6`, `f9f83402`, `8e7f2410` |
+| C2 | ShipStation webhook fails open | **Fixed.** Endpoint deleted (never used); the file is gone | `1e1be4a7` |
+| C3 | Fake payments | **Fixed.** `add_payment_entry` is not whitelisted; `complete_draft_order` is Customer Service / System Manager only, from allowed states | `9368226f` |
+| C4 | Shopify webhook hijack | **Fixed.** Register / deregister need System Manager or Super Admin (checked in code today) | `753af930` |
+| C5 | Forged order import | **Fixed.** `process_shipstation_response` is a plain function (checked today) | `6a977c35` |
+| C6 | Billable CJ labels | **Fixed.** `generate_cj_label`, `retry_from_integration_log`, the reshipment label and (new 6 Nov) the reshipment prefill need Factory, Founder, Super Admin or System Manager (checked today) | `b63895e8`, `e73f7495` |
+
+### High findings
+
+| # | Finding | Status at `9cf8121a` | Commit |
+|---|---|---|---|
+| H1 | Webhooks fail open; HMAC logged | **Fixed.** Shopify and 17Track reject a blank secret (checked today: `_verify_shopify_hmac`, `_process_17track_push`); the expected HMAC is not logged | `1e1be4a7` |
+| H2 | SSRF and cookie leak in `File.get_content`; S3 `?key=` | **Fixed.** Part A no longer fetches `http(s)` or `/api/` URLs or sends `sid`; part B checks the File before serving an S3 key (needs a restart on deploy) | `1f073e60`, `a0611537` |
+| H3 | Guest `update_all_real_time_tracking` | **Fixed.** No longer an API; the button runs a deduplicated background job | `efc88a26` |
+| H4 | ~40 Lyfe Order and accounting actions without a check | **Fixed, with one loose end.** 124 functions decided and done (4 Nov); since 6 Nov the pre-commit check stops any new unguarded API. Not done: a hand review of writers hidden inside helper functions | `df92578f`, `10459745`, `a07c0ded` to `a3cadb7f` |
+| H5 | Mass assignment via `run_doc_method` | **Fixed.** The two methods are no longer APIs | `1ffe7b1e` |
+| H6 | Financial data leaks | **Fixed.** P&L follows the page roles; COGS exports Factory / SM / SA; quotation detail needs read on that quotation and returns COGS only to Factory / SM / SA | `8d79ed5f`, `cee31478`, `20aed3db` |
+| H7 | Bulk customer PII | **Fixed.** Dashboards, exports, order legs and pick-pack need read on the order; status-overview backends and the returns dashboard check the caller (6 Nov) | `61cc5da0`, `5f4ffb09`, `8f956d99`, `07c68446` |
+| H8 | No `has_permission` hook for Task, Project, Quotation, CRM Lead / Deal | **Closed by decision** (30 Oct): records can still be opened by name; risk accepted | none |
+| H9 | Appraisal `recalculate_weighted_score` | **Fixed.** No longer an API | `c9a49cf6` |
+| H10 | Gorgias ticket id | **Fixed.** `custom_gorgias_ticket_id` is permission level 1 (needs `bench migrate`) | `b517ae90` |
+| H11 | `add_task_to_board` pulls tasks from other projects | **Fixed.** Requires access to the task's home project | `7fd178fc` |
+| H12 | Engineering approval bypass | **Fixed.** Needs write on the quotation; `submit_senior_review` is no longer an API. Engineer completing a review directly is accepted (decision 5 Nov) | `f7a9f6b8`, `016295d4` |
+| H13 | Master data overwrite (Item, BOM) | **Fixed.** Engineer, Factory, SM, SA plus access to the order; `ignore_permissions` removed | `369d6dcf`, `49f6f9c2` |
+
+### Medium findings
+
+| Finding | Status | Commit |
+|---|---|---|
+| Quotation approval link (key, expiry, GET) | **Partly.** Signed only with `approval_link_secret`, no fallback, 45-day expiry. GET still changes state (kept by decision). Old tracking tokens and the legacy verify code remain until pre-29-Oct quotations close (about 12 Dec) | `be7e3c9a` |
+| `safe_eval` receives `frappe` | **Fixed** | `f30f3d9f` |
+| S3 object read via `?key=`, `get_s3_image_url` | **Fixed.** Key access checks the File; `get_s3_image_url` is no longer an API (6 Nov) | `a0611537`, `20b0c718` |
+| Sales Invoice PDFs saved public | **Partly.** New PDFs are private; existing public PDFs are not changed (patch not written) | `78dbd84a` |
+| MCP masked-field filter and sort bypass; status-overview tools | **Fixed** (JSON-string, 4-element and quoted forms; Lyfe Order read on the 4 tools) | `a2504e19`, `07c68446` |
+| Status overview, returns, factory step turnaround without role checks | **Fixed** | `07c68446` |
+| `set_column_terminal`, `save_task_with_overdue_reason` mass assignment | **Closed.** Column terminal gated; the rest left by decision | 4.6 |
+| Manager energy points, HR dashboard scope | **Closed by decision** (points gated to HR roles; department scope kept) | 4.6 |
+| Slack: disabled users, unmapped users, order lookup | **Fixed.** Disabled users blocked everywhere; unmapped users still write as Administrator by decision, with their name in the text | `c6ef02d2`, `cc108a9b` |
+| `_assign LIKE`, External Learning Record, order visibility default | **Fixed** (A), **no change needed** (B), **left by decision** (C) | `8899faf6`, `96df0650` |
+| `backfill_item_group` GET write | **Fixed.** Removed as an API | `4b1d0824` |
+| Hardcoded Slack webhook in a patch | **Fixed and rotated** | `026bb5c5` |
+
+### Low findings
+
+| Finding | Status |
+|---|---|
+| `ss_api_key` and Slack webhooks stored as `Data` | **Closed, no change** (decision 30 Oct) |
+| Tokens and HMACs in Error Log | **Fixed** (5 Nov). The 17Track mismatch log still prints the received `sign` header and the first 500 bytes of the body (no secret) |
+| Print formats `|safe`; dashboard JS builds HTML from customer data | **Open (5.5 rest).** Emails, the Slack OAuth page and comment mentions are done |
+| Slack `oauth_redirect` reflects `error` | **Fixed** (escaped) |
+| Bank-transfer link re-sends its email on each click | **Left as is by decision** |
+| State-changing endpoints not POST-only | **Mostly done.** 24 + 67 POST-only, 19 un-whitelisted; a few GET links kept on purpose |
+| Link search trusts the caller's `doctype` | **Fixed** (5 Nov) |
+
+### New code since `0e003915`
+
+Reviewed by tool, not line by line: no new guest endpoint, no new unguarded API (the check passes 433 of 433), no new injectable SQL, no new secret. The 175 commits include the Shopify item sync, stock forecast, LH Settings rename, Slack factory routing and the audit fixes themselves. A new risk could still hide in logic these scans cannot see, such as a role set that is too wide; that is what the prod retest (6.2) is for.
+
+### Dependencies (local bench only)
+
+Since the 23 Oct report: Frappe 15.121.1 to **15.124.0**, ERPNext 15.121.4 to **15.124.1**, HRMS 15.64.2 to **15.64.6**, CRM 1.82.0 to **1.89.1**. **LMS 2.45.2** (2 critical SCORM advisories) and **Insights 2.2.14** are unchanged. Prod versions are not checked.
+
+### Tests run for this re-check (local copy)
+
+| Test module | Tests | Result |
+|---|---|---|
+| `test_whitelist_authz_nov2026` | 12 | OK |
+| `test_api_access_audit_nov2026` | 5 | OK |
+| `test_sm_sa_never_restricted` | 19 | OK |
+| `test_security_fixes` | 9 | OK |
+| `test_dashboard_backend_gates` | 4 | OK |
+| `test_mcp_field_masking` | 47 | FAILED (errors=2) |
+| `test_mcp_pm_user_efficiency_gate` | 10 | OK |
+| `test_mcp_dashboard_gates` | 11 | FAILED (errors=3) |
+| `test_mcp_audit_double_wrap` | 10 | OK |
+| `test_s3_download_access` | 4 | OK |
+| `test_set_on_hold` | 2 | OK |
+| `test_slack_disabled_user` | 6 | OK |
+| `test_slack_unmapped_user_name` | 4 | OK |
+| `test_link_search_doctype` | 2 | OK |
+| `test_error_log_no_secrets` | 1 | OK |
+| `test_output_escaping` | 8 | OK (skipped=1) |
+| `test_assign_condition` | 6 | OK |
+| `test_external_learning_record_access` | 2 | OK |
+| `quotation_e2e.test_api_access` | 8 | OK |
+| `quotation_e2e.test_integrations` | 85 | OK |
+
+Notes: `test_mcp_field_masking` (2 errors) and `test_mcp_dashboard_gates` (3 errors) fail the same way with the related audit changes taken out; `test_quotation` (5 of 25) also fails without them. None is caused by the audit work (I did not find the cause).
+
+### Not verified (needs prod)
+
+- Whether the deployed code matches `origin/prod` and the 8 local commits.
+- The two test users (`sec-test-forwarder`, `sec-test-employee`) against every Critical and High (task 6.2).
+- Custom DocPerm rows and the real role grants.
+- Print formats with a signature image and an S3 upload after the 6 Nov removal of two web APIs.
+- Dependency versions on prod.
