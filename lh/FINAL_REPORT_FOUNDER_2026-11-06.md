@@ -6,7 +6,7 @@
 | **Prepared by** | Viral Kansodiya, with Claude (AI assistant) |
 | **Date** | Friday 6 November 2026 |
 | **Period covered** | 21 October – 6 November 2026 (206 code changes reviewed) |
-| **Code version** | `apps/lh`, branch `prod`, last change `415c4583`; everything is pushed to GitHub (`origin/prod`). Changes up to 5 Nov are deployed; the 6 Nov changes deploy on 7 Nov |
+| **Code version** | `apps/lh`, branch `prod`. Last application change `415c4583` (pushed). One later commit, `3c3f5b5e`, changes tests only and is not pushed yet. Changes up to 5 Nov are deployed; the 6 Nov changes deploy on 7 Nov |
 | **Task** | Asana: "Security audit fixes: lh app (26–31 Oct)" |
 | **Supporting files** | `LH Documentation/pending_final.md` (item-by-item tracker), `LH Documentation/lh/REPORT.md` (technical findings and the 6 Nov re-check), `LH Documentation/lh/SCHEDULE.md` (plan and tracker) |
 
@@ -253,7 +253,18 @@ Each change below was approved by the business owner. This list is for support s
 | 5.8 paid-API limits | `rerun_validation` removed (integration disabled); 1Click stock check is a free API |
 | 6.4 Rewriting the code history to remove old keys | Not possible; all leaked keys were rotated so the old values are dead |
 
-**Known issues found (not caused by the audit work):** three older test groups fail (`test_quotation` 5 of 25; `test_mcp_dashboard_gates` 3 errors; `test_mcp_field_masking` 2 errors); one payment-link test is occasionally flaky, most likely because of a cache wipe while other work ran. At worst a Slack alert is delayed after a deploy. Also: the framework function `frappe.only_for` does nothing while tests run, so an older test of a gate that relies only on it may pass for the wrong reason.
+**Known issues found (not caused by the audit work).** Each failing test was investigated on 6 November; none points to a fault in the application code:
+
+| Test group | Failures | Reason | Proof |
+|---|---|---|---|
+| `test_mcp_dashboard_gates` | 3 errors (fixed 6 Nov) | **Out-of-date test, now corrected.** It logged in as a Factory user and expected access to *every* dashboard in the role list. The list had grown to include the Founder dashboard (System Manager and Super Admin only), Customer Intelligence (Customer Service) and Quotation Analysis (Sales roles). Factory is deliberately **not** allowed to open those three (business decision, 6 Nov), and the code already refuses it | The test now checks both directions: Factory opens only the dashboards whose role list includes Factory, and is refused for those three. A new test pins the rule, and it fails if Factory is ever added to one of them. 12 of 12 pass |
+| `test_mcp_field_masking` | 2 errors (fixed 6 Nov) | **Test-data problem, now corrected.** The test picked the first user who can read Lyfe Orders but not cost fields. Locally that was `api-audit-sf@example.com`, a throw-away Shipping Forwarder created by our own audit tests, who can read no orders. The cost-field hiding itself was never at fault | The test now runs as real accounts only (`shobhit@`, `arth@`, then the two support accounts; today it uses shobhit) and picks an order that user may read. 47 of 47 pass. With the hiding code switched off, 3 tests fail, so the tests do catch a real leak |
+| `test_quotation` (an older test file from 21 Oct) | 5 of 25 (fixed 6 Nov) | **Out-of-date tests, now corrected.** 3 tested a retail-price function that was removed from the quotation code in an earlier change; they were deleted. 1 expected a box-size check that has since changed (the check now reads the combined box size field): updated, with a second test for the missing-box-size case. 1 expected an item with a zero list price to force approval; since commit `dff84694` the rule is a discount or margin violation or a grand total of 10,000 or more, so the test now checks the 10,000 rule | 23 of 23 pass; with the 10,000 rule and the box-size check switched off, 2 of them fail. **One open question for the business:** should a zero list price also require approval? The code today does not, and nobody has confirmed that this is intended |
+| Payment-link sweeper test (quotation e2e) | Occasionally fails | **Flaky by design.** It depends on a cache entry that a cache wipe during other work removes; at worst a Slack alert is delayed after a deploy. It passed in the final run (85 of 85) | Passes alone, with its class, and in the final run |
+
+Also: the framework function `frappe.only_for` does nothing while tests run, so an older test of a gate that relies only on it may pass for the wrong reason.
+
+All three test fixes are committed (`3c3f5b5e`); they are tests only, no application code changed.
 
 ---
 
@@ -268,9 +279,9 @@ Run on the local copy of the site on 6 November. "Tests" is the number of automa
 | `test_sm_sa_never_restricted` | 19 | OK |
 | `test_security_fixes` | 9 | OK |
 | `test_dashboard_backend_gates` | 4 | OK |
-| `test_mcp_field_masking` | 47 | FAILED (errors=2) |
+| `test_mcp_field_masking` | 47 | OK (fixed 6 Nov; was 2 errors from the test setup) |
 | `test_mcp_pm_user_efficiency_gate` | 10 | OK |
-| `test_mcp_dashboard_gates` | 11 | FAILED (errors=3) |
+| `test_mcp_dashboard_gates` | 12 | OK (fixed 6 Nov; was 3 errors from an out-of-date test) |
 | `test_mcp_audit_double_wrap` | 10 | OK |
 | `test_s3_download_access` | 4 | OK |
 | `test_set_on_hold` | 2 | OK |
@@ -283,8 +294,9 @@ Run on the local copy of the site on 6 November. "Tests" is the number of automa
 | `test_external_learning_record_access` | 2 | OK |
 | `quotation_e2e.test_api_access` | 8 | OK |
 | `quotation_e2e.test_integrations` | 85 | OK |
+| `test_quotation` | 23 | OK (corrected 6 Nov; was 5 of 25 failing from out-of-date tests) |
 
-Plus `test_make_invoice_pdfs_private` (4, new). Total about 260 tests run. All pass except the five errors in the two modules noted in section 7 (not caused by this work). New tests were checked by reverting the fix and confirming they fail.
+Plus `test_make_invoice_pdfs_private` (4, new) and the older `test_quotation` (23, corrected). Total about 283 tests run. All pass. Three groups that failed earlier on 6 November (`test_mcp_dashboard_gates`, `test_mcp_field_masking`, `test_quotation`) were out-of-date or badly seeded tests, not application faults, and were corrected; details in section 7. New tests were checked by reverting the fix and confirming they fail.
 
 ---
 

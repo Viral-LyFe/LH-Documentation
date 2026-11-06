@@ -2,7 +2,7 @@
 
 **Asana:** [Security audit fixes: lh app (26–31 Oct)](https://app.asana.com/1/1204809689822175/project/1211921346208625/task/1219812548257717)
 **Plan:** `LH Documentation/lh/SCHEDULE.md` · **Findings:** `LH Documentation/lh/REPORT.md`
-**Last updated:** Fri 6 Nov 2026 (final) · **Code state:** `apps/lh` `prod` @ `415c4583` (all pushed). **Deployment (per you, 6 Nov): everything up to 5 Nov is deployed; the 6 Nov changes deploy on 7 Nov** · **Asana due date:** Sat 7 Nov
+**Last updated:** Fri 6 Nov 2026 (final) · **Code state:** `apps/lh` `prod`; last application change `415c4583` (pushed); `3c3f5b5e` (tests only) is not pushed yet. **Deployment (per you, 6 Nov): everything up to 5 Nov is deployed; the 6 Nov changes deploy on 7 Nov** · **Asana due date:** Sat 7 Nov
 **Working tracker:** `LH Documentation/pending.md` (same rows, kept as the running log). Re-check report: `LH Documentation/lh/REPORT.md`, section "Re-check at `9cf8121a`".
 
 ✅ Completed · ⏳ Pending · ⚠️ Done, but needs a follow-up
@@ -49,7 +49,7 @@ These are written, tested here and mostly deployed. The prod check is in "Testin
 | 3.2, 3.3, 3.5, 3.7 | Dashboards, pick-pack, Sales Invoice PDFs, `backfill_item_group` (testing items 13, 15) |
 | 2.4, 2.6, 2.7, 4.3, 4.4, 4.5 | Deployed 28–30 Oct; covered by the 403 test (item 2) |
 | 5.2 POST-only | 24 + 67 POST-only, 19 un-whitelisted; the few GET links left on purpose are listed in the row |
-| **New 6 Nov: `get_s3_image_url` and `custom_file_upload_to_s3` are no longer web APIs (`20b0c718`)** | Replaces the 30 Oct decision to keep them whitelisted: both are only called by the server (a Jinja method and a File hook). Check on prod: open a print format with a signature image (Cenvet, Sample Invoice) and upload an attachment to S3 (testing item 17) |
+| **New 6 Nov: `get_s3_image_url` and `custom_file_upload_to_s3` are no longer web APIs (`20b0c718`)** | Replaces the 30 Oct decision to keep them whitelisted. **Confirmed by Viral, 6 Nov: no whitelisting needed, stays as is (no code change).** Both are only called by the server (a Jinja method and a File hook). Check on prod: open a print format with a signature image (Cenvet, Sample Invoice) and upload an attachment to S3 (testing item 17) |
 | All commits through `415c4583` are on `origin/prod` | Deploy (on the Frappe Cloud copy first) |
 
 ### Closed by decision (no change; risk accepted)
@@ -72,7 +72,7 @@ H8 (no `has_permission` hooks for Task, Project, Quotation, CRM Lead / Deal) · 
 
 ### Test results (6 Nov, local copy `lyfelocal.com`)
 
-The audit test modules, run one by one. Everything passes except three modules with older, unrelated errors (listed under Known issues). The quotation e2e suite (85 tests) passed this run.
+The audit test modules, run one by one. Everything passes. Three groups that failed earlier on 6 Nov were out-of-date or badly seeded tests and were corrected (see Known issues). The quotation e2e suite (85 tests) passed this run.
 
 | Test module | Tests | Result |
 |---|---|---|
@@ -81,9 +81,9 @@ The audit test modules, run one by one. Everything passes except three modules w
 | `test_sm_sa_never_restricted` | 19 | OK |
 | `test_security_fixes` | 9 | OK |
 | `test_dashboard_backend_gates` | 4 | OK |
-| `test_mcp_field_masking` | 47 | FAILED (errors=2) |
+| `test_mcp_field_masking` | 47 | OK (fixed 6 Nov; was 2 errors from the test setup) |
 | `test_mcp_pm_user_efficiency_gate` | 10 | OK |
-| `test_mcp_dashboard_gates` | 11 | FAILED (errors=3) |
+| `test_mcp_dashboard_gates` | 12 | OK (fixed 6 Nov; was 3 errors from an out-of-date test) |
 | `test_mcp_audit_double_wrap` | 10 | OK |
 | `test_s3_download_access` | 4 | OK |
 | `test_set_on_hold` | 2 | OK |
@@ -96,17 +96,22 @@ The audit test modules, run one by one. Everything passes except three modules w
 | `test_external_learning_record_access` | 2 | OK |
 | `quotation_e2e.test_api_access` | 8 | OK |
 | `quotation_e2e.test_integrations` | 85 | OK |
+| `test_quotation` | 23 | OK (corrected 6 Nov; was 5 of 25 failing from out-of-date tests) |
 
 ### Known issues found during the re-check (not caused by the audit work)
 
-| Issue | Detail |
+Each was investigated on 6 Nov; none is a fault in the application code.
+
+| Issue | Reason |
 |---|---|
-| `test_quotation` | 5 of 25 tests fail (3 retail price sync errors, 2 failures). Fails the same with the related audit changes taken out. Cause not looked into |
-| `test_mcp_dashboard_gates` | 3 errors in `test_require_dashboard_role_allows_listed_role` (founder, customer intelligence, quotation analysis dashboards) |
-| `test_mcp_field_masking` | 2 end-to-end tests error on "No read permission" for one real order (data-dependent); same before and after the 4.8 fix |
-| `PaymentLinkSweeperTest.test_failure_alerts_once_after_15_minutes` | Flaky in the quotation e2e suite; passes alone; likely a Redis cache wipe during another session's work, not proven. At worst a Slack alert delayed after a deploy |
-| `frappe.only_for()` does nothing while tests run | Any test of a gate built on `only_for` passes everyone unless `frappe.flags.in_test` is switched off for that check (done in the one test that needs it). Older tests of `only_for` gates may be passing for the wrong reason |
+| `test_mcp_dashboard_gates`: 3 errors (**fixed 6 Nov, `3c3f5b5e`**) | Out-of-date test: it expected Factory to open every dashboard in the role list. The list grew (Founder: SM/SA; Customer Intelligence: CS; Quotation Analysis: Sales roles) and Factory is deliberately refused for those three (business decision 6 Nov). The test now checks both directions and a new test pins the rule; 12 of 12 pass, and it fails if Factory is added to one of them |
+| `test_mcp_field_masking`: 2 errors (**fixed 6 Nov, `3c3f5b5e`**) | Test-data problem: it picked a throw-away Shipping Forwarder (`api-audit-sf`) who can read no orders. It now uses real accounts only (`shobhit@`, `arth@`, then the two support accounts; shobhit today) and an order that user may read. 47 of 47 pass; with the hiding code switched off 3 tests fail |
+| `test_quotation`: 5 of 25 (**fixed 6 Nov, `3c3f5b5e`**) | Out-of-date tests: 3 tested a removed retail-price function (deleted); 1 expected the old box-size fields (updated, plus a missing-box-size test); 1 expected a zero list price to force approval, but since `dff84694` approval comes from a discount or margin violation or a grand total of 10,000 or more, so the test checks that. 23 of 23 pass. **Open question for the business:** should a zero list price also require approval? The code does not, and it is not confirmed that this is intended |
+| `PaymentLinkSweeperTest.test_failure_alerts_once_after_15_minutes` | Flaky: depends on a cache entry that a cache wipe removes; passed in the final run (85 of 85). At worst a Slack alert is delayed after a deploy |
+| `frappe.only_for()` does nothing while tests run | A test of a gate built only on it passes everyone unless `frappe.flags.in_test` is switched off for that check (done in the one test that needs it). Older tests of such gates may pass for the wrong reason |
 | Old leaked values | Still in git history; all rotated. `.gitleaksignore` lists them so the hook only reports new secrets |
+
+The three test fixes are tests only (no application code changed), commit `3c3f5b5e`.
 
 ### Needs your action
 
