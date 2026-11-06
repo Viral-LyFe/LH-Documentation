@@ -37,6 +37,50 @@
 1. **Deployment status.** Every change made up to 5 November is already deployed to the live site. The changes made on 6 November (listed below) are on the production branch and will be deployed on 7 November. They are: the dashboard and MCP checks (3.6, 4.8), Slack unmapped-user naming (4.9), removal of two unused actions (5.8), the whole "every outside-callable action needs a permission check" set (2.1: forecast roles, S3 helpers, tracking buttons, record-access checks, markers, the CJ prefill), the H4 write checks, the invoice-PDF patch (3.5) and the two commit-time safeguards (permission check and secret scanner). The checks planned on the Frappe Cloud copy therefore verify code that is already live (up to 5 Nov) and code that goes live tomorrow.
 2. **Some people will notice changes.** Several buttons and permissions were tightened or removed (section 5). Viral Kansodiya, as business owner, approved each of these; the full list is in section 5 so support staff are not surprised.
 
+
+### 1.1 What the audit reported, and what we completed
+
+The 23 October report listed the items below (its own tables group them this way; counting every sub-case it said about 15 High, 20 Medium and 25 Low). **Every one of the 50 items was acted on; none was ignored.**
+
+| Category | Reported (23 Oct) | Fully fixed | Fixed, with one part left (decided or pending) | Closed by decision only (no change) | Not done |
+|---|---|---|---|---|---|
+| Steps outside the code (rotate keys, check secrets) | 6 | **6** | 0 | 0 | 0 |
+| **Critical** | 6 | **6** | 0 | 0 | 0 |
+| **High** | 13 | **12** | 0 | 1 (H8) | 0 |
+| **Medium** | 12 | **6** | 6 | 0 | 0 |
+| **Low** | 7 | **3** | 2 | 2 | 0 |
+| Systemic fixes recommended | 6 | **4** | 1 | 1 | 0 |
+| **Total** | **50** | **37 (74%)** | **9 (18%)** | **4 (8%)** | **0** |
+
+How to read it:
+- **Fully fixed** = changed in the code, tested, pushed.
+- **Fixed, with one part left** = the main problem is fixed; a smaller part was either decided to stay (for example old quotation links) or waits for the Frappe Cloud checks (for example the old invoice PDFs and the last print-format fields). The six Medium items in this column are the approval link (old quotations decided), invoice PDFs (patch for old files to run), task mass-assign and column terminal, manager points and HR scope, Slack (unmapped users decided), and the `_assign` / learning-record / visibility rules. The two Low items are print-format and dashboard escaping, and the last GET links. The one systemic item is POST-only for state-changing actions.
+- **Closed by decision only** = we tested it and the business chose to leave it: H8 (records can be opened by name), the plain-text API-key fields, the bank-transfer link re-sending its email, and the recommendation to add record-level permission hooks (same as H8).
+
+Where the items are, finding by finding, is in section 4.
+
+### 1.2 What we found while fixing (not in the 23 October report)
+
+Fixing the reported items turned up more. These were fixed or decided too.
+
+| What we found | What we did | Status |
+|---|---|---|
+| About 25 more outside-callable functions with no permission check, or with only a "read" check where "write" was needed (forecast and stuck-order data, tracking buttons, payment-stage summary, shipping-rate calculators, S3 helpers, the reshipment label prefill, kanban counts and more). Found when we built the automatic check on 6 Nov | Each gated by role or by access to the record, or removed as an outside action | **Fixed** (`a07c0ded` `20b0c718` `d1c48af5` `49ee0c0e` `e73f7495` `89370477`) |
+| Three functions that checked only "read" but still changed data (email to 1Click, validation feedback, load status) | Now need write | **Fixed** (`89370477`) |
+| "Put On Hold" had no real check (any user with order access could use it) | Customer Service, System Manager and Super Admin only, and not on shipped or completed orders | **Fixed** (`6c04d319`) |
+| Many of our own role checks blocked System Manager and Super Admin, against the rule that they are never blocked | Every such check now allows both | **Fixed** (`cee31478` `0238ab12`) |
+| The audit said `get_quotation_detail` had no check; it had a weak one, and it also returned item cost to every quotation reader | Needs read on that quotation; cost shown only to Factory, System Manager, Super Admin | **Fixed** (`cee31478` `20aed3db`) |
+| Two typos in one of our own fixes (`ignore_permission`) broke the ShipStation re-route on every order sync | Corrected the same day | **Fixed** (`a553f6ef`) |
+| Engineers saw a "No permission for Oneclick Settings" popup opening a Lyfe Order | The flag is now sent with the page | **Fixed** (`f970a196`) |
+| New public item-image endpoint added by the team on 29 Oct | Reviewed (low risk); limited to Shopify-listed items, rate-limited, clean errors | **Fixed** (`45e77120` `ba4d1987`) |
+| New COGS-based price API (2 Nov) lets anyone with quotation access work out item costs | Reviewed | **Decision: left as is** (4 Nov) |
+| New "Create Lyfe Order from Replenishment" action (2 Nov) | Reviewed: Factory, System Manager, Super Admin only, POST only | **Checked, no change needed** |
+| 487 other public PDFs attached to Lyfe Orders on the local copy (shipping labels and similar) | Not part of any reported item | **Open: to look at on the Frappe Cloud copy** |
+
+**Scorecard.** Reported items: 50, all acted on (74% fully fixed, 18% fixed with a part left, 8% closed by decision). Extra items found while fixing: 11, of which 8 fixed, 1 decided, 1 checked with no change needed and 1 still open.
+
+---
+
 ---
 
 ## 2. How the work was done
@@ -114,16 +158,17 @@ Status key: **Fixed** = changed in the code, tested, pushed. **Verify on copy** 
 | Hardcoded Slack webhook in a data patch | Removed and the webhook replaced | `026bb5c5` | **Fixed** |
 | AWS key had been stored in readable form | Stored encrypted; the key was rotated on 2 Nov | `0e003915` | **Fixed** |
 
-### 4.4 Low (6 groups)
+### 4.4 Low (7 groups)
 
 | Finding | Resolution | Status |
 |---|---|---|
 | `ss_api_key` and Slack webhook fields stored as normal text | Decision: no change (they do not reveal confidential data) | **Decision** |
-| Secrets written to the Error Log | Removed from the two places the audit named (Shopify and token rotation) | **Fixed** |
-| Customer text shown without escaping (print formats, dashboard scripts, emails, Slack page) | Emails, the Slack OAuth page and comment mentions are escaped. **Print-format address fields and dashboard scripts remain** (section 7) | **Partly fixed** |
+| Tokens and signatures written to the Error Log | Removed from the two places the audit named (Shopify signature check, token rotation) | **Fixed** |
+| Customer text shown without escaping in print formats and dashboard scripts | Emails and comment mentions are escaped. **Print-format address fields and dashboard scripts remain** (section 7) | **Partly fixed** |
+| The Slack install page printed an error text without escaping | Escaped | **Fixed** |
+| The bank-transfer tracking link re-sends its email on every click | Decision: left as is | **Decision** |
 | State-changing actions could be triggered by a crafted link (not POST-only) | 24 + 67 actions are now POST-only and 19 were removed; a few GET links stay on purpose | **Mostly fixed** |
 | Link-search queries trusted a caller-supplied document type | Now use the correct type | **Fixed** |
-| Small items (timers, merge orders, settings) | Permission checks added | **Fixed** |
 
 ### 4.5 Safeguards added so the problems do not come back
 
@@ -134,6 +179,17 @@ Status key: **Fixed** = changed in the code, tested, pushed. **Verify on copy** 
 | **Secret scanner (gitleaks)** | Blocks commits containing keys, tokens or webhook addresses. Scanned all 2,750 commits and the current code: no new secrets | `9cf8121a` |
 | **Rules for developers** (`CLAUDE.md`) | Written rules: every outside-callable action needs a permission check; System Manager and Super Admin are never blocked; secrets never go in code | `a3cadb7f` `9cf8121a` |
 | **Tests** | New test modules for each fix (section 8) | various |
+
+**The audit's six systemic recommendations:**
+
+| Recommendation (23 Oct) | Result |
+|---|---|
+| 1. A check that fails when an outside-callable action has no permission check | **Done** (the whitelist authorization check, a pre-commit hook and a test) |
+| 2. One webhook-verification routine that rejects when the secret is missing | **Done** (each receiver rejects a missing secret; the ShipStation one was deleted) |
+| 3. Record-level permission hooks for Task, Project, Quotation, CRM Lead and Deal | **Decision: not added** (H8) |
+| 4. POST-only for state-changing actions | **Mostly done** (the rest is pending) |
+| 5. Avoid `ignore_permissions` in code an action reaches, unless the role was checked | **Done where reached** (removed from the gated order, Gate Pass, Purchase Order, Item and BOM paths) |
+| 6. Secrets hygiene: nothing in docs or patches, pre-commit scanner | **Done** (documents deleted, patch cleaned, gitleaks hook) |
 
 ---
 

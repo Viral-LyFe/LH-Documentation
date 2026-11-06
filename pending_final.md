@@ -13,6 +13,20 @@
 
 **What the 6.1 re-check covered (6 Nov, `9cf8121a`):** the AST check on all 437 whitelisted functions (433 remain whitelisted, all guarded); gitleaks over all 2,750 commits and the working tree; a diff of dynamic SQL against the 23 Oct audit commit (5 changed calls, all safe); the 15 guest endpoints (each one verifies a signature, token or secret, or is deliberately public, and carries an `# authz:` marker); the 175 commits since `0e003915` (304 files); and the audit tests (results below). It was not a new line-by-line audit of the whole app.
 
+### Reported (23 Oct) versus completed (6 Nov)
+
+| Category | Reported | Fully fixed | Fixed, one part left | Closed by decision only | Not done |
+|---|---|---|---|---|---|
+| Steps outside the code | 6 | 6 | 0 | 0 | 0 |
+| Critical | 6 | 6 | 0 | 0 | 0 |
+| High | 13 | 12 | 0 | 1 (H8) | 0 |
+| Medium | 12 | 6 | 6 | 0 | 0 |
+| Low | 7 | 3 | 2 | 2 | 0 |
+| Systemic fixes | 6 | 4 | 1 | 1 | 0 |
+| **Total** | **50** | **37 (74%)** | **9 (18%)** | **4 (8%)** | **0** |
+
+Plus 11 extra items found while fixing (8 fixed, 1 decided, 1 checked with no change, 1 open: 487 other public PDFs on Lyfe Orders). Detail: `LH Documentation/lh/FINAL_REPORT_FOUNDER_2026-11-06.md`, section 1.1 and 1.2.
+
 ### Fully completed (fixed in code, checked at HEAD)
 
 | Area | Items |
