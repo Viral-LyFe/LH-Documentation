@@ -206,7 +206,7 @@ Which items we should send to the 1Click warehouse in the US, and how many. US c
 - The table shows the first 10 items that need action. For each: stock at 1Click, stock on its way, units sold per week, weeks the stock will last and the suggested quantity.
 - **(uncertain)** means the item has too little sales history to trust the number.
 - A **warning line** means the last read of 1Click stock failed or is old. The numbers then come from the last good read, shown with its time. If it says 1Click stock has never been read, every item shows 0 at 1Click and looks Urgent, so do not act on the numbers until a read has worked.
-- **A read where every item is 0 is rejected.** If 1Click reports zero stock for every item, the page treats it as a failed read (it usually means the wrong warehouse is set, not a real stock-out) and keeps the last good numbers. The warning line then says so. Ask a developer to check the US warehouse number in Oneclick Settings.
+- **A read where every item is 0 is rejected.** If 1Click reports zero stock for every item, the page treats it as a failed read (it usually means the wrong warehouse is set, not a real stock-out) and keeps the last good numbers. The warning line then says so. The same warning shows if the last saved read is all zeros. Ask a developer to check the US warehouse number in Oneclick Settings.
 - Only standard items appear. Custom (made-to-order) items never do.
 
 **What to do**
@@ -593,7 +593,7 @@ A checklist of problems that make the forecast wrong. Each line shows a count, o
 | Line | What it means |
 |---|---|
 | Lyfe BOM components not matched to an Item | A BOM component code matches no item, so it is ignored. |
-| Open order lines without an Item | Their quantity cannot be counted as committed. |
+| Open order lines without an Item | Their quantity cannot be counted as committed. Fee, price-difference and made-to-order (CSTM) lines are not listed, because they are not stock items. |
 | Components where the Lyfe BOM disagrees with actual issues | The BOM is marked Unreliable. |
 | Acrylic rods with unit Inch | Should be counted in "Nos". |
 | Acrylic rods with a decimal written as P | For example, 2P75L should be written 2.75L. It is not recognised as a rod. |
