@@ -4,7 +4,7 @@
 |---|---|
 | **Features** | **Lyfe Order Return** (goods coming back from the customer: refund, restock fee, replacement) and **Lyfe Order Reshipment** (a second shipment to the customer, including the Return link and the Via-US-Warehouse route) |
 | **Who it is for** | Customer Service, Factory, Shipping Forwarder, Finance, Super Admin, System Manager |
-| **Document version** | 2.13 |
+| **Document version** | 2.14 |
 | **Last updated** | 2026-11-09 |
 | **Screenshots** | Every `📷 [SCREENSHOT RS-xx]` (Reshipment) or `📷 [SCREENSHOT RT-xx]` (Return) line is a placeholder. Take the screenshot, save it as the same ID (for example `RT-01.png`) and insert it there. |
 
@@ -877,6 +877,7 @@ Cancelling removes it from the order's return history and the customer's return 
 
 | Version | Date | What changed |
 |---|---|---|
+| 2.14 | 2026-11-09 | A **Stock Only** order has no *US Warehouse → Customer* shipment leg. Marking an order Stock Only (button or automatic) **cancels its pending US Warehouse → Customer leg** (a note is added to the order), and the system will not create that leg while the order is marked. If that leg has already shipped or has tracking, the mark is refused until that shipment is cancelled (an automatic mark from a new reshipment is skipped in that case, and the reshipment is still created). Removing the mark does not bring the cancelled leg back. |
 | 2.13 | 2026-11-09 | Customer Service can mark an order **before** its reshipment exists: **Actions → Mark Shipped Separately (Stock Only)** on a Lyfe Order that is on an in-transit Bulk Transfer Batch (and **Remove Stock-Only Mark** to undo). Every mark or unmark, manual or automatic, is recorded in the order's Track Changes. The tick box sits under *Order via US Warehouse* and, like the button, is visible only to Customer Service, System Manager and Super Admin. The mark is no longer cleared automatically when a reshipment is cancelled; remove it with the button. |
 | 2.12 | 2026-11-09 | **Direct reshipment while the original order is still on a Bulk Transfer Batch that has not reached the US warehouse.** When a reshipment is created with *Via US Warehouse* **unticked**, the original order is automatically marked **Shipped Separately - Stock Only** (a note is added to the order). The goods in the batch are then only stocked at 1Click: the order is never posted or re-posted to 1Click, its US tracking no longer moves the order's status when the batch arrives, and the batch's Packing List shows a **Stock Only** tag and a "do not deliver" note. The inbound email to 1Click names these orders.  The original order must **not** be cancelled; also cancel its order on the 1Click portal if it was already posted. |
 | 2.11 | 2026-10-30 | The reshipment is now the source of truth for its draft **Sales Invoice**. Customer, PO number, contract type, exporter, destination, shipping address and the item details are read-only on the invoice, and any change to the reshipment's CJ Shipment Items is copied to the draft invoice automatically. Submitted invoices are not changed. |
