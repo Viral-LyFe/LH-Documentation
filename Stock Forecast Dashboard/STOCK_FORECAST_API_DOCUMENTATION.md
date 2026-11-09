@@ -50,8 +50,8 @@ page load  -> load() -> STOCK_MODE -> loadStockPage()
         - sets TILE_VISIBILITY for every key in STOCK_PAGE_TILES from `tiles`
         - sets FILTER_CATEGORY_OPTIONS = categories (Category filter dropdown)
         - on error: "Failed to load - see Error Log."
-   3. builds one slot per visible tile (KPI strip, hidden data-quality block, STOCK_PAGE_GRID rows)
-   4. STOCK_PAGE_TILES.filter(isTileVisible).forEach(refreshTile)   <- all tiles fire in PARALLEL
+   3. builds one slot per visible tile (KPI strip, hidden data-quality block, a tab bar and one pane per STOCK_TABS tab)
+   4. stock_summary and data_quality fire at once; the saved (or first) tab's tiles fire in PARALLEL; each other tab's tiles fire the first time that tab is opened
         refreshTile(key): frappe.call(MP.TILE_ENDPOINTS[key], args = resolveTileFilters(key))
         - each tile has its own loading / error state; a failing tile never blanks the others
 interactions
@@ -69,7 +69,7 @@ Stock-mode specifics:
 
 - `get_tile_config` (founder-gated) and `get_filter_options` are NOT called in stock mode (see section 12). Layout comes from `get_stock_forecast_page`, which applies the same Tile Config visibility server-side.
 - `STOCK_PAGE_TILES` (JS) mirrors `STOCK_PAGE_TILES` (Python): `stock_summary, stockout_risk, category_forecast, tube_stock, acrylic_stock, material_usage, buildable_orders, restock_list, trending_items, material_shortfall, order_stock_shortfall, data_quality`.
-- Fixed grid (`STOCK_PAGE_GRID`, col-span of 12): stockout_risk 6, material_usage 6, category_forecast 12, tube_stock 6, acrylic_stock 6, buildable_orders 12, restock_list 12, trending_items 12, material_shortfall 5, order_stock_shortfall 7. `stock_summary` is the KPI strip above the grid (rendered by `renderStockKpis`, not `renderStockSummary`, in stock mode), `data_quality` is a hidden block toggled from the header.
+- Tabs (`STOCK_TABS`, col-span of 12): Act now: Restock List (12), Stockout Risk (12), US Warehouse Replenishment (12), Material Not In Stock - Total Required (5) beside Active Orders - Material Not In Stock (7). Demand & forecast: Demand Trends, Demand Forecast, Base-level Forecast, Category-wise Stock Forecast, Material Usage, Forecast vs Actual (all 12). Materials: Tube Stock (6), Acrylic Rod Stock (6), Buildable Orders (12). `stock_summary` is the KPI strip above the grid (rendered by `renderStockKpis`, not `renderStockSummary`, in stock mode), `data_quality` is a hidden block toggled from the header.
 - `refreshTile` falls back to the full `load()` for a tile without a `TILE_ENDPOINTS` entry; every stock tile has an entry.
 
 ### Tile to endpoint map (`TILE_ENDPOINTS`, `TILE_SUPPORTED_FIELDS`)
@@ -672,6 +672,26 @@ bench --site lyfelocal.com execute lh.lyfe_hardware.page.founder_dashboard.found
 - **Example (real, 26 Oct 2026, 12 weeks):** overall forecast 5,075 vs actual 5,407 (bias -6.1%), error 93.8% over 169 products; biggest miss CMBR-200 508 vs 581. Maximum weeks today: 19.
 - **Page usage:** `forecast_accuracy`; `renderForecastAccuracy` + `renderAccuracyChart` (`frappe.Chart`: Used bars, Forecast line). `tube` is shown in a collapsed "Tube items (N)" section (summary and biggest misses, no chart).
 - **Note:** the weekly `Stock Forecast Accuracy` table (from the nightly snapshots) is separate and not shown on the page; once snapshots cover several weeks the two can be compared.
+
+### 8.10d `get_tile_us_replenishment`
+
+`lh.lyfe_hardware.page.founder_dashboard.founder_dashboard.get_tile_us_replenishment`. No arguments, no filters.
+
+**Permission:** role set `us_replenishment` only (System Manager, Super Admin, US Replenishment Manager). Factory and other `stock_forecast` roles get `PermissionError`. `get_stock_forecast_page` leaves the tile out of its `tiles` list for them.
+
+**Response:**
+
+```json
+{
+  "urgent": 21, "reorder": 0, "overstock": 0,
+  "suggested_units": 480, "suggested_value": 18297.43,
+  "sync": {"last_success_at": "2026-11-09T01:54:47", "status": "OK", "warning": null, "error": null},
+  "rows": [{"item_code": "CMBR-200-PB", "status": "Urgent", "available": 0.0, "in_transit": 13.0,
+            "avg_weekly_demand": 3.48, "weeks_of_cover": 0.0, "suggested_qty": 40, "confidence": "High"}]
+}
+```
+
+`suggested_value` = suggested quantity x the Item Price in the price list set in US Replenishment Settings (selling price, not cost). `rows` holds at most 10 items with status Urgent, Reorder or Not stocked yet, Urgent first. Full per-item detail, the calculation and the other endpoints (`get_dashboard`, `get_item_detail`, `sync_now`, `create_draft_transfer`, `export_excel`) are in `docs/us-replenishment-dashboard.md`.
 
 ### 8.11 `get_tile_material_shortfall`
 

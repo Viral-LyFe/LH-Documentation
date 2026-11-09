@@ -1,8 +1,90 @@
 # Stock Forecast Dashboard — What It Does (Plain English Guide)
 
-*Last updated: 7 Oct 2026*
+*Last updated: 9 Nov 2026*
 
 This guide is for the Founder and anyone at Lyfe Hardware who opens the **Stock Forecast** page. You do not need any technical background. If you know our orders, the factory, tubes, rods and brackets, you can read this guide and understand every number on the page.
+
+---
+
+## Start here: how to use the Stock Forecast page
+
+Open it from the search bar (type **Stock Forecast**) or go to `/app/stock-forecast`. Everything on it is read from our own records, so there is nothing to type in; you only look, filter and decide.
+
+### What you see
+
+1. **Four summary cards** at the top: *Orders short now*, *Items to reorder*, *Shortest cover*, *Data issues*. Click a card and the page opens the right tab and jumps to that tile.
+2. **Category and Item Code boxes** under the cards. They narrow the whole page at once (leave them empty to see everything).
+3. **Three tabs.** The page opens on the tab you used last.
+   - **Act now**: what to buy, what is about to run out, what to send to the US warehouse, and which materials are short for active orders.
+   - **Demand & forecast**: what is selling more or less, how much we expect to need, and how accurate the forecast has been.
+   - **Materials**: tube, acrylic rods and which orders can be built today.
+
+A tab loads the first time you open it, so the first click on a tab takes a moment. Each tile loads by itself: if one fails it shows **Retry** and the others keep working.
+
+### A five-minute routine
+
+1. **Look at the cards.** Anything red, or "Data issues" not saying *None*, is where to start.
+2. **Act now, Restock List.** This is the buying list. Leave the days empty for each item's normal target, or type a number (for example 14) in the tile's filter to see what is short for that many days. Read the **Why** column, then check **Last Received** and ask the buyer whether an order is already on the way (the page cannot see purchase orders).
+3. **Act now, Stockout Risk.** Critical and High rows are the items that will run out first. Open **View forecast detail** on any item you are unsure about.
+4. **Act now, US Warehouse Replenishment** (if you can see it). Shows what to send to the US warehouse. Use *Open the full page* to act on it (steps below).
+5. **Act now, the two "Material Not In Stock" tiles.** The first adds up everything active orders need; tick an item to see which orders are behind it.
+6. **Data issues.** If the card shows a number, click it and fix what it points to; the forecasts are only as good as the records behind them.
+7. **Once a week (for example Monday):** open **Demand & forecast** to see what is rising, how much we are likely to need, and how close last week's forecast was.
+
+### "I want to..."
+
+| I want to... | Go to | What to do |
+|---|---|---|
+| Know what to buy today | Act now, **Restock List** | Read Order Qty and Why. Export to CSV to send to the buyer. |
+| See which items run out soon | Act now, **Stockout Risk** | Work from Critical down. Click a row for daily use, confidence and where the item is used. |
+| Know what to send to the US warehouse | Act now, **US Warehouse Replenishment** | Open the full page and make a draft transfer (below). |
+| See which orders cannot be built | Materials, **Buildable Orders** | Read the limiting components of each Short order, then buy those. |
+| See total material short for all active orders | Act now, **Material Not In Stock - Total Required** | Tick an item to see the orders that need it. |
+| See which single order is short | Act now, **Active Orders - Material Not In Stock** | One row per order and component. |
+| See what is selling more | Demand & forecast, **Demand Trends** | Rising items are listed with a small trend line. |
+| Know how much we will need in the next 30 or 60 days | Demand & forecast, **Demand Forecast** | Type the days in the tile's filter. Red "left after" means it will run short. |
+| Check whether the forecast can be trusted | Demand & forecast, **Forecast vs Actual**; and the **Data issues** card | |
+| Check tube or acrylic rods | Materials, **Tube Stock** / **Acrylic Rod Stock** | Tube is in feet, acrylic in inches. |
+| Look at one item only | Item Code box at the top | Pick the item; a product with several finishes shows as one row. |
+| Look at one product group only | Category box at the top (or the funnel on a tile) | A main category includes its sub-categories. |
+
+### Filters and getting data out
+
+- **Top boxes** (Category, Item Code) change every tile that is already loaded; tiles in tabs you have not opened yet use them when you open the tab.
+- **Funnel on a tile** sets that tile's own filter (days, Top N, category) and wins over the top boxes for that tile.
+- **Refresh** (top right) reloads the whole page. Each tile also has its own refresh arrow.
+- **Column boxes** under a table heading hide rows that do not contain what you type.
+- **Export:** tables have *Export to CSV* (or *Download restock list*). The US Warehouse Replenishment page has *Export to Excel*.
+
+### Sending stock to the US warehouse, step by step
+
+1. Click *Open the full US Warehouse Replenishment page* on the tile (or go to `/app/us-replenishment`).
+2. **Check the top of the page.** A yellow banner means the last read of 1Click stock failed or is old; the numbers are then from the last good read, shown with its time. You can press *Sync 1Click now* to read it again.
+3. **Work from the top.** Rows are sorted Urgent first. Use the Item Group, Status and *Min Weekly Demand* boxes to narrow the list.
+   - **Urgent**: we will run out before a new shipment could arrive.
+   - **Reorder**: below the level where we should already be re-stocking.
+   - **OK**: enough stock. **Overstock**: more than we need, so nothing is suggested.
+   - **Not stocked yet**: sells steadily in the US but 1Click has none; a new candidate.
+   - **(uncertain)** next to an item means it has too little sales history to trust the number.
+4. **See why.** Click an item code. The window shows the numbers step by step (weekly demand, lead time, safety stock, reorder point, target, stock at 1Click and on its way), the weekly demand chart, the 1Click stock history and any open transfers. Stock already on its way is counted, so it is not suggested again.
+5. **Choose quantities.** Change the Suggested Qty in a row if you want a different number, and tick the rows you want.
+6. Press **Add selected to draft Stock Transfer** and confirm (you need permission to create a Stock Transfer Order 1Click: Factory, Customer Service, System Manager or Super Admin). This creates a **draft** Stock Transfer Order 1Click with your items and quantities. **Nothing is sent yet** and no shipment starts.
+7. Open the draft, review it, and when you are ready press **Create Lyfe Order** on it. That starts the shipment to the US warehouse through the factory. Only Factory, System Manager and Super Admin can press that button; Customer Service can prepare the draft but not create the order.
+
+Custom (made-to-order) items never appear. If a SKU sells but has no item linked on the order line, it cannot be counted; the page shows how many such lines it skipped.
+
+### If something looks wrong
+
+| What you see | What it means | What to do |
+|---|---|---|
+| A tile says "Data unavailable" | That tile failed to load | Press **Retry** on the tile. If it keeps failing, tell the system team (it is in the Error Log). |
+| A tile or tab is missing | Your role does not include it (for example Factory does not see the US tile) | Ask an administrator for the role. |
+| An item is not in Stockout Risk | It has 30+ days of cover, no use in the window, is tube/acrylic, or is Make to Order / Do Not Stock | See the FAQ. |
+| Yellow banner on the US page | The last 1Click read failed or is old | Numbers are from the last good read. Press *Sync 1Click now*; if it fails again, tell the system team. |
+| An item you expected is missing from the US page | It is a custom item, has no US sales in the last year, or has sold too rarely to suggest as new | Normal. |
+| Numbers differ between two tiles | They answer different questions (for example the Total and per-order tiles) | See section 6, *Which view answers which question*. |
+
+The rest of this guide explains where every number comes from. Use the headings: section 4 describes each tile, section 6 compares them, section 7 has step-by-step playbooks and section 11 answers common questions.
 
 ---
 
@@ -17,7 +99,7 @@ It answers four questions:
 
 Every number comes from the records the team already works in every day: stock on the shelf, material issued to the factory, and open orders. Nothing is typed in by hand.
 
-**Who can open it:** people with the role **System Manager**, **Super Admin** or **Factory**. A Factory user can see this page but not the Founder Dashboard's money pages (revenue, profit). The Founder Dashboard itself only shows one small **Stock** banner that links here.
+**Who can open it:** people with the role **System Manager**, **Super Admin** or **Factory**. The **US Warehouse Replenishment** tile is shown only to System Manager, Super Admin and people given the **US Replenishment Manager** role. A Factory user can see this page but not the Founder Dashboard's money pages (revenue, profit). The Founder Dashboard itself only shows one small **Stock** banner that links here.
 
 **What the page does not do:** it does not know about purchase orders, suppliers or delivery times. It tells you how long stock will last and how much to buy. When to place the order is your decision.
 
@@ -134,6 +216,8 @@ These items do **not** appear in Stockout Risk or the category bars (they have t
 ---
 
 ## 4. Each tile, in page order
+
+The tiles are grouped into three tabs under the summary cards, so you do not have to scroll through everything: **Act now** (what to restock, what is about to run out, what to send to the US warehouse, what orders are short of material), **Demand & forecast** (what is selling, what we expect to need, how accurate the forecast has been) and **Materials** (tube, acrylic rod and buildable orders). A tab loads the first time you open it, and the page remembers the tab you used last. The descriptions below follow the same order as the old single page, so use the headings to find a tile.
 
 ### 4.1 Summary cards (top strip)
 Four clickable cards. Click one to jump to the related tile.
@@ -311,6 +395,16 @@ The history starts in May 2026 and each week needs the 30 days before it, so the
 
 **Tube items:** tube is kept out of the main lists and shown in its own section at the bottom of the tile, **Tube items (N)**. Click it to open. Pipes are counted in feet and cut lengths as issued, so they never mix with the other products' units.
 
+### 4.8d US Warehouse Replenishment
+
+Shows which items we should send to the 1Click warehouse in the US, so that US customers can get them faster. It looks at what the US has been buying, what 1Click holds now, and what is already on its way from India.
+
+At the top: how many items are urgent, how many should be reordered, how many are overstocked, how many units we suggest sending (and roughly what that is worth at selling price), and when 1Click stock was last read. If the last read failed or is old, a warning says so and shows the last good time; the numbers underneath are from that last good read.
+
+The table lists the first 10 items that need action, with what 1Click has, what is on its way, how many sell per week, how many weeks the stock will last, and the suggested quantity. "(uncertain)" means the item has too little sales history to trust the number. Click the link under the table to open the full page with every item, the working behind each number, an Excel download, and a button that prepares a **draft** transfer (nothing is sent until someone creates the shipment from that draft).
+
+Only people with the US Replenishment role (and the System Manager / Super Admin) see this tile. Custom (made-to-order) items never appear.
+
 ### 4.9 Material Not In Stock - Total Required
 **Question answered:** "For everything we still have to build, which materials are short in total?"
 
@@ -386,6 +480,7 @@ The aim is to keep this at zero. The count is the number of lines that are not O
 | **Material Not In Stock - Total** | "Which materials are short for all active orders together?" | No (adds all orders, compares once) | Units |
 | **Active Orders - Not In Stock** | "Which single order alone is short?" | **No**, each order sees full stock | Units |
 | **Tube / Acrylic** | "How long will tube / acrylic last?" | n/a | Feet / inches |
+| **US Warehouse Replenishment** | "What should we send to the US warehouse, and how many?" | Counts stock at 1Click and on its way, so it is not suggested twice | Units |
 
 A simple rule: **Stockout Risk and Restock List look at the pace of use. The three order views look at what open orders need.**
 
@@ -399,6 +494,12 @@ A simple rule: **Stockout Risk and Restock List look at the pace of use. The thr
 3. Check **Last Received** in the Restock List to see if stock arrived recently.
 4. Confirm with the buyer that nothing is already on the way.
 5. Order the **Suggested Qty** (or more if a big order is coming).
+
+**Stock to send to the US warehouse**
+1. Act now, **US Warehouse Replenishment**: open the full page.
+2. Check the banner at the top; if it warns that the 1Click read is old or failed, the numbers are from the last good read.
+3. Start with **Urgent**, click an item to see the working, adjust the quantity and tick the rows.
+4. **Add selected to draft Stock Transfer**, review the draft, then press **Create Lyfe Order** on it when ready. Nothing is sent before that.
 
 **An item with negative Available**
 1. Open orders already need more than we hold. It is Critical whatever the cover.
@@ -493,6 +594,15 @@ Each Monday the system also tags items **A, B or C** by how much of the volume t
 
 ## 11. FAQ
 
+**A tile I used to see is not on the page. Where is it?**
+Tiles are now grouped in three tabs (Act now, Demand & forecast, Materials). Use the "I want to..." table at the start of this guide to find it.
+
+**Why is the first click on a tab slow?**
+A tab only loads its tiles when you open it, which keeps the page quick to open. Next time you open it in the same visit it is already there; Refresh reloads everything.
+
+**Why can I not see the US Warehouse Replenishment tile?**
+It is shown only to System Manager, Super Admin and people with the US Replenishment Manager role.
+
 **Why is an item missing from Stockout Risk?**
 It has 30 or more days of cover, had no use in the window, is tube or acrylic (own tiles), or is set to Make to Order / Do Not Stock.
 
@@ -528,4 +638,4 @@ Most tiles are live when you load or refresh. The "Last updated" time is at the 
 
 ---
 
-Last verified against the live implementation: 2026-10
+Last verified against the live implementation: 2026-11
