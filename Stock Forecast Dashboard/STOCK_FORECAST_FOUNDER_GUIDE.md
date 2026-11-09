@@ -486,17 +486,18 @@ Last 12 weeks: forecast 5,075 against 5,407 used. The total is 6.1% low, but pro
 One row per tube pipe (material and diameter) that was used in the window. Tube is kept as long rods and cut to order, so it is counted in **feet**.
 
 **How to read it**
+The tile is a short list, one pipe per line. Each line reads: *N ft on hand · uses N ft/day · keep N ft · order N ft (N rods)*, or "no order needed" when stock is enough. Small daily use is shown with decimals (for example 0.37 ft/day), so a slow pipe never reads as "0 ft/day".
 
-| Column | Meaning |
+| Part of the line | Meaning |
 |---|---|
 | On hand (ft) | Feet of rod in stock, plus pre-cut pieces (pieces × their length). |
-| Rods | Feet on hand ÷ 100. Rods are assumed to be 100 ft long. |
-| Used / per day | Feet used in the window (net of returns), and per day. |
-| Days left, risk | Cover and risk level (same 7 / 15 / 30 scale). |
+| Uses ft/day | Feet used in the window (net of returns), per day. |
 | Keep | Daily feet × target cover (default 30 days). |
-| Order ft / rods | Feet short of "keep", and that ÷ 100 rounded **up** to whole rods. |
+| Order ft (rods) | Feet short of "keep", and that ÷ 100 rounded **up** to whole rods ("1 rod", "2 rods"). |
 
-- Sorted fewest days first. The card shows the 5 most urgent. Click "show details" for all.
+- Sorted fewest days first. The tile shows the 5 most urgent. **Show details** opens the full list **in place** (it does not open a popup). The link under the tile opens the full per-pipe table (use, keep and order per column).
+- Days left and risk level use the same 7 / 15 / 30 scale.
+- A pipe that is used very little can still be Critical: if its stock is below its own "keep" amount it is short against that target, even at a fraction of a foot a day.
 - Pre-cut pieces are added to the tube they were cut from. Cut pieces never cut from a known tube appear as one "(cut pieces)" row with no order suggestion.
 
 **What to do**
@@ -695,6 +696,7 @@ The morning **Founder Briefing** has stock sections too (Projected Stockouts and
 - Items never used do not appear, even if open orders need more than the stock.
 - Dead stock can be seasonal. With a few months of history, treat the dead list as a review list.
 - **Revenue exposed** is a risk figure, not proof an order is blocked. Use Buildable Orders for the real blocked value.
+- **Why the top card and the Category tile show different dollars.** The top "Orders short now" card adds up orders that cannot be fully built from the stock on hand today (Partial or Short in Buildable Orders), for any missing item. The Category tile's "Revenue exposed" adds up open orders that contain an item the forecast rates Critical, High or Medium. The first is "cannot be built now"; the second is "might be blocked soon". They are not meant to match, and the first is normally the larger one.
 
 **A tile says "Data unavailable".**
 Press **Retry** on the tile. If it keeps failing, tell the system team.
