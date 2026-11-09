@@ -205,7 +205,8 @@ Which items we should send to the 1Click warehouse in the US, and how many. US c
 - The top line shows how many items are urgent, how many to reorder, how many are overstocked, how many units we suggest sending (and roughly what that is worth at selling price) and when 1Click stock was last read.
 - The table shows the first 10 items that need action. For each: stock at 1Click, stock on its way, units sold per week, weeks the stock will last and the suggested quantity.
 - **(uncertain)** means the item has too little sales history to trust the number.
-- A **warning line** means the last read of 1Click stock failed or is old. The numbers then come from the last good read, shown with its time.
+- A **warning line** means the last read of 1Click stock failed or is old. The numbers then come from the last good read, shown with its time. If it says 1Click stock has never been read, every item shows 0 at 1Click and looks Urgent, so do not act on the numbers until a read has worked.
+- **A read where every item is 0 is rejected.** If 1Click reports zero stock for every item, the page treats it as a failed read (it usually means the wrong warehouse is set, not a real stock-out) and keeps the last good numbers. The warning line then says so. Ask a developer to check the US warehouse number in Oneclick Settings.
 - Only standard items appear. Custom (made-to-order) items never do.
 
 **What to do**
@@ -225,6 +226,9 @@ Which items we should send to the 1Click warehouse in the US, and how many. US c
 | **Not stocked yet** | Sells steadily in the US, but 1Click has none. A new candidate. |
 
 3. **See why.** Click an item code. The window shows the numbers step by step, the weekly demand chart, the 1Click stock history and open transfers. Stock already on its way is counted, so it is not suggested twice.
+   - The stock history chart needs reads from at least two different days. Until then it says **"Not enough snapshots yet."**
+   - The weekly demand chart says "No US sales in the history window" for an item with no US sales.
+   - Open order lines that have no Item linked are not counted in US demand, so demand can look lower than real sales. Stock Data Quality lists them.
 4. **Choose quantities.** Change the Suggested Qty in a row if you want a different number. Tick the rows you want.
 5. Press **Add selected to draft Stock Transfer** and confirm. You need permission to create a Stock Transfer Order 1Click (Factory, Customer Service, System Manager or Super Admin). This creates a **draft**. **Nothing is sent yet.**
 6. Open the draft and review it. When you are ready, press **Create Lyfe Order** on it. That starts the shipment to the US warehouse through the factory. Only Factory, System Manager and Super Admin can press that button.
@@ -511,7 +515,7 @@ A brass tube has 79.6 ft of rod plus 5 pre-cut pieces of 4 ft (20 ft), so **99.6
 <img width="1536" height="674" alt="20-tube-stock" src="https://github.com/user-attachments/assets/df96ffb1-4c4c-4f7c-8c51-6c04dab40b61" />
 
 
-**Screenshot 21: Tube Stock details**
+**Screenshot 21: Tube Stock, expanded with "show details"**
 
 <img width="1536" height="674" alt="21-tube-stock-details" src="https://github.com/user-attachments/assets/45d9c162-500c-48f8-8887-00066999e3b5" />
 
@@ -872,7 +876,7 @@ Who can see what: Stock Forecast endpoints use the `stock_forecast` role set (Sy
 | 18 | `images/stock-forecast/18-material-usage.png` | Demand & forecast | Material Usage list | ☑ |
 | 19 | `images/stock-forecast/19-forecast-vs-actual.png` | Demand & forecast | Summary, chart and Biggest misses | ☑ |
 | 20 | `images/stock-forecast/20-tube-stock.png` | Materials | Tube Stock card | ☑ |
-| 21 | `images/stock-forecast/21-tube-stock-details.png` | Materials | Tube Stock details popup | ☑ |
+| 21 | `images/stock-forecast/21-tube-stock-details.png` | Materials | Tube Stock tile after "show details" (list expanded in place) | ☑ |
 | 22 | `images/stock-forecast/22-acrylic-stock.png` | Materials | Acrylic Rod Stock card | ☑ |
 | 23 | `images/stock-forecast/23-buildable-orders.png` | Materials | Buildable Orders (blur names and values) | ☑ |
 | 24 | `images/stock-forecast/24-data-quality.png` | Data issues card | Checklist with one line opened | ☑ |
