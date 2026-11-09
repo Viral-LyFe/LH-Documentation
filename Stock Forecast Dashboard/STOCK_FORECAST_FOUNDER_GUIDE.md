@@ -245,12 +245,12 @@ An item sells 10 a week. The shipment takes about 4.5 weeks (3 working days at t
 
 **Screenshot 8: US Warehouse Replenishment full page**
 
-<img width="1536" height="674" alt="08-us-replenishment-page" src="https://github.com/user-attachments/assets/6ff2f4a2-11f8-49b0-a3ff-a6eddcebe30e" />
+<img width="915" height="666" alt="08-us-replenishment-page" src="https://github.com/user-attachments/assets/9b369d60-bbbd-46f4-a9e5-caac543e29e5" />
 
 
 **Screenshot 9: US page, item detail ("why")**
 
-<img width="1536" height="674" alt="09-us-item-detail" src="https://github.com/user-attachments/assets/436bccd8-a628-4a6b-873f-21c490877b74" />
+<img width="915" height="666" alt="09-us-item-detail" src="https://github.com/user-attachments/assets/10975bde-d1a9-43c9-8258-d1ec52958c77" />
 
 
 > 📸 **Screenshot 10: Draft Stock Transfer Order**
@@ -305,7 +305,7 @@ Item Y: 10 in stock. Two orders need 6 each. In **this** tile neither order appe
 
 **Screenshot 12: Active Orders - Material Not In Stock**
 
-<img width="915" height="666" alt="12-active-orders-material" src="https://github.com/user-attachments/assets/12314f36-ecc6-407e-99ea-dd33d55feaae" />
+<img width="915" height="666" alt="12-active-orders-material" src="https://github.com/user-attachments/assets/89bea09f-0120-4dfd-8050-7fdefdf065b5" />
 
 
 ---
@@ -337,7 +337,7 @@ UHRB-150: 50 used in the last 30 days, against 6 in the 30 days before. That is 
 
 **Screenshot 13: Demand Trends**
 
-<img width="915" height="666" alt="13-demand-trends" src="https://github.com/user-attachments/assets/22dba793-4474-4806-b914-f581aeef12ff" />
+<img width="915" height="666" alt="13-demand-trends" src="https://github.com/user-attachments/assets/5fa9d4b3-3cc6-46b8-ae81-635274ce3ef2" />
 
 
 ---
@@ -452,7 +452,7 @@ Brass tube: 438 ft issued in 30 days, 10 ft returned. The tile shows the net amo
 
 **Screenshot 18: Material Usage**
 
-<img width="1536" height="674" alt="18-material-usage" src="https://github.com/user-attachments/assets/de2b6c8d-640f-4e19-af0f-6afa4e5f791b" />
+<img width="915" height="666" alt="18-material-usage" src="https://github.com/user-attachments/assets/8f81d0c7-2fb7-478b-a2bb-7ae610755f13" />
 
 
 ---
@@ -512,12 +512,12 @@ A brass tube has 79.6 ft of rod plus 5 pre-cut pieces of 4 ft (20 ft), so **99.6
 
 **Screenshot 20: Tube Stock**
 
-<img width="1536" height="674" alt="20-tube-stock" src="https://github.com/user-attachments/assets/df96ffb1-4c4c-4f7c-8c51-6c04dab40b61" />
+<img width="915" height="666" alt="20-tube-stock" src="https://github.com/user-attachments/assets/90ab5585-fe81-4b15-99eb-70b7d9d0e4fb" />
 
 
 **Screenshot 21: Tube Stock, expanded with "show details"**
 
-<img width="1536" height="674" alt="21-tube-stock-details" src="https://github.com/user-attachments/assets/45d9c162-500c-48f8-8887-00066999e3b5" />
+<img width="915" height="666" alt="21-tube-stock-details" src="https://github.com/user-attachments/assets/f5e727cb-46ad-411d-8a85-51ddb8f874e2" />
 
 
 ---
@@ -615,7 +615,7 @@ A checklist of problems that make the forecast wrong. Each line shows a count, o
 
 **Screenshot 24: Stock Data Quality**
 
-<img width="1536" height="674" alt="24-stock-data-quality" src="https://github.com/user-attachments/assets/266cd868-3f90-4711-a55e-11124a7ac41c" />
+<img width="915" height="666" alt="24-stock-data-quality" src="https://github.com/user-attachments/assets/cb22c449-0eec-4e1e-b8cd-e615cac41006" />
 
 
 ---
