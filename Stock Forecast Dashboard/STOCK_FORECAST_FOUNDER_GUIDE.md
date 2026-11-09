@@ -106,7 +106,8 @@ Click the card that worries you. The page opens the right tab and jumps to that 
 
 **Screenshot 2: Summary cards**
 
-<img width="915" height="666" alt="02-summary-cards" src="https://github.com/user-attachments/assets/2b676248-f97f-4a4e-9852-d4801d55e7e9" />
+<img width="915" height="722" alt="02-summary-cards" src="https://github.com/user-attachments/assets/5180e94b-4d69-49cc-9a8d-bfa38ea6fff1" />
+
 
 
 
@@ -137,12 +138,14 @@ An item uses 1.5 a day. For 14 days it needs 21. We hold 32, but 20 are promised
 
 **Screenshot 3: Restock List**
 
-<img width="915" height="666" alt="03-restock-list" src="https://github.com/user-attachments/assets/bbcea564-1fe7-423a-913e-9884d43d7939" />
+<img width="915" height="722" alt="03-restock-list" src="https://github.com/user-attachments/assets/e5f25913-e988-4a54-82a6-4fdaf5d3a58e" />
+
 
 
 **Screenshot 4: Restock List, cover for the next N days**
 
-<img width="915" height="666" alt="04-restock-list-days" src="https://github.com/user-attachments/assets/fa8f474a-3873-4665-a3f6-67bc58ac9f68" />
+<img width="915" height="722" alt="04-restock-list-days" src="https://github.com/user-attachments/assets/de8a69a2-d913-42c8-845c-d9ef028a6451" />
+
 
 
 ---
@@ -186,12 +189,14 @@ CMBR-200-PB: 60 on hand, forecast daily use 3. Cover = 60 ÷ 3 = **20 days**. Th
 
 **Screenshot 5: Stockout Risk**
 
-<img width="915" height="666" alt="05-stockout-risk" src="https://github.com/user-attachments/assets/3f09b941-9b75-4226-99ac-104f0df16417" />
+<img width="915" height="722" alt="05-stockout-risk" src="https://github.com/user-attachments/assets/1920a65a-fa07-4eee-b695-d032bad2decf" />
+
 
 
 **Screenshot 6: Stockout Risk, item detail**
 
-<img width="915" height="666" alt="06-stockout-risk-detail" src="https://github.com/user-attachments/assets/d225be08-faf9-451d-83ac-4ed1d5c1602f" />
+<img width="915" height="722" alt="06-stockout-risk-detail" src="https://github.com/user-attachments/assets/18c74833-ea37-4442-b7ed-a2af9d0b13d1" />
+
 
 
 ---
@@ -240,17 +245,20 @@ An item sells 10 a week. The shipment takes about 4.5 weeks (3 working days at t
 
 **Screenshot 7: US Warehouse Replenishment tile**
 
-<img width="915" height="666" alt="07-us-replenishment-tile" src="https://github.com/user-attachments/assets/9fdf4e26-82c9-4f16-b83e-a6484bf49338" />
+<img width="915" height="722" alt="07-us-replenishment-tile" src="https://github.com/user-attachments/assets/32752b42-58ac-4b0b-be46-fe420e16e409" />
+
 
 
 **Screenshot 8: US Warehouse Replenishment full page**
 
-<img width="915" height="666" alt="08-us-replenishment-page" src="https://github.com/user-attachments/assets/9b369d60-bbbd-46f4-a9e5-caac543e29e5" />
+<img width="915" height="722" alt="08-us-replenishment-page" src="https://github.com/user-attachments/assets/c71bca38-1aae-4f59-84e2-a92ce51eb1bf" />
+
 
 
 **Screenshot 9: US page, item detail ("why")**
 
-<img width="915" height="666" alt="09-us-item-detail" src="https://github.com/user-attachments/assets/10975bde-d1a9-43c9-8258-d1ec52958c77" />
+<img width="915" height="722" alt="09-us-item-detail" src="https://github.com/user-attachments/assets/463e50f7-cc34-41ae-a16b-a2e533db7a5e" />
+
 
 
 > 📸 **Screenshot 10: Draft Stock Transfer Order**
@@ -283,7 +291,8 @@ Item Y: 10 in stock. Two orders each need 6. Total required = 12. Missing = **2*
 
 **Screenshot 11: Material Not In Stock - Total Required**
 
-<img width="915" height="666" alt="11-material-not-in-stock-total" src="https://github.com/user-attachments/assets/949cd790-cd8e-4acc-a874-6044221398b8" />
+<img width="915" height="722" alt="11-material-not-in-stock-total" src="https://github.com/user-attachments/assets/5d70d423-0932-4c71-a21d-fd918c5d9070" />
+
 
 
 ---
@@ -305,7 +314,8 @@ Item Y: 10 in stock. Two orders need 6 each. In **this** tile neither order appe
 
 **Screenshot 12: Active Orders - Material Not In Stock**
 
-<img width="915" height="666" alt="12-active-orders-material" src="https://github.com/user-attachments/assets/89bea09f-0120-4dfd-8050-7fdefdf065b5" />
+<img width="915" height="722" alt="12-active-orders-material" src="https://github.com/user-attachments/assets/0edbad18-deed-4587-ac96-d6981aabc47b" />
+
 
 
 ---
@@ -337,7 +347,8 @@ UHRB-150: 50 used in the last 30 days, against 6 in the 30 days before. That is 
 
 **Screenshot 13: Demand Trends**
 
-<img width="915" height="666" alt="13-demand-trends" src="https://github.com/user-attachments/assets/5fa9d4b3-3cc6-46b8-ae81-635274ce3ef2" />
+<img width="915" height="722" alt="13-demand-trends" src="https://github.com/user-attachments/assets/81c471df-bdaf-4a77-ad8d-2f8ab41a3581" />
+
 
 
 ---
@@ -369,7 +380,8 @@ Use it to plan ahead for the next 30 or 60 days. Items that run short are ordere
 
 **Screenshot 14: Demand Forecast**
 
-<img width="915" height="666" alt="14-demand-forecast" src="https://github.com/user-attachments/assets/591812de-16c5-4c4f-a2e1-e96a0d4eab87" />
+<img width="915" height="722" alt="14-demand-forecast" src="https://github.com/user-attachments/assets/666d80d1-66ff-44c6-ab0c-a60caeab9954" />
+
 
 
 ---
@@ -395,7 +407,8 @@ Across all groups on 6 Nov 2026, combined safety stock was 773 units. Keeping sa
 
 **Screenshot 15: Base-level Forecast**
 
-<img width="1536" height="674" alt="15-base-level-forecast" src="https://github.com/user-attachments/assets/a766b41e-0c95-4b03-993e-a772f8946b3f" />
+<img width="915" height="722" alt="15-base-level-forecast" src="https://github.com/user-attachments/assets/966d53af-4af2-455b-ac39-3f70154923a8" />
+
 
 
 ---
@@ -423,12 +436,14 @@ One bar per top-level category, split into Critical, High, Medium and Low item c
 
 **Screenshot 16: Category-wise Stock Forecast**
 
-<img width="1536" height="674" alt="16-category-forecast" src="https://github.com/user-attachments/assets/df2ec6aa-628c-4326-989a-68b00c95fc32" />
+<img width="915" height="722" alt="16-category-forecast" src="https://github.com/user-attachments/assets/c5ffe241-fef0-4777-aa02-1c33a33bae4a" />
+
 
 
 **Screenshot 17: Category drill-down**
 
-<img width="1536" height="674" alt="17-category-drilldown" src="https://github.com/user-attachments/assets/34c36b24-9c9a-4ae5-9a9a-e0b3aa0d041a" />
+<img width="915" height="722" alt="17-category-drilldown" src="https://github.com/user-attachments/assets/d2736a0d-f47b-4482-a2f6-4c5d88d4367b" />
+
 
 
 ---
@@ -452,7 +467,8 @@ Brass tube: 438 ft issued in 30 days, 10 ft returned. The tile shows the net amo
 
 **Screenshot 18: Material Usage**
 
-<img width="915" height="666" alt="18-material-usage" src="https://github.com/user-attachments/assets/8f81d0c7-2fb7-478b-a2bb-7ae610755f13" />
+<img width="915" height="722" alt="18-material-usage" src="https://github.com/user-attachments/assets/abf689d5-acd7-420a-9cbc-fcecd9475bdd" />
+
 
 
 ---
@@ -479,7 +495,8 @@ Last 12 weeks: forecast 5,075 against 5,407 used. The total is 6.1% low, but pro
 
 **Screenshot 19: Forecast vs Actual**
 
-<img width="1536" height="674" alt="19-forecast-vs-actual" src="https://github.com/user-attachments/assets/ebfd34ac-92c4-4d43-a04f-dfad48f3b9f0" />
+<img width="915" height="722" alt="19-forecast-vs-actual" src="https://github.com/user-attachments/assets/983b217f-809a-48c3-9643-76a1d04f0ae7" />
+
 
 
 ---
@@ -512,12 +529,14 @@ A brass tube has 79.6 ft of rod plus 5 pre-cut pieces of 4 ft (20 ft), so **99.6
 
 **Screenshot 20: Tube Stock**
 
-<img width="915" height="666" alt="20-tube-stock" src="https://github.com/user-attachments/assets/90ab5585-fe81-4b15-99eb-70b7d9d0e4fb" />
+<img width="915" height="722" alt="20-tube-stock" src="https://github.com/user-attachments/assets/4d47eee0-87a2-494f-a8d4-fa1bb450f986" />
+
 
 
 **Screenshot 21: Tube Stock, expanded with "show details"**
 
-<img width="915" height="666" alt="21-tube-stock-details" src="https://github.com/user-attachments/assets/f5e727cb-46ad-411d-8a85-51ddb8f874e2" />
+<img width="915" height="722" alt="21-tube-stock-details" src="https://github.com/user-attachments/assets/30e16197-eb56-4a4e-8684-1ed15f2300c5" />
+
 
 
 ---
@@ -544,7 +563,8 @@ Order long sticks for diameters that are heavily used. Book unused remainders as
 
 **Screenshot 22: Acrylic Rod Stock**
 
-<img width="1536" height="674" alt="22-acrylic-rod-stock" src="https://github.com/user-attachments/assets/791edd29-2126-4ed9-a189-fc4771cc270a" />
+<img width="915" height="722" alt="22-acrylic-rod-stock" src="https://github.com/user-attachments/assets/94cd09a7-fd51-41cc-96ea-04475879ea0f" />
+
 
 
 ---
@@ -576,7 +596,8 @@ Item X: 10 in stock. Order A (older) needs 6 and is **Ready**. It takes 6, leavi
 
 **Screenshot 23: Buildable Orders**
 
-<img width="1536" height="674" alt="23-buildable-orders" src="https://github.com/user-attachments/assets/24a9660f-9c21-414c-88fd-7e317503255f" />
+<img width="915" height="722" alt="23-buildable-orders" src="https://github.com/user-attachments/assets/95ac90a7-574e-4267-994c-836c9189e75c" />
+
 
 
 ---
@@ -615,7 +636,8 @@ A checklist of problems that make the forecast wrong. Each line shows a count, o
 
 **Screenshot 24: Stock Data Quality**
 
-<img width="915" height="666" alt="24-stock-data-quality" src="https://github.com/user-attachments/assets/cb22c449-0eec-4e1e-b8cd-e615cac41006" />
+<img width="915" height="722" alt="24-stock-data-quality" src="https://github.com/user-attachments/assets/e576e64e-b7dc-4157-aac5-20cd3cc1c34e" />
+
 
 
 ---
