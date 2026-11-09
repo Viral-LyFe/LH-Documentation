@@ -28,8 +28,8 @@ Example responses below were produced on 2026-10-07 on site `lyfelocal.com` as `
 5. Caching, snapshot vs live
 6. Shared row fields (stockout row)
 7. Common errors
-8. Desk endpoints (19)
-9. MCP tools, dashboard family (19)
+8. Desk endpoints (24)
+9. MCP tools, dashboard family (23)
 10. MCP tools, forecasting family (5) and legacy whitelisted function (1)
 11. Scheduled jobs
 12. Calls that exist in the shared JS but are NOT made by the stock page
@@ -87,6 +87,8 @@ Stock-mode specifics:
 | demand_forecast | get_tile_demand_forecast | `item_group`, `item_code`, `days`, `top` | Next N days, Top N items (numbers); page bar |
 | forecast_accuracy | get_tile_forecast_accuracy | `item_group`, `item_code`, `weeks`, `top` | Last N weeks, Top N items (numbers); page bar |
 | trending_items | get_tile_trending_items | `item_group`, `item_code`, `days`, `top` | Last N days, Top N items (numbers); page bar |
+| base_forecast | get_tile_base_forecast | `item_group`, `top` | Category select, Top N rows (number) |
+| us_replenishment | get_tile_us_replenishment | none | none |
 | material_shortfall | get_tile_material_shortfall | `item_group`, `item_code` | page bar |
 | order_stock_shortfall | get_tile_order_stock_shortfall | `item_group`, `item_code` | page bar |
 | data_quality | get_tile_data_quality | none | none |
@@ -125,6 +127,7 @@ Role sets (`DASHBOARD_ROLES` in `integrations/mcp_audit.py`):
 |---|---|
 | `stock_forecast` | System Manager, Super Admin, Factory |
 | `founder_dashboard` | System Manager, Super Admin |
+| `us_replenishment` | System Manager, Super Admin, US Replenishment Manager |
 | (forecasting MCP gate) `require_founder_ai_or_super_admin()` | Super Admin, Founder-AI (no System Manager!) |
 | (legacy `get_projected_stockouts_api` inline check) | System Manager, Super Admin, Founder-AI |
 
@@ -141,9 +144,10 @@ Gate implementation:
 
 | API | System Manager | Super Admin | Factory | Founder-AI | Other roles |
 |---|---|---|---|---|---|
-| 19 Desk stock endpoints (section 8) | yes | yes | yes | no | no |
+| 23 Desk stock endpoints (section 8, all except `get_tile_us_replenishment`) | yes | yes | yes | no | no |
+| `get_tile_us_replenishment` (8.10d; also hidden from `get_stock_forecast_page` for other roles) | yes | yes | no | no | US Replenishment Manager |
 | of which `get_tile_data_quality`, `get_data_quality_detail` | yes if switch on | yes if switch on | yes if switch on | no | Administrator always |
-| 18 `get_founder_*` MCP tools that delegate to Desk (section 9) | yes | yes | no | no | no |
+| 22 `get_founder_*` MCP tools that delegate to Desk (section 9) | yes | yes | no | no | no |
 | `get_founder_stock_forecast_accuracy` (MCP) | yes | yes | no | no | no |
 | `get_stockout_forecast`, `get_tube_stock_forecast`, `get_acrylic_stock_forecast`, `get_component_forecast`, `get_dead_and_excess_stock` (MCP) | no | yes | no | yes | no |
 | `founder_briefing.data.get_projected_stockouts_api` (Desk, direct) | yes | yes | no | yes | no |
@@ -201,8 +205,11 @@ Rows returned by `get_tile_stockout_risk.top_items`, `get_stockout_risk_drilldow
 | `item_name` | string | Item.item_name (falls back to code). |
 | `item_group` | string/null | Item.item_group. |
 | `current_qty` | float | On hand: `SUM(Bin.actual_qty)` over all warehouses except `FAC-Rejected Material Warehouse`. Item's own unit. |
-| `avg_daily_outflow` | float | Units per day: Material Issue stock-entry outflow in the window / window days, rounded to 2 dp. Only items with outflow > 0 appear. |
+| `avg_daily_outflow` | float | Units per day. For the default window this is the TSB forecast of the item's last 26 weekly totals with one-off bulk orders removed. A custom `days` window, or an item whose TSB is 0, uses the plain average (Material Issue outflow in the window / window days). Rounded to 2 dp. Only items with outflow > 0 appear. |
+| `recent_daily_outflow` | float | Plain average units per day in the window, one-off bulk orders removed. Feeds the "used N in 30d" text and the trend arrow. |
 | `days_of_stock` | float | `round(current_qty / avg_daily_outflow, 1)`. |
+| `safety_stock` | int | Units kept for a normal demand spike during the lead time: z (by ABC class: A 2.05, B 1.65, C 1.28) x spread of weekly use over the last 13 weeks x sqrt(lead days / 7). 0 with fewer than 4 weeks of use. Capped at 30 days of use. Lead days = `Item.lead_time_days`, or 14. |
+| `reorder_point` | int | `ceil(avg_daily_outflow x lead days + safety_stock)`. |
 | `risk_level` | string | Critical / High / Medium / Low from the Founder Briefing thresholds; forced to `Critical` when `available_qty < 0` (`metrics.effective_risk`). |
 | `recommended_action` | string | Stock-only text; replaced with "Open orders already exceed stock - restock now." when available < 0 and the base level was not Critical. |
 | `committed_qty` | float | Open-order demand not yet issued (order lines taken as themselves + quantities implied by the Lyfe BOM). The BOM part is dropped when the component's BOM reliability is `Unreliable`. |
@@ -212,7 +219,7 @@ Rows returned by `get_tile_stockout_risk.top_items`, `get_stockout_risk_drilldow
 | `available_qty` | float | `current_qty - committed_qty` (negative = open orders exceed stock). |
 | `available_days` | float/null | `available_qty` (floored at 0) / daily use, 1 dp. |
 | `stockout_date` | date string/null | today + floor(days_of_stock). |
-| `suggested_qty` | number | Quantity to order to restore target cover, MOQ applied (see section 4 for the two formulas). UI column "Order qty". 0 when nothing needed. |
+| `suggested_qty` | number | Quantity to order to restore target cover plus `safety_stock`, MOQ applied (see section 4 for the two formulas). UI column "Order qty". 0 when nothing needed. |
 | `confidence` | string | `High` (>= 8 of the last 13 weeks with consumption), `Medium` (>= 4), else `Low`. |
 | `movement_weeks` | int | Weeks (of the last 13, 91 days) with any Material Issue. Absent on snapshot-sourced rows. |
 | `trend_pct` | int/null | Added only by `get_tile_stockout_risk`: current window daily use vs the 90-day average, `round((use/avg90 - 1) x 100)`; null when there is no 90-day history, the window is >= 90, the item had fewer than 3 Material Issue entries in 90 days (`MIN_ORDERS_FOR_TREND`), or `unexpected_order_qty` is set. Not on drilldown rows. |
@@ -644,7 +651,7 @@ bench --site lyfelocal.com execute lh.lyfe_hardware.page.founder_dashboard.found
 - **Kind / path:** Desk whitelisted, `.../get_tile_trending_items` (`_check_stock_permission`).
 - **Purpose:** Demand Trends: use (Material Issue units, finishes pooled, tube / acrylic / not-stocked left out) in the last N days against the N days before, per category and for the top rising items.
 - **Parameters:** `item_group`, `item_code` (page filter bar; with `item_group` the categories are that group's own sub-groups), `days` = N (1-365, default 30 = demand window), `top` (1-100, default 10). Invalid values fall back to the defaults.
-- **Response:** `window_days`, `top`, `bucket_days` (1 / 7 / 30), `bucket_ends[]` (date of each period's last day), `min_pct` (25), `min_issues` (3), `history_short` (bool: Material Issue history starts after today - 2N), `history_from`, `categories[]` = `{category, now, prev, items, series[], change_pct (null = new), direction: up / down / steady / new}` largest first, `items[]` = `{key, members[], item_name, item_group, category, variant_count, now, prev, series[], change_pct, change_units, days_of_stock, risk_level}` ranked by `change_units`, `tube` = the same fields for the tube items alone (store pipes and cut lengths; no nested `tube`; `days_of_stock` / `risk_level` from the live tube rows). The main fields exclude tube.
+- **Response:** `window_days`, `top`, `bucket_days` (1 / 7 / 30), `bucket_ends[]` (date of each period's last day), `min_pct` (25), `min_issues` (3), `history_short` (bool: Material Issue history starts after today - 2N), `history_from`, `categories[]` = `{category, now, prev, items, series[], change_pct (null = new), direction: up / down / steady / new}` largest first, `items[]` = `{key, members[], item_name, item_group, category, variant_count, now, prev, orders, series[], change_pct, change_units, days_of_stock, risk_level}` selected by `change_units` (the top N) and then listed by `orders` (distinct Lyfe Orders in the last N days, via `custom_lyfe_order` on the Material Issue), most first, `tube` = the same fields for the tube items alone (store pipes and cut lengths; no nested `tube`; `days_of_stock` / `risk_level` from the live tube rows). The main fields exclude tube.
 - **Rules:** item listed when issues in the last N days >= 3, `now > prev`, `_is_unexpected_order(per-issue units)` false and change >= 25% (or prev = 0). Direction: change > +10% up, < -10% down, else steady.
 - **Errors:** `_log_and_reraise("trending_items")`.
 - **Example (real, local copy of production, 26 Oct 2026, N = 30):** categories Railings 1,558 vs 1,590 (steady -2%), ACRYLIC / LUCITE 100 vs 234 (down -57%); top item FEC-200 162 vs 88 (+84%), UHRB-150 50 vs 6 (+733%, Critical).
@@ -692,6 +699,15 @@ bench --site lyfelocal.com execute lh.lyfe_hardware.page.founder_dashboard.found
 ```
 
 `suggested_value` = suggested quantity x the Item Price in the price list set in US Replenishment Settings (selling price, not cost). `rows` holds at most 10 items with status Urgent, Reorder or Not stocked yet, Urgent first. Full per-item detail, the calculation and the other endpoints (`get_dashboard`, `get_item_detail`, `sync_now`, `create_draft_transfer`, `export_excel`) are in `docs/us-replenishment-dashboard.md`.
+
+### 8.10e `get_tile_base_forecast`
+
+- **Kind / path:** Desk whitelisted, `.../get_tile_base_forecast` (`_check_stock_permission`).
+- **Purpose:** Base-level Forecast: the finishes of one base product and base state forecast together (for example CMBR-200 Matte).
+- **Parameters:** `item_group` (Category, with sub-groups), `top` (1-200, default 25).
+- **Response:** `total_groups`, `top`, `safety_pooled` and `safety_per_finish` (safety stock summed over all groups, pooled vs kept per finish), `at_risk` (groups not Low), `rows[]` = `{base_sku, base_state, finishes, on_hand, committed, available_qty, forecast_per_day, used_per_day, days_of_stock, risk_level, safety_stock, safety_if_per_finish, reorder_point, suggested_qty}`, most urgent first (risk, then biggest use). Only groups with 2 or more finishes and use in the last 30 days. Tube and acrylic are not included.
+- **Example (local copy, 9 Nov 2026):** RCR-175 Matte, 4 finishes, on hand 1, forecast 1.42 per day, 0.7 days left (Critical), safety stock 30, reorder point 50, suggested 72.
+- **Page usage:** `base_forecast`; `renderBaseForecast`.
 
 ### 8.11 `get_tile_material_shortfall`
 
@@ -891,6 +907,7 @@ All tools: `@mcp.tool()` + `@audited_tool`; first `require_dashboard_role("found
 | `get_founder_tile_restock_list` | `item_group: str\|None = None`, `item_code: str\|None = None`, `days: int\|None = None` | `get_tile_restock_list` (8.10) | 8.10 |
 | `get_founder_tile_demand_forecast` | `item_group`, `item_code`, `days: int\|None`, `top: int\|None` | `get_tile_demand_forecast` (8.10b) | 8.10b |
 | `get_founder_tile_forecast_accuracy` | `item_group`, `item_code`, `weeks: int\|None`, `top: int\|None` | `get_tile_forecast_accuracy` (8.10c) | 8.10c |
+| `get_founder_tile_base_forecast` | `item_group: str\|None = None`, `top: int\|None = None` | `get_tile_base_forecast` (8.10e) | 8.10e |
 | `get_founder_tile_trending_items` | `item_group: str\|None = None`, `item_code: str\|None = None`, `days: int\|None = None`, `top: int\|None = None` | `get_tile_trending_items` (8.10a) | 8.10a |
 | `get_founder_tile_buildable_orders` | `item_group: str\|None = None`, `item_code: str\|None = None` | `get_tile_buildable_orders` (8.9) | 8.9 |
 | `get_founder_tile_material_shortfall` | `item_group: str\|None = None`, `item_code: str\|None = None` | `get_tile_material_shortfall` (8.11) | 8.11 |

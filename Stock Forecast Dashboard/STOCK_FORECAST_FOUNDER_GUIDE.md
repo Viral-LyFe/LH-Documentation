@@ -1,640 +1,950 @@
-# Stock Forecast Dashboard — What It Does (Plain English Guide)
+# Stock Forecast Dashboard: User Guide
 
 *Last updated: 9 Nov 2026*
 
-This guide is for the Founder and anyone at Lyfe Hardware who opens the **Stock Forecast** page. You do not need any technical background. If you know our orders, the factory, tubes, rods and brackets, you can read this guide and understand every number on the page.
+> 📸 **Screenshot 1: Stock Forecast page overview**
+> - **Where to take it:** Stock Forecast page, **Act now** tab, no filters, scrolled to the top.
+> - **What must be visible:** the four summary cards, the Category and Item Code boxes, the three tabs, and the first two tiles with real data.
+> - **Highlight:** draw an arrow to the three tabs and a circle around the four summary cards.
+> - **File name:** `images/stock-forecast/01-overview.png`
+>
+> `![Screenshot 1: Stock Forecast page overview](images/stock-forecast/01-overview.png)`
 
 ---
 
-## Start here: how to use the Stock Forecast page
+## 1. What is this dashboard?
 
-Open it from the search bar (type **Stock Forecast**) or go to `/app/stock-forecast`. Everything on it is read from our own records, so there is nothing to type in; you only look, filter and decide.
+The Stock Forecast dashboard tells you what will run out, when it will run out, and how much to buy or send. It also shows which open orders are held up by missing material.
 
-### What you see
+Everything on it comes from records the team already keeps: stock on the shelf, material issued to the factory, and open orders. Nobody types numbers into it.
 
-1. **Four summary cards** at the top: *Orders short now*, *Items to reorder*, *Shortest cover*, *Data issues*. Click a card and the page opens the right tab and jumps to that tile.
-2. **Category and Item Code boxes** under the cards. They narrow the whole page at once (leave them empty to see everything).
+**Who uses it:**
+- The Founder checks the big picture: what is at risk and what it may cost.
+- The Operations and Factory team decides what to buy and what to build first.
+- The CS team checks why an order may be late because of missing material.
+
+**What it does not do:** it does not know about purchase orders, suppliers or delivery promises. It tells you how long stock will last and how much to buy. You decide when to place the order.
+
+---
+
+## 2. How to open it
+
+- Type **Stock Forecast** in the search bar at the top of the system, or go to `/app/stock-forecast`.
+- The Founder Dashboard also has a small **Stock** banner. Click "Open Stock Forecast" on it.
+
+**Who can open it:** people with the role **System Manager**, **Super Admin** or **Factory**. A Factory user sees this page but not the Founder Dashboard's money pages (revenue and profit).
+
+**One tile has its own access.** The **US Warehouse Replenishment** tile is shown only to System Manager, Super Admin and people who have the **US Replenishment Manager** role. Ask an administrator if you need it.
+
+---
+
+## 3. Quick start: read the dashboard in 90 seconds
+
+**The page layout**
+1. **Four summary cards** at the top. Click a card to jump to the related tile.
+2. **Category and Item Code boxes.** They narrow the whole page. Leave them empty to see everything.
 3. **Three tabs.** The page opens on the tab you used last.
-   - **Act now**: what to buy, what is about to run out, what to send to the US warehouse, and which materials are short for active orders.
-   - **Demand & forecast**: what is selling more or less, how much we expect to need, and how accurate the forecast has been.
-   - **Materials**: tube, acrylic rods and which orders can be built today.
+   - **Act now:** what to buy, what is about to run out, what to send to the US, and which materials are short for active orders.
+   - **Demand & forecast:** what is selling more or less, what we expect to need, and how accurate the forecast is.
+   - **Materials:** tube, acrylic rods and which orders can be built today.
 
-A tab loads the first time you open it, so the first click on a tab takes a moment. Each tile loads by itself: if one fails it shows **Retry** and the others keep working.
+A tab loads the first time you open it, so that first click takes a moment. If one tile fails, it shows **Retry** and the others keep working.
 
-### A five-minute routine
+**The five things to look at first**
+1. **The four cards.** Anything red, or "Data issues" not saying *None*, is where to start.
+2. **Restock List** (Act now). This is the buying list. Read the **Why** column.
+3. **Stockout Risk** (Act now). Critical and High rows run out first.
+4. **Material Not In Stock** tiles (Act now). They show which materials active orders still need.
+5. **Data issues card.** The numbers are only as good as the records behind them. Aim for *None*.
 
-1. **Look at the cards.** Anything red, or "Data issues" not saying *None*, is where to start.
-2. **Act now, Restock List.** This is the buying list. Leave the days empty for each item's normal target, or type a number (for example 14) in the tile's filter to see what is short for that many days. Read the **Why** column, then check **Last Received** and ask the buyer whether an order is already on the way (the page cannot see purchase orders).
-3. **Act now, Stockout Risk.** Critical and High rows are the items that will run out first. Open **View forecast detail** on any item you are unsure about.
-4. **Act now, US Warehouse Replenishment** (if you can see it). Shows what to send to the US warehouse. Use *Open the full page* to act on it (steps below).
-5. **Act now, the two "Material Not In Stock" tiles.** The first adds up everything active orders need; tick an item to see which orders are behind it.
-6. **Data issues.** If the card shows a number, click it and fix what it points to; the forecasts are only as good as the records behind them.
-7. **Once a week (for example Monday):** open **Demand & forecast** to see what is rising, how much we are likely to need, and how close last week's forecast was.
+**Once a week** (for example Monday): open **Demand & forecast** to see what is rising and how close the forecast was.
 
-### "I want to..."
+**Colours used on the page**
+- **Red:** bad. For example, Critical items, or an item that will run short.
+- **Amber:** a warning. Look at it soon.
+- **Grey or neutral:** nothing special.
 
-| I want to... | Go to | What to do |
-|---|---|---|
-| Know what to buy today | Act now, **Restock List** | Read Order Qty and Why. Export to CSV to send to the buyer. |
-| See which items run out soon | Act now, **Stockout Risk** | Work from Critical down. Click a row for daily use, confidence and where the item is used. |
-| Know what to send to the US warehouse | Act now, **US Warehouse Replenishment** | Open the full page and make a draft transfer (below). |
-| See which orders cannot be built | Materials, **Buildable Orders** | Read the limiting components of each Short order, then buy those. |
-| See total material short for all active orders | Act now, **Material Not In Stock - Total Required** | Tick an item to see the orders that need it. |
-| See which single order is short | Act now, **Active Orders - Material Not In Stock** | One row per order and component. |
-| See what is selling more | Demand & forecast, **Demand Trends** | Rising items are listed with a small trend line. |
-| Know how much we will need in the next 30 or 60 days | Demand & forecast, **Demand Forecast** | Type the days in the tile's filter. Red "left after" means it will run short. |
-| Check whether the forecast can be trusted | Demand & forecast, **Forecast vs Actual**; and the **Data issues** card | |
-| Check tube or acrylic rods | Materials, **Tube Stock** / **Acrylic Rod Stock** | Tube is in feet, acrylic in inches. |
-| Look at one item only | Item Code box at the top | Pick the item; a product with several finishes shows as one row. |
-| Look at one product group only | Category box at the top (or the funnel on a tile) | A main category includes its sub-categories. |
-
-### Filters and getting data out
-
-- **Top boxes** (Category, Item Code) change every tile that is already loaded; tiles in tabs you have not opened yet use them when you open the tab.
-- **Funnel on a tile** sets that tile's own filter (days, Top N, category) and wins over the top boxes for that tile.
-- **Refresh** (top right) reloads the whole page. Each tile also has its own refresh arrow.
-- **Column boxes** under a table heading hide rows that do not contain what you type.
-- **Export:** tables have *Export to CSV* (or *Download restock list*). The US Warehouse Replenishment page has *Export to Excel*.
-
-### Sending stock to the US warehouse, step by step
-
-1. Click *Open the full US Warehouse Replenishment page* on the tile (or go to `/app/us-replenishment`).
-2. **Check the top of the page.** A yellow banner means the last read of 1Click stock failed or is old; the numbers are then from the last good read, shown with its time. You can press *Sync 1Click now* to read it again.
-3. **Work from the top.** Rows are sorted Urgent first. Use the Item Group, Status and *Min Weekly Demand* boxes to narrow the list.
-   - **Urgent**: we will run out before a new shipment could arrive.
-   - **Reorder**: below the level where we should already be re-stocking.
-   - **OK**: enough stock. **Overstock**: more than we need, so nothing is suggested.
-   - **Not stocked yet**: sells steadily in the US but 1Click has none; a new candidate.
-   - **(uncertain)** next to an item means it has too little sales history to trust the number.
-4. **See why.** Click an item code. The window shows the numbers step by step (weekly demand, lead time, safety stock, reorder point, target, stock at 1Click and on its way), the weekly demand chart, the 1Click stock history and any open transfers. Stock already on its way is counted, so it is not suggested again.
-5. **Choose quantities.** Change the Suggested Qty in a row if you want a different number, and tick the rows you want.
-6. Press **Add selected to draft Stock Transfer** and confirm (you need permission to create a Stock Transfer Order 1Click: Factory, Customer Service, System Manager or Super Admin). This creates a **draft** Stock Transfer Order 1Click with your items and quantities. **Nothing is sent yet** and no shipment starts.
-7. Open the draft, review it, and when you are ready press **Create Lyfe Order** on it. That starts the shipment to the US warehouse through the factory. Only Factory, System Manager and Super Admin can press that button; Customer Service can prepare the draft but not create the order.
-
-Custom (made-to-order) items never appear. If a SKU sells but has no item linked on the order line, it cannot be counted; the page shows how many such lines it skipped.
-
-### If something looks wrong
-
-| What you see | What it means | What to do |
-|---|---|---|
-| A tile says "Data unavailable" | That tile failed to load | Press **Retry** on the tile. If it keeps failing, tell the system team (it is in the Error Log). |
-| A tile or tab is missing | Your role does not include it (for example Factory does not see the US tile) | Ask an administrator for the role. |
-| An item is not in Stockout Risk | It has 30+ days of cover, no use in the window, is tube/acrylic, or is Make to Order / Do Not Stock | See the FAQ. |
-| Yellow banner on the US page | The last 1Click read failed or is old | Numbers are from the last good read. Press *Sync 1Click now*; if it fails again, tell the system team. |
-| An item you expected is missing from the US page | It is a custom item, has no US sales in the last year, or has sold too rarely to suggest as new | Normal. |
-| Numbers differ between two tiles | They answer different questions (for example the Total and per-order tiles) | See section 6, *Which view answers which question*. |
-
-The rest of this guide explains where every number comes from. Use the headings: section 4 describes each tile, section 6 compares them, section 7 has step-by-step playbooks and section 11 answers common questions.
+Colours are never the only signal. Risk badges also carry a symbol.
 
 ---
 
-## 1. What is the Stock Forecast page for?
+## 4. Tile-by-tile guide
 
-It answers four questions:
+Each tile has the same five parts: **What it shows**, **How to read it**, **What to do**, **Example** and a screenshot.
 
-1. **Which items will run out, and when?**
-2. **How much should we buy to get back to a healthy level?**
-3. **Which open orders are being held up by missing material, and how much money is that?**
-4. **Can we trust these numbers?**
+Tiles are grouped by tab:
 
-Every number comes from the records the team already works in every day: stock on the shelf, material issued to the factory, and open orders. Nothing is typed in by hand.
-
-**Who can open it:** people with the role **System Manager**, **Super Admin** or **Factory**. The **US Warehouse Replenishment** tile is shown only to System Manager, Super Admin and people given the **US Replenishment Manager** role. A Factory user can see this page but not the Founder Dashboard's money pages (revenue, profit). The Founder Dashboard itself only shows one small **Stock** banner that links here.
-
-**What the page does not do:** it does not know about purchase orders, suppliers or delivery times. It tells you how long stock will last and how much to buy. When to place the order is your decision.
-
----
-
-## 2. Glossary — the words used on the page
-
-| Word | Plain meaning |
+| Tab | Tiles |
 |---|---|
-| **Stock on Hand** | What is physically on our shelves now, added up across all warehouses, **except** the Rejected Material warehouse. |
-| **Committed** | Material already promised to open orders that have not had their material issued yet. |
-| **Available** | Stock on Hand minus Committed. If it is below zero, orders already need more than we have. |
-| **Required Qty** | How much of an item the orders need in total. Example: 10 per order x 5 active orders = 50. |
-| **Consumption / Daily use** | How many units the factory actually took from stock per day, on average, over the last 30 days (or the Trailing days you choose). |
-| **Days of Cover** | How many days the stock on hand lasts at the recent daily use. |
-| **Stock-out date** | Today plus the whole days of cover. The day we expect to hit zero if nothing is added. |
-| **Risk level** | Critical, High, Medium or Low, based on days of cover. Default: **Critical** under 7 days, **High** 7 to under 15, **Medium** 15 to under 30, **Low** 30 or more. These cut-offs can be changed by an administrator. |
-| **Suggested (Order) Qty** | How many units to buy to get back to the target cover. |
-| **Target cover** | How many days of stock we want to hold. Default 30. An item can have its own target. |
-| **Minimum Order Qty (MOQ)** | The smallest pack or lot we can buy. The suggestion is rounded up to a whole multiple of it. |
-| **Confidence** | How much history sits behind the daily-use number. **High** = the item moved in 8 or more of the last 13 weeks, **Medium** = 4 to 7 weeks, **Low** = under 4 weeks. |
-| **Revenue exposed** | The dollar value of open-order lines that contain an item at risk (Critical, High or Medium). It is a warning, not proof that the order cannot be built. |
-| **Blocked** (Buildable Orders) | The dollar value of orders that truly cannot be fully built from current stock. This is the real "blocked" figure. |
-| **Trend arrow** | Shown on Stockout Risk rows. "up +40%" means recent daily use is 40% higher than the 90-day average. "down -30%" means lower. Shown only when the change is 25% or more, and only when the item was issued at least 3 times in the last 90 days (one order is not a trend). |
-| **Unexpected order** | A flag shown instead of the trend arrow when one big issue makes up at least half of the item's 90-day use and is at least 3 times the typical other issue (for example a one-off order for 100 brackets). It is not treated as demand. Needs at least 2 issues to compare. |
-| **×N finishes** | One row standing for the same product in several finishes (for example WFL2-100-PB, -SB and -PBU). The finish is applied after the blank is stocked, so stock, use and open orders are added together and days of cover, risk and the order quantity are worked out on the total. Hover to see each finish. |
-| **Lyfe BOM** | Our own recipe for a product: which components, how many of each, and the scrap allowance. It is the only recipe the page uses. |
-| **Child SKU** | A component SKU that belongs to a product. In the fallback rule (section 3.7), the parts a previous order actually used. |
-| **Live vs Snapshot** | **Live** means calculated right now. **Snapshot** means taken from last night's saved copy. The Stockout Risk tile says which one it is using. |
+| Top of page | Summary cards |
+| Act now | Restock List, Stockout Risk, US Warehouse Replenishment, Material Not In Stock - Total Required, Active Orders - Material Not In Stock |
+| Demand & forecast | Demand Trends, Demand Forecast, Base-level Forecast, Category-wise Stock Forecast, Material Usage, Forecast vs Actual |
+| Materials | Tube Stock, Acrylic Rod Stock, Buildable Orders |
+| Header chip | Stock Data Quality |
 
 ---
 
-## 3. How the numbers are made
+### 4.1 Summary cards (top of the page)
 
-### 3.1 Stock on hand
-We add up the stock of the item in every warehouse **except** the Rejected Material warehouse. Rejected material cannot be used, so it is not counted. This matches the stock balance in the system exactly.
-
-### 3.2 Consumption: what the factory actually issued
-Daily use is based on **material actually issued to the factory** (the Material Issue entries created when an order's material is issued). It is **not** based on sales. Reasons: sales lines only explain a small part of what the factory really takes, and transfers, receipts and stock corrections are not real use, so they are ignored. Material taken from the Rejected warehouse is ignored too.
-
-> **Example.** In the last 30 days the factory issued 90 units of item A. Daily use = 90 / 30 = **3 per day**.
-
-### 3.3 The trailing window and the Trailing days filter
-"Trailing 30 days" means the last 30 days up to now, including today so far. The total is divided by 30. On the tiles that have it, you can type your own **Trailing days** (1 to 365) in the filter. Leave it blank for 30. Only the average-use figures change; the Critical/High/Medium cut-offs stay the same.
-
-### 3.4 Days of cover and stock-out date
-
-> **Example.** 60 on hand, 3 used per day. Days of cover = 60 / 3 = **20 days**. That is Medium (15 up to 30). Stock-out date = today + 20 days.
-
-If nothing is on hand, cover is 0 days and the item is **Critical** ("stocked out"). Negative stock is also Critical.
-
-### 3.5 Risk levels
-
-| Level | Days of cover (default) |
-|---|---|
-| Critical | under 7 |
-| High | 7 to under 15 |
-| Medium | 15 to under 30 |
-| Low | 30 or more |
-
-One extra rule: if **Available is below zero** (open orders already need more than we have), the item is always shown as **Critical**, whatever its days of cover.
-
-### 3.6 Committed demand from open orders
-Committed = material that open orders still need but that has **not** been issued yet.
-
-- An order counts if it is not Cancelled, Merged, Split, Shipped, Completed or Return Successfully.
-- An order whose material has **already been issued** is left out. Its stock has already left the shelf, and counting it again would double count.
-- Lines marked as adjustments, or with no linked Item, are not counted. Lines with no linked Item appear in Stock Data Quality.
-
-### 3.7 How Lyfe BOM components are used
-For each open order, the page works out what material it needs, in this order:
-
-1. **The order's own component list**, if the order has one. It is used for the whole order.
-2. **The Lyfe BOM** of each line. Quantity per unit **includes scrap**. Only one level is opened (a component is treated as a stocked part).
-3. If a line has no BOM: **what a previous Shipped or Completed order of the same product actually used** (the parts recorded on that order's shipment). Each part is counted as a child SKU.
-4. If nothing else exists: **the item itself**, 1 per unit sold.
-
-> **BOM example.** Kit K has a Lyfe BOM: component C1 x 2 with 5% scrap, component C2 x 1. Per kit, C1 = 2 x 1.05 = **2.1**. An order of 3 kits needs C1 = 6.3 and C2 = 3. Another order of 2 kits needs C1 = 4.2 and C2 = 2.
-
-**Unreliable BOMs are ignored.** The system checks the last 90 days: for orders already issued, it compares what the BOM predicted with what the factory really issued. If, over at least 20 orders, actual is outside 70% to 130% of the prediction, that component's BOM is marked **Unreliable**. Its numbers are still shown as "BOM committed" for information but are **not** counted in Committed. With fewer than 20 orders the rating is **Unknown**.
-
-### 3.8 Available
-**Available = Stock on Hand - Committed.** Below zero = always Critical. "Available days" = Available / daily use (never below 0).
-
-### 3.9 Suggested quantity
-Default method: **daily use x target cover - Available**, rounded up to a whole number, then rounded up to the Minimum Order Qty if the item has one. If the result is zero or less, nothing is suggested.
-
-> **Example.** On hand 60, daily use 3, Committed 28, so Available 32. Target cover 30 days.
-> Need = 3 x 30 - 32 = 58. Suggested = **58**.
-> If the item's Minimum Order Qty is 25 (packs of 25): 58 rounds up to 75. Suggested = **75**.
-> If the BOM were Unreliable, Committed drops to 10, Available is 50, and the suggestion is 90 - 50 = **40**.
-
-**Optional backlog-aware method** (off by default; an administrator can switch it on in Stock Forecast Settings). Idea: future daily use already includes the open orders, so the default counts them twice. This method takes whichever is bigger, the committed amount or daily use x target cover, and subtracts what is on hand.
-Same example: the bigger of 28 and 90 is 90; minus 60 on hand = **30**.
-The weekly accuracy check (section 9) shows which method fits better before you switch.
-
-### 3.10 How the forecast looks ahead
-The page does **not** predict the future cleverly. It assumes **future use = recent use**. Cover is simply "stock divided by recent daily use".
-- No seasonality (history only starts in May 2026, so there is not enough to learn from).
-- No promotions, new launches or known big orders unless they are already open orders.
-- Items with no use in the window are not listed (an idle item is not about to run out).
-
-So a sudden spike or a quiet spell will make the forecast wrong for a while. The **trend arrow** helps you spot this.
-
-### 3.11 Categories (Item Groups)
-Items belong to Item Groups. The Category view counts items by risk level for each **top-level group**, then its sub-groups, then the items. Items with no group fall into **Other**. The page counts items and dollars only. It never adds up units of different things.
-
-### 3.12 Tube and acrylic rods have their own units
-- **Tube** is tracked in **feet**, one row per tube material and diameter. Cut lengths and finishes are rolled up, because finish is applied after cutting and one finish uses several materials. Rods are assumed to be **100 ft** long.
-- **Acrylic rods** are tracked in **inches**, by diameter and stick-length class (up to 12", 13-24", 25-48", over 48"). Sticks come in different lengths, so counting "sticks" would be misleading.
-
-These items do **not** appear in Stockout Risk or the category bars (they have their own tiles).
-
----
-
-## 4. Each tile, in page order
-
-The tiles are grouped into three tabs under the summary cards, so you do not have to scroll through everything: **Act now** (what to restock, what is about to run out, what to send to the US warehouse, what orders are short of material), **Demand & forecast** (what is selling, what we expect to need, how accurate the forecast has been) and **Materials** (tube, acrylic rod and buildable orders). A tab loads the first time you open it, and the page remembers the tab you used last. The descriptions below follow the same order as the old single page, so use the headings to find a tile.
-
-### 4.1 Summary cards (top strip)
-Four clickable cards. Click one to jump to the related tile.
+**What it shows**
+Four clickable cards. Each one points to a tile.
 
 | Card | What it shows |
 |---|---|
-| **Orders short now** | Number and dollar value of orders that are Partial or Short in Buildable Orders. Sub-line shows how many are Ready. |
-| **Items to reorder** | Number of rows in the Restock List. Sub-line shows how many are Critical and High. |
-| **Shortest cover** | The one item with the fewest days of stock, and its days. "No usage data" if nothing has been used. |
-| **Data issues** | Number of data problems, or "None". Click it to open the Stock Data Quality checklist. Shown only to people allowed to see data quality. |
+| **Orders short now** | How many orders are Partial or Short in Buildable Orders, and their dollar value. The small line says how many are Ready. |
+| **Items to reorder** | How many rows are in the Restock List. The small line says how many are Critical and High. |
+| **Shortest cover** | The one item with the fewest days of stock, and its days. It says "No usage data" if nothing has been used. |
+| **Data issues** | How many data problems exist, or "None". Click it to open the Stock Data Quality checklist. Only people allowed to see data quality get this card. |
 
-A small refresh arrow under the cards reloads just the cards.
+A small refresh arrow under the cards reloads only the cards.
 
-### 4.2 Stockout Risk
-**What it shows:** every item that was used in the window and has **under 30 days** of cover (Medium, High or Critical). Low-risk items are not listed.
+**How to read it**
+- **Orders short now** is red when any order is short. Otherwise it is grey.
+- **Items to reorder** is red when any Critical item exists, amber when the worst items are High, and grey otherwise.
+- **Shortest cover** is always grey.
+- **Data issues** is amber when there is any issue, and grey when it says *None*.
 
-**Each row:** item code (a product that comes in several finishes is one row marked "×N finishes"), "used N in 30d" (with the trend arrow when relevant), available, suggested order quantity (only when above zero), days of cover, and "exposes $X" (Revenue exposed) or "no open orders". A risk badge with a symbol (not just colour). The footer shows the count of Critical / High / Medium.
+**What to do**
+Click the card that worries you. The page opens the right tab and jumps to that tile.
 
-**Sort order:** items where open orders already exceed stock first, then Critical, High, Medium, then higher dollars exposed, then fewer days of cover.
+**Example**
+"Orders short now: 6 · $4,200. 2 ready." Click it. Buildable Orders opens and shows which six orders lack material.
+
+> 📸 **Screenshot 2: Summary cards**
+> - **Where to take it:** top of the Stock Forecast page, no filters.
+> - **What must be visible:** all four cards with numbers, and their colours.
+> - **Highlight:** circle the "Data issues" card.
+> - **File name:** `images/stock-forecast/02-summary-cards.png`
+>
+> `![Screenshot 2: Summary cards](images/stock-forecast/02-summary-cards.png)`
+
+---
+
+### 4.2 Restock List (Act now)
+
+**What it shows**
+What we need to buy, and which items have enough stock for the next N days. It is one list in one place. It includes ordinary items, tube pipes (in rods) and acrylic rods (in inches). Most urgent comes first.
+
+**How to read it**
+- The line at the top says how many items have **not enough** stock (in red) and how many have **enough** (in green).
+- Each row shows: Item, Type, Risk, On Hand, Available, Days Left, Order Qty, Unit, **Why** and **Last Received**.
+- **Why** explains the row in plain words. Example: *"Uses 1.5/day, so needs 21 for the next 14 days. 32 on hand, 20 already promised to open orders: short 9, order 10 (minimum order 10)."*
+- **Last Received** is the date the item last came into stock. Acrylic rows have none.
+- The list also covers a **safety buffer** (extra stock for a busy week). So it can list more items than the Demand Forecast tile says "will run short".
+- The **Risk** column uses the same levels as Stockout Risk: Critical is red, High and Medium are amber.
+
+**What to do**
+1. Read **Order Qty** and **Why**.
+2. Check **Last Received** and ask the buyer whether an order is already on its way. The page cannot see purchase orders. It sees stock only when it arrives.
+3. Export to CSV and send it to the buyer.
+
+**Choose the number of days:** use the funnel icon on the tile and type days, for example 14. If you leave it empty, each item uses its own target cover (30 days unless the item sets its own). Click **Show the items with enough stock** to see the second list (Item, Type, Available and Days covered).
+
+**Example**
+An item uses 1.5 a day. For 14 days it needs 21. We hold 32, but 20 are promised to open orders, so only 12 are free. It is short by 9, so it goes on the list.
+
+> 📸 **Screenshot 3: Restock List**
+> - **Where to take it:** Act now tab, Restock List tile, days left empty.
+> - **What must be visible:** the summary line, at least five rows, and the Why and Last Received columns.
+> - **Highlight:** circle one **Why** sentence.
+> - **File name:** `images/stock-forecast/03-restock-list.png`
+>
+> `![Screenshot 3: Restock List](images/stock-forecast/03-restock-list.png)`
+
+> 📸 **Screenshot 4: Restock List, cover for the next N days**
+> - **Where to take it:** Restock List tile, funnel icon open, 14 typed in the days box.
+> - **What must be visible:** the filter box with 14, and the updated summary line.
+> - **Highlight:** arrow to the days box.
+> - **File name:** `images/stock-forecast/04-restock-list-days.png`
+>
+> `![Screenshot 4: Restock List days filter](images/stock-forecast/04-restock-list-days.png)`
+
+---
+
+### 4.3 Stockout Risk (Act now)
+
+**What it shows**
+Every item that was used recently and has **under 30 days** of stock left. Items with 30 or more days are not listed.
+
+**How to read it**
+- Each row shows the item code, "used N in 30d", stock available, the suggested order quantity (only when above zero), **days of cover** and "exposes $X" or "no open orders".
+- A product sold in several finishes is one row marked "×N finishes".
+- The **risk badge** says how soon the item runs out. Critical is red (▲), High and Medium are amber (●), Low is grey (◆). The symbol means colour is never the only signal.
+
+| Level | Days of cover (default) |
+|---|---|
+| Critical (red) | under 7 |
+| High | 7 to under 15 |
+| Medium | 15 to under 30 |
+| Low | 30 or more (not listed) |
+
+- If **Available is below zero**, the item is always Critical. Open orders already need more than we have.
+- A **trend arrow** ("up +40%") means recent use is 40% higher than the 90-day average. It shows only when the change is 25% or more, and only when the item was issued at least 3 times in 90 days. An up arrow is amber. A down arrow is grey.
+- **⚑ unexpected order** appears instead of the arrow when one big order makes up at least half of the item's use. It is not treated as normal demand.
+- **Days of cover** uses the forecast daily rate (see "Daily use" in the glossary). The "used N in 30d" text is the plain count of units used. So the two can differ a little.
+- The subtitle says **Live** (calculated now) or **Snapshot** with a date (last night's saved copy).
+- Rows are sorted: items where open orders already exceed stock first, then Critical, High, Medium, then more dollars exposed, then fewer days of cover.
+
+**What to do**
+1. Work from Critical down.
+2. Click **View forecast detail** for the full list, with a search box and a risk filter.
+3. Click a row to see more: daily use, committed, confidence, safety stock, reorder point, **Where used** and links to the Item and its stock ledger.
+4. Use **Download restock list (CSV)** to export every row.
+
+**Left out on purpose:** items with no use in the window, tube and acrylic rods (they have their own tiles) and items set to "Make to Order" or "Do Not Stock".
 
 **Filters:** Category (includes its sub-groups) and Trailing days.
 
-**Left out on purpose:** items with no use in the window, tube and acrylic rods (own tiles), and items whose stock policy is "Make to Order" or "Do Not Stock". Acrylic rod caps are not rods and stay here.
+**Example**
+CMBR-200-PB: 60 on hand, forecast daily use 3. Cover = 60 ÷ 3 = **20 days**. That is Medium. The stock-out date is today plus 20 days.
 
-**What to click:** **View forecast detail** opens the full list with a search box and a risk filter. Click a row to see more: daily use, committed, confidence, BOM committed with its reliability, recommended action, **Where used** (which Lyfe BOMs contain the item and how many open orders carry them) and **Go to** links to the Item and its stock ledger. **Download restock list (CSV)** exports every row. A "×N finishes" row opens the Item list for that product (not a single Item), and **Where used** covers all its finishes.
+> 📸 **Screenshot 5: Stockout Risk**
+> - **Where to take it:** Act now tab, Stockout Risk tile.
+> - **What must be visible:** at least one Critical and one High row, a trend arrow, the footer counts and the Live or Snapshot label.
+> - **Highlight:** circle the risk badge and the "exposes $X" text. Blur nothing (no customer data here).
+> - **File name:** `images/stock-forecast/05-stockout-risk.png`
+>
+> `![Screenshot 5: Stockout Risk](images/stock-forecast/05-stockout-risk.png)`
 
-The subtitle says **Live** or **Snapshot - date**.
+> 📸 **Screenshot 6: Stockout Risk, item detail**
+> - **Where to take it:** click **View forecast detail**, then click one row to expand it.
+> - **What must be visible:** the search box, risk filter, the expanded row with daily use, committed, confidence, Where used and the Go to links.
+> - **Highlight:** arrow to **Where used**.
+> - **File name:** `images/stock-forecast/06-stockout-risk-detail.png`
+>
+> `![Screenshot 6: Stockout Risk detail](images/stock-forecast/06-stockout-risk-detail.png)`
 
-### 4.3 Material Usage
-**What it shows:** the items most issued to the factory for orders over the window (default 30 days), most used first, in a scroll box. It is a mix of raw materials (feet, sticks) and finished pieces, so the units differ per row. It is labelled "Most-Issued", not "Most-Used Material".
+---
 
-**Numbers:** net quantity = issued minus returned. Only items above zero are shown.
+### 4.4 US Warehouse Replenishment (Act now)
+
+**What it shows**
+Which items we should send to the 1Click warehouse in the US, and how many. US customers get items faster when we hold them there. The tile looks at what the US has been buying, what 1Click holds now and what is already on its way from India.
+
+**How to read it**
+- The top line shows how many items are urgent, how many to reorder, how many are overstocked, how many units we suggest sending (and roughly what that is worth at selling price) and when 1Click stock was last read.
+- The table shows the first 10 items that need action. For each: stock at 1Click, stock on its way, units sold per week, weeks the stock will last and the suggested quantity.
+- **(uncertain)** means the item has too little sales history to trust the number.
+- A **warning line** means the last read of 1Click stock failed or is old. The numbers then come from the last good read, shown with its time.
+- Only standard items appear. Custom (made-to-order) items never do.
+
+**What to do**
+1. Click **Open the full US Warehouse Replenishment page**.
+2. Follow the steps below.
+
+**Steps on the full page (`/app/us-replenishment`)**
+1. **Check the top of the page.** A yellow banner means the last read of 1Click stock failed or is old. You can press **Sync 1Click now** to read it again.
+2. **Work from the top.** Rows are sorted Urgent first. Use the Item Group, Status and *Min Weekly Demand* boxes to narrow the list.
+
+| Status | Meaning |
+|---|---|
+| **Urgent** | We will run out before a new shipment could arrive. |
+| **Reorder** | Below the level where we should already be re-stocking. |
+| **OK** | Enough stock. |
+| **Overstock** | More stock than we need. Nothing is suggested. |
+| **Not stocked yet** | Sells steadily in the US, but 1Click has none. A new candidate. |
+
+3. **See why.** Click an item code. The window shows the numbers step by step, the weekly demand chart, the 1Click stock history and open transfers. Stock already on its way is counted, so it is not suggested twice.
+4. **Choose quantities.** Change the Suggested Qty in a row if you want a different number. Tick the rows you want.
+5. Press **Add selected to draft Stock Transfer** and confirm. You need permission to create a Stock Transfer Order 1Click (Factory, Customer Service, System Manager or Super Admin). This creates a **draft**. **Nothing is sent yet.**
+6. Open the draft and review it. When you are ready, press **Create Lyfe Order** on it. That starts the shipment to the US warehouse through the factory. Only Factory, System Manager and Super Admin can press that button.
+
+**Export:** the full page has **Export to Excel**.
+
+**Example**
+An item sells 10 a week. The shipment takes about 4.5 weeks (3 working days at the factory, 3 weeks of transit, 1 week for customs and receiving). So the reorder point is 45. We want 4 more weeks of cover, so the target is 85. If 10 are at 1Click and none are on the way, the suggestion is 75. If 75 are already on the way, the suggestion is 0.
+
+> 📸 **Screenshot 7: US Warehouse Replenishment tile**
+> - **Where to take it:** Act now tab, US Warehouse Replenishment tile (needs the US Replenishment Manager role).
+> - **What must be visible:** the counts line, the sync time, the table rows and the "Open the full page" link.
+> - **Highlight:** circle the last 1Click sync time.
+> - **File name:** `images/stock-forecast/07-us-tile.png`
+>
+> `![Screenshot 7: US tile](images/stock-forecast/07-us-tile.png)`
+
+> 📸 **Screenshot 8: US Warehouse Replenishment full page**
+> - **Where to take it:** `/app/us-replenishment`, no filters.
+> - **What must be visible:** the tiles on top, the filters, the table with tick boxes, quantity boxes and status pills, and the three buttons.
+> - **Highlight:** arrow to the Suggested Qty box and to **Add selected to draft Stock Transfer**.
+> - **File name:** `images/stock-forecast/08-us-page.png`
+>
+> `![Screenshot 8: US page](images/stock-forecast/08-us-page.png)`
+
+> 📸 **Screenshot 9: US page, item detail ("why")**
+> - **Where to take it:** click an item code on the full page.
+> - **What must be visible:** the step-by-step numbers, the weekly demand chart and the stock history chart.
+> - **Highlight:** circle the "Suggested qty" line.
+> - **File name:** `images/stock-forecast/09-us-item-why.png`
+>
+> `![Screenshot 9: US item detail](images/stock-forecast/09-us-item-why.png)`
+
+> 📸 **Screenshot 10: Draft Stock Transfer Order**
+> - **Where to take it:** the draft opened after pressing **Add selected to draft Stock Transfer**.
+> - **What must be visible:** the item rows with quantities, status Draft and the **Create Lyfe Order** button.
+> - **Highlight:** arrow to **Create Lyfe Order**.
+> - **File name:** `images/stock-forecast/10-draft-transfer.png`
+>
+> `![Screenshot 10: Draft transfer](images/stock-forecast/10-draft-transfer.png)`
+
+---
+
+### 4.5 Material Not In Stock - Total Required (Act now)
+
+**What it shows**
+For everything we still have to build, which materials are short in total. It adds up all active orders first, then compares with stock.
+
+**How to read it**
+- Columns: Item Code (a link, with a tick box), Required Qty, In Stock, Missing Qty (Required minus In Stock).
+- Only items where Required is above In Stock are listed. Numbers are rounded up. Sorted by item code.
+- "Active orders" means orders not yet dispatched, from New to Awaiting India Components. On Hold, Shipped, Completed and later stages are out.
+- If nothing is missing, it says: "All material for active orders is in stock."
+
+**What to do**
+- Buy the missing quantities.
+- **Tick** an item to see only the orders that need it in the next tile. Only one tick at a time. Un-tick to clear.
+
+**Example**
+Item Y: 10 in stock. Two orders each need 6. Total required = 12. Missing = **2**.
+
+> 📸 **Screenshot 11: Material Not In Stock - Total Required**
+> - **Where to take it:** Act now tab, this tile.
+> - **What must be visible:** the columns, at least four rows and a tick box.
+> - **Highlight:** circle the Missing Qty column.
+> - **File name:** `images/stock-forecast/11-not-in-stock-total.png`
+>
+> `![Screenshot 11: Not in stock total](images/stock-forecast/11-not-in-stock-total.png)`
+
+---
+
+### 4.6 Active Orders - Material Not In Stock (Act now)
+
+**What it shows**
+Which single orders cannot be completed from current stock. One row per order and component where that order alone needs more than we have.
+
+**How to read it**
+- Columns: Internal Order ID (a link), Order Type, Item Code (a link), Required Qty, In Stock, Missing Qty, Order Date, Order Value. Sorted by order date.
+- **Stock is not shared between orders here.** Each order is compared with the full stock on its own.
+
+**What to do**
+Use the tick box in the Total tile to see which orders are behind a shortage. Tell the CS team if ship dates will slip.
+
+**Example**
+Item Y: 10 in stock. Two orders need 6 each. In **this** tile neither order appears, because 6 is not more than 10. In the **Total** tile, Y appears with 2 missing. In **Buildable Orders**, the older order is Ready and the second is Short.
+
+> 📸 **Screenshot 12: Active Orders - Material Not In Stock**
+> - **Where to take it:** Act now tab, this tile, after ticking one item in the Total tile.
+> - **What must be visible:** the filtered rows and the columns.
+> - **Highlight:** blur customer names if any are shown. Circle the Missing Qty column.
+> - **File name:** `images/stock-forecast/12-active-orders-not-in-stock.png`
+>
+> `![Screenshot 12: Active orders not in stock](images/stock-forecast/12-active-orders-not-in-stock.png)`
+
+---
+
+### 4.7 Demand Trends (Demand & forecast)
+
+**What it shows**
+Which categories we are using more or less of, and which items are suddenly in demand. It compares the **last N days** with the **N days before**, counting stock issued to orders.
+
+**How to read it**
+- **Categories:** a line chart shows each big category's use week by week. A table shows use now, use before and the change.
+  - **↑** (amber) using more (over 10% up).
+  - **↓** using less (over 10% down).
+  - **→** about the same.
+- **Rising items:** the items whose use went up the most, each with a small trend line and an **Orders** count (how many different orders it was issued on). The list shows items with the most orders first.
+- An item needs at least 3 separate issues and 25% more use than before. One big one-off order does not count as a trend.
+- Finishes of one product count as one row. Click the finish name to see all finishes.
+- If the tile says the history is incomplete, the "before" period goes back before our records start (May 2026), so rises look bigger than they are.
+- **Tube items (N):** tube is kept in its own section at the bottom. Pipes are in feet and cut lengths are as issued.
+- The category table sits in its own collapsed section ("Category table"). Click it to open.
+
+**What to do**
+Spot demand picking up early and check that rising items have enough stock. See which categories are slowing down before you over-stock them.
+
+**Choose the days and how many items:** use the funnel icon. Defaults: 30 days, top 10.
+
+**Example**
+UHRB-150: 50 used in the last 30 days, against 6 in the 30 days before. That is ↑ +733%, with 4 days of stock left. Check it now.
+
+> 📸 **Screenshot 13: Demand Trends**
+> - **Where to take it:** Demand & forecast tab, Demand Trends tile, 30 days, top 10.
+> - **What must be visible:** the category chart, the rising-items table with the Orders column and the trend lines.
+> - **Highlight:** circle the Orders column and one ↑ arrow.
+> - **File name:** `images/stock-forecast/13-demand-trends.png`
+>
+> `![Screenshot 13: Demand Trends](images/stock-forecast/13-demand-trends.png)`
+
+---
+
+### 4.8 Demand Forecast (Demand & forecast)
+
+**What it shows**
+How much each product will need over the next N days, and whether stock will last. Default: 30 days, top 10, biggest need first.
+
+**How to read it**
+- **Per day:** average use per day (the forecast uses a method called TSB, explained in the glossary).
+- **Forecast:** per day × the number of days.
+- **On open orders:** units already promised to orders not yet issued.
+- **Expected:** forecast plus open orders.
+- **Left after N days:** on hand minus expected. A negative number in **red** means the product will run short.
+- The small line in each row shows the last 12 weeks of real use (grey) and the forecast continuing as a dashed line. The dashed part is flat: the forecast is a steady rate and does not guess at peaks.
+- The line at the top sums it up. Example: "Expected 2,043 units across 103 products … 82 products will run short."
+- **Tube items** are in their own section at the bottom. Cut lengths are cut from pipe when needed, so they usually show 0 on hand and appear as short. Check the pipe rows and the Tube Stock tile before ordering.
+
+**What to do**
+Use it to plan ahead for the next 30 or 60 days. Items that run short are ordered by the Restock List.
+
+**Example (CMBR-200, next 30 days)**
+- Per day: 7.7.
+- Forecast: 7.7 × 30 = 231.
+- On open orders: 16.
+- Expected: 231 + 16 = 247.
+- Left after 30 days: 51 on hand − 247 = **−196** (red). It will run short.
+
+> 📸 **Screenshot 14: Demand Forecast**
+> - **Where to take it:** Demand & forecast tab, Demand Forecast tile, 30 days.
+> - **What must be visible:** the summary line, rows with the grey and dashed lines, and at least one red "left after" number.
+> - **Highlight:** circle a red negative number.
+> - **File name:** `images/stock-forecast/14-demand-forecast.png`
+>
+> `![Screenshot 14: Demand Forecast](images/stock-forecast/14-demand-forecast.png)`
+
+---
+
+### 4.9 Base-level Forecast (Demand & forecast)
+
+**What it shows**
+The forecast for a base product with all its finishes added together. Many parts are cut and finished to order. For example, CMBR-200 Matte is one base product that later becomes several finishes. Their combined demand is smoother than each finish alone.
+
+**How to read it**
+- Each row is one base product and base state with **2 or more finishes** and use in the last 30 days.
+- Columns: base product, state, finishes, risk, on hand, available (on hand minus open orders), forecast per day, days left, safety stock, reorder point and order quantity.
+- Stock is the finishes' stock added together. Safety stock is worked out on the combined use, so it is smaller than keeping safety stock for each finish.
+- Most urgent comes first (risk, then biggest use). Tube and acrylic are not included.
+
+**What to do**
+Plan unfinished (matte or polished) stock for the base product, not for each finish.
+
+**Example**
+Across all groups on 6 Nov 2026, combined safety stock was 773 units. Keeping safety stock per finish would have been 958 units.
+
+**Choose how many rows:** use the funnel icon (default 25).
+
+> 📸 **Screenshot 15: Base-level Forecast**
+> - **Where to take it:** Demand & forecast tab, Base-level Forecast tile.
+> - **What must be visible:** rows with Finishes, Days left, Safety stock and Order qty.
+> - **Highlight:** circle the Finishes column.
+> - **File name:** `images/stock-forecast/15-base-forecast.png`
+>
+> `![Screenshot 15: Base-level Forecast](images/stock-forecast/15-base-forecast.png)`
+
+---
+
+### 4.10 Category-wise Stock Forecast (Demand & forecast)
+
+**What it shows**
+One bar per top-level category, split into Critical, High, Medium and Low item counts. It covers every item with use in the last 30 days.
+
+**How to read it**
+- A longer red part means more Critical items in that category.
+- Use the toggle to switch the bars to **Revenue exposed** (dollars). The other figure is printed at the end of each row.
+- Sorted by most Critical first, then High, then dollars, then name. The first 6 show. Click "show all" for the rest.
+- There is no "average days" per group on purpose, so one stocked-out item cannot hide behind a healthy average.
+- The footer counts **dead** stock (nothing used in 90 days) and **excess** stock (more than 3 times the target cover).
+
+**What to do**
+1. Click a bar (or a coloured part) to see its sub-groups.
+2. Click a sub-group to open its item list (search, risk filter, details, CSV, plus Revenue exposed and Orders columns).
+3. Click the pinned row **All critical items** to list every Critical item.
+4. Two extra rows, **Tube (feet)** and **Acrylic rod (inches)**, open their own details.
+
+**Example**
+"Railings" shows 12 Critical items. Click the bar, then a sub-group, and you see which items need buying.
+
+> 📸 **Screenshot 16: Category-wise Stock Forecast**
+> - **Where to take it:** Demand & forecast tab, Category tile.
+> - **What must be visible:** at least five bars with the four colours and the toggle.
+> - **Highlight:** circle the toggle and one red segment.
+> - **File name:** `images/stock-forecast/16-category-forecast.png`
+>
+> `![Screenshot 16: Category forecast](images/stock-forecast/16-category-forecast.png)`
+
+> 📸 **Screenshot 17: Category drill-down**
+> - **Where to take it:** click one bar, then one sub-group.
+> - **What must be visible:** the sub-group list or item list with the search box and risk filter.
+> - **Highlight:** arrow to the Back link.
+> - **File name:** `images/stock-forecast/17-category-drilldown.png`
+>
+> `![Screenshot 17: Category drill-down](images/stock-forecast/17-category-drilldown.png)`
+
+---
+
+### 4.11 Material Usage (Demand & forecast)
+
+**What it shows**
+The items most issued to the factory for orders over the window (default 30 days), most used first. It is labelled "Most-Issued", not "Most-Used Material".
+
+**How to read it**
+- It mixes raw materials (feet, sticks) and finished pieces, so units differ per row.
+- Numbers are **net**: issued minus returned. Only items above zero are shown.
+
+**What to do**
+Use it to see where the factory's material is really going. Check that the biggest items have enough stock.
 
 **Filters:** Category and Trailing days. The full-list popup always uses 30 days.
 
-### 4.4 Category-wise Stock Forecast
-**What it shows:** one stacked bar per top-level category, split into Critical, High, Medium and Low item counts. It covers every item with use in the last 30 days, including Low cover.
+**Example**
+Brass tube: 438 ft issued in 30 days, 10 ft returned. The tile shows the net amount.
 
-**Toggle:** switch bars to **Revenue exposed** to see dollars. The other figure is printed at the end of each row.
+> 📸 **Screenshot 18: Material Usage**
+> - **Where to take it:** Demand & forecast tab, Material Usage tile.
+> - **What must be visible:** the scroll box with at least eight rows.
+> - **Highlight:** circle the top row.
+> - **File name:** `images/stock-forecast/18-material-usage.png`
+>
+> `![Screenshot 18: Material Usage](images/stock-forecast/18-material-usage.png)`
 
-**Sort:** most Critical first, then High, then dollars, then name. The first 6 groups show; click "show all" for the rest.
+---
 
-**Click-through:**
-1. Click a bar (or a coloured part) to see its sub-groups, with a Back link.
-2. Click a sub-group to open the item list for it (search, risk filter, details, CSV, plus Revenue exposed and Orders columns).
-3. A pinned row **All critical items** opens the list of Critical items.
+### 4.12 Forecast vs Actual (Demand & forecast)
 
-Two extra rows, **Tube (feet)** and **Acrylic rod (inches)**, open their own detail so those items are not left out. The footer counts **dead** stock (nothing used in 90 days) and **excess** stock (more than 3x target cover). The chart always uses 30 days.
+**What it shows**
+How close our forecast was to what we really used. For each of the last N complete weeks (default 12), it compares what the forecast said at the start of that week with what was issued.
 
-There is no "average days" per group on purpose, so one stocked-out item can never be hidden by a healthy average.
+**How to read it**
+Read two numbers.
+- **In total:** for example "forecast 5,075, used 5,407, so the forecast was 6.1% too low". This is close.
+- **Product by product, week by week:** for example "off by 93.8%". A product's use jumps around from week to week, so single weeks are hard to predict. This is why safety stock matters more than the formula.
+- The chart shows each week's real use (bars) against the forecast (line).
+- **Biggest misses** lists the products the forecast got most wrong, marked "over" (forecast too high) or "under" (too low).
+- This tile rebuilds the check from our records, so it works from day one. History starts in May 2026 and each week needs the 30 days before it, so it looks back about 19 weeks for now. It says so when that limit applies.
+- **Tube items** are in their own section at the bottom.
 
-### 4.5 Tube Stock (feet)
-**What it shows:** one row per tube pipe (material x diameter) that was used in the window.
+**What to do**
+Use it to judge how much to trust the forecast. A high "off by" figure means treat the forecast as a rough guide.
+
+**Example**
+Last 12 weeks: forecast 5,075 against 5,407 used. The total is 6.1% low, but product by product it is 93.8% off.
+
+> 📸 **Screenshot 19: Forecast vs Actual**
+> - **Where to take it:** Demand & forecast tab, Forecast vs Actual tile, 12 weeks.
+> - **What must be visible:** the plain-words summary, the bar and line chart and the Biggest misses list.
+> - **Highlight:** circle the "In total" and "Product by product" sentences.
+> - **File name:** `images/stock-forecast/19-forecast-vs-actual.png`
+>
+> `![Screenshot 19: Forecast vs Actual](images/stock-forecast/19-forecast-vs-actual.png)`
+
+---
+
+### 4.13 Tube Stock, in feet (Materials)
+
+**What it shows**
+One row per tube pipe (material and diameter) that was used in the window. Tube is kept as long rods and cut to order, so it is counted in **feet**.
+
+**How to read it**
 
 | Column | Meaning |
 |---|---|
-| On hand (ft) | Feet of rod in stock plus pre-cut pieces (pieces x their length). |
-| Rods | Feet on hand / 100. |
+| On hand (ft) | Feet of rod in stock, plus pre-cut pieces (pieces × their length). |
+| Rods | Feet on hand ÷ 100. Rods are assumed to be 100 ft long. |
 | Used / per day | Feet used in the window (net of returns), and per day. |
-| Days left, risk | Cover and risk level (same 7/15/30 scale). |
-| Keep | Daily feet x target cover (default 30). |
-| Order ft / rods | Feet short of "keep", and that divided by 100 rounded **up** to whole rods. |
+| Days left, risk | Cover and risk level (same 7 / 15 / 30 scale). |
+| Keep | Daily feet × target cover (default 30 days). |
+| Order ft / rods | Feet short of "keep", and that ÷ 100 rounded **up** to whole rods. |
 
-**Sorted** fewest days first. The card shows the 5 most urgent; click "show details" for all. The popup gives one row per pipe.
+- Sorted fewest days first. The card shows the 5 most urgent. Click "show details" for all.
+- Pre-cut pieces are added to the tube they were cut from. Cut pieces never cut from a known tube appear as one "(cut pieces)" row with no order suggestion.
 
-**Pre-cut pieces** (for example a 7.5 ft cut piece) count as pieces x length and are added to the tube they were cut from. Cut pieces that have never been cut from a known tube appear as one "(cut pieces)" row with no order suggestion.
+**What to do**
+Order the rods shown in the **Order ft / rods** column. Do a physical stick count once a month, because feet can be overstated when cut pieces were booked without a matching rod issue.
 
-> **Tube example.** A brass tube: 79.6 ft of rod + 5 pre-cut pieces of 4 ft (20 ft) = **99.6 ft** on hand. Last 30 days: 400 ft of rod issued, 10 ft returned, 12 pieces of 4 ft issued (48 ft). Used = 400 - 10 + 48 = **438 ft**. Per day = 438 / 30 = **14.6 ft**. Cover = 99.6 / 14.6 = **6.8 days** (Critical). Keep = 14.6 x 30 = 438 ft. Order = 438 - 99.6 = 338.4 ft = 3.384 rods, rounded up to **4 rods**.
+**Example**
+A brass tube has 79.6 ft of rod plus 5 pre-cut pieces of 4 ft (20 ft), so **99.6 ft** on hand. Used in 30 days: 400 ft − 10 ft returned + 12 pieces × 4 ft = **438 ft**. Per day = 14.6 ft. Cover = 99.6 ÷ 14.6 = **6.8 days** (Critical). Keep = 438 ft. Order = 438 − 99.6 = 338.4 ft, which is 4 rods rounded up.
 
-### 4.6 Acrylic Rod Stock (inches)
-**What it shows:** one row per diameter and stick-length class that was used in the window.
+> 📸 **Screenshot 20: Tube Stock**
+> - **Where to take it:** Materials tab, Tube Stock tile.
+> - **What must be visible:** the 5 urgent rows with all columns.
+> - **Highlight:** circle the Order ft / rods column.
+> - **File name:** `images/stock-forecast/20-tube-stock.png`
+>
+> `![Screenshot 20: Tube Stock](images/stock-forecast/20-tube-stock.png)`
 
-- **On hand** = sticks on hand x stick length, in inches.
-- **Demand** = inches of **whole sticks issued**, minus sticks returned. Waste is included, because an unusable offcut is never booked back.
+> 📸 **Screenshot 21: Tube Stock details**
+> - **Where to take it:** click "show details" on the Tube Stock tile.
+> - **What must be visible:** the popup with one row per pipe.
+> - **Highlight:** circle the "(cut pieces)" row if shown.
+> - **File name:** `images/stock-forecast/21-tube-stock-details.png`
+>
+> `![Screenshot 21: Tube details](images/stock-forecast/21-tube-stock-details.png)`
+
+---
+
+### 4.14 Acrylic Rod Stock, in inches (Materials)
+
+**What it shows**
+One row per diameter and stick-length class that was used in the window. Sticks come in different lengths, so counting sticks would mislead. The tile counts **inches**.
+
+**How to read it**
+- Length classes: up to 12", 13-24", 25-48" and over 48".
+- **On hand** = sticks on hand × stick length, in inches.
+- **Demand** = inches of whole sticks issued, minus sticks returned. Waste is included, because an unusable offcut is never booked back.
 - Per day, days left and risk work as for tube.
+- The card shows the 5 with the most use. "Show details" shows all, fewest days first.
+- A longer stick can serve a shorter cut, so short classes look worse than they are. The long sticks of heavily used diameters are usually the real risk.
+- The popup also shows pieces cut by diameter and cut length.
 
-**Sort / display:** the card shows the 5 with the most use; "show details" shows all. Sorted fewest days first in the full list.
+**What to do**
+Order long sticks for diameters that are heavily used. Book unused remainders as a **Return**, not as a plain receipt.
 
-A longer stick can serve a shorter cut, so the short classes look worse than they really are. The long sticks of heavily used diameters are usually the real risk. The popup shows pieces cut by diameter and cut length.
+**Example**
+1.5" rods, over 48": 10 sticks of 60" + 5 sticks of 72" = 600 + 360 = **960 inches**. Used in 30 days: (6 − 1) × 60 + 2 × 72 = **444 inches**. Per day = 14.8. Cover = 960 ÷ 14.8 = **64.9 days** (Low).
 
-> **Example.** 1.5" rods, over 48": 10 sticks of 60" + 5 sticks of 72" = 600 + 360 = **960 inches**. Last 30 days: 6 sticks of 60" issued, 1 returned, 2 sticks of 72" issued = (6-1) x 60 + 2 x 72 = **444 inches**. Per day = 14.8. Cover = 960 / 14.8 = **64.9 days** (Low).
+> 📸 **Screenshot 22: Acrylic Rod Stock**
+> - **Where to take it:** Materials tab, Acrylic Rod Stock tile.
+> - **What must be visible:** the five rows with diameter, length class, inches and days left.
+> - **Highlight:** circle the length class column.
+> - **File name:** `images/stock-forecast/22-acrylic-stock.png`
+>
+> `![Screenshot 22: Acrylic Rod Stock](images/stock-forecast/22-acrylic-stock.png)`
 
-### 4.7 Buildable Orders
-**Question answered:** "Which active orders can we build with the stock we have today?"
+---
 
-Orders are taken **oldest order date first**. Stock is handed out in that order:
-- **Ready**: every component is available. This order **takes** that stock.
-- **Partial**: some components are short, others are fine.
-- **Short**: every component is short.
+### 4.15 Buildable Orders (Materials)
 
-**Only Ready orders take stock.** Partial and Short orders take nothing, so an order that cannot be built never holds material back from a later order that can.
+**What it shows**
+Which active orders we can build with the stock we have today.
 
-> **Example.** Item X, 10 in stock. Order A (older) needs 6. Order B needs 6. A is **Ready** and takes 6, leaving 4. B needs 6 but only 4 are left, so B is **Short** on X (needs 6, has 4, missing 2).
+**How to read it**
+Orders are taken **oldest order date first**. Stock is handed out in that order.
+- **Ready** (grey): every component is available. This order **takes** that stock.
+- **Partial** (amber): some components are short, others are fine.
+- **Short** (red): every component is short.
+- **Only Ready orders take stock.** A Partial or Short order takes nothing, so an order that cannot be built never holds back a later one that can.
+- Columns: Internal Order ID (a link), Order Type, Order Date, Order Value, Status, and the limiting parts ("item (need N, have N, missing N)").
+- The summary line shows Ready, Partial and Short counts, **Blocked** (the value of Partial and Short orders) and the value of Ready orders.
+- Included: active, not-yet-dispatched orders (New up to Pending India Dispatch or Awaiting India Components). Orders whose material is already issued are left out. Custom-order lines with no BOM are skipped.
 
-**Columns:** Internal Order ID (link), Order Type, Order Date, Order Value, Status, and the limiting components ("item (need N, have N, missing N)"). The summary line shows Ready / Partial / Short counts, **Blocked** (value of Partial + Short orders) and the value of Ready orders.
+**What to do**
+Read the limiting parts of each Short order. Check them in the Restock List and buy what is missing. Until then the order stays Short.
 
-**Filters:** Category (tile filter), column filter boxes and **Export**.
+**Filters:** Category, column filter boxes and **Export**.
 
-**Which orders are included:** active, not-yet-dispatched orders (statuses from New up to Pending India Dispatch / Awaiting India Components). Orders whose material is already issued are left out. Custom-order lines with no BOM are skipped.
+**Limits:** priority is order date, not the promised ship date, and the method is first come, first served.
 
-Priority is order date, not promised ship date, and the allocation is simple first-come.
+**Example**
+Item X: 10 in stock. Order A (older) needs 6 and is **Ready**. It takes 6, leaving 4. Order B needs 6 but only 4 are left, so B is **Short**: it needs 6, has 4 and is missing 2.
 
-### 4.8 Restock List
-**Questions answered:** "What do we need to buy?" and "Which items have enough stock for the next N days?" One list in one place.
+> 📸 **Screenshot 23: Buildable Orders**
+> - **Where to take it:** Materials tab, Buildable Orders tile.
+> - **What must be visible:** the summary line and rows with Ready, Partial and Short status and their limiting parts.
+> - **Highlight:** blur customer names and order values if shown. Circle the **Blocked** figure.
+> - **File name:** `images/stock-forecast/23-buildable-orders.png`
+>
+> `![Screenshot 23: Buildable Orders](images/stock-forecast/23-buildable-orders.png)`
 
-**Cover for next N days:** type any number of days in the tile's filter (funnel icon), for example 14. Left blank, each item uses its target cover (30 days, unless the Item has its own). The line at the top then says how many items have **not enough** and **enough** stock for those days. **Show the items with enough stock** opens the second list.
+---
 
-**How "enough" is decided:** the item's average daily use over the last 30 days × N days, compared with its free stock (on hand minus what open orders already need). Example: an item uses 1.5 a day; for 14 days it needs 21. With 32 on hand and 20 promised to open orders, only 12 are free, so it is short by 9 and goes on the list.
+### 4.16 Stock Data Quality (header chip and checklist)
 
-**What is included** (most urgent first):
-- **Items** that are short for those days, with the quantity to order (MOQ and the backlog setting applied).
-- **Tube**: pipes that need at least one rod, quantity in **rods**, with the feet short shown beside it.
-- **Acrylic**: diameter/length classes that are short, in **inches**.
+**What it shows**
+A checklist of problems that make the forecast wrong. Each line shows a count, or OK. Click a line to see **where to fix it** and the affected records (up to 200, each a link).
 
-**Columns:** Item, Type, Risk, On Hand, Available, Days Left, Order Qty, Unit, **Why** and **Last Received**.
-
-**Why** explains each row in plain words, for example: *"Uses 1.5/day, so needs 21 for the next 14 days. 32 on hand, 20 already promised to open orders: short 9, order 10 (minimum order 10)."*
-
-**Last Received** = the date the item last came into stock. Restocking is recorded only when the goods arrive, so an order already placed is invisible until delivery. The page has **no supplier or purchase order information**. Use Last Received as a hint, and check with whoever placed the order before buying twice. Acrylic rows have no Last Received.
-
-**Filters:** Cover for next N days, column boxes and Export.
-
-### 4.8a Demand Trends
-**Questions answered:** "Which categories are we using more or less of?" and "Which items are suddenly in demand?"
-
-Everything compares the **last N days** with the **N days before**, counting stock issued to orders. Type the days (for example 14 or 60) and how many items to show (**Top N**) in the tile's filter. Defaults: 30 days, top 10.
-
-**Categories:** a line chart shows each big category's use week by week (day by day for short periods), and a table lists every category with its use now, before, and the change: **↑** using more (over 10% up), **↓** using less (over 10% down), **→** about the same.
-
-**Rising items:** the items whose use went up the most, with a small trend line each. Example: UHRB-150 used 50 in the last 30 days against 6 in the 30 days before, ↑ +733%, with 4 days of stock left.
-
-An item needs at least 3 separate issues in the period and 25% more use than before. One big one-off order does not count as a trend. Finishes of one product count as one row.
-
-**Use it to:** spot demand picking up early and check that rising items have enough stock; see which categories are slowing down before over-stocking them.
-
-If the tile says the history is incomplete, the "before" period goes back further than our records (May 2026), so rises look bigger than they are.
-
-**Tube items:** tube is kept out of the main lists and shown in its own section at the bottom of the tile, **Tube items (N)**. Click it to open. Pipes are counted in feet and cut lengths as issued, so they never mix with the other products' units.
-
-
-Each item also shows its most-used finish with its trend; click it to see every finish (last N days, the N days before, change). Pick an Item in the tile's funnel to check any single item, even if it is not rising.
-
-Demand Forecast and Forecast vs Actual also have a "finishes" line under each item: click it to see the forecast (and, in Forecast vs Actual, what was really used) for each finish.
-
-### 4.8b Demand Forecast (next N days)
-**Question answered:** "How much will each product need over the next N days, and will our stock last?"
-
-Type the number of days (for example 14 or 60) and how many products to show in the tile's filter. Defaults: 30 days, top 10, biggest need first.
-
-**How the numbers are made, with an example (CMBR-200, next 30 days):**
-- **Per day:** average use over the last 30 days = 7.7.
-- **Forecast:** 7.7 × 30 days = 231.
-- **On open orders:** units already promised to orders not yet issued = 16.
-- **Expected:** forecast + open orders = 247.
-- **Left after 30 days:** 51 on hand − 247 = **−196**, shown in red: the product will run short, and the Restock List orders it.
-
-The line in each row shows the last 12 weeks of real use (grey) and the forecast continuing as a dashed line. The forecast is a steady rate, so the dashed part is flat; it does not guess at peaks.
-
-The line at the top sums it up: for example "Expected 2,043 units across 103 products … 82 products will run short." That count always matches the Restock List for the same days.
-
-**Tube items:** tube is kept out of the main lists and shown in its own section at the bottom of the tile, **Tube items (N)**. Click it to open. Pipes are counted in feet and cut lengths as issued, so they never mix with the other products' units. Cut lengths are cut from pipe when needed, so they usually show 0 on hand and appear as short; check the pipe rows and the Tube Stock tile before ordering.
-
-### 4.8c Forecast vs Actual
-**Question answered:** "How close was our forecast to what we really used?"
-
-For each of the last N complete weeks (default 12; type another number in the filter), the tile works out what the forecast said at the start of that week (average daily use over the 30 days before × 7) and compares it with what was really issued. It rebuilds this from our records, so it works from day one.
-
-**Two numbers to read:**
-- **In total:** for example "forecast 5,075, used 5,407, so the forecast was 6.1% too low". Across all products the forecast is close.
-- **Product by product, week by week:** for example "off by 93.8%". Each product's use jumps around from week to week (one week 0, the next 20), so single weeks are hard to predict. This is why safety stock matters more than the formula.
-
-**The chart** shows each week's real use (bars) against the forecast (line). **Biggest misses** lists the products the forecast got most wrong, with "over" (forecast too high) or "under" (too low).
-
-The history starts in May 2026 and each week needs the 30 days before it, so the tile can look back about 19 weeks for now; it says so when that limit applies.
-
-**Tube items:** tube is kept out of the main lists and shown in its own section at the bottom of the tile, **Tube items (N)**. Click it to open. Pipes are counted in feet and cut lengths as issued, so they never mix with the other products' units.
-
-### 4.8d US Warehouse Replenishment
-
-Shows which items we should send to the 1Click warehouse in the US, so that US customers can get them faster. It looks at what the US has been buying, what 1Click holds now, and what is already on its way from India.
-
-At the top: how many items are urgent, how many should be reordered, how many are overstocked, how many units we suggest sending (and roughly what that is worth at selling price), and when 1Click stock was last read. If the last read failed or is old, a warning says so and shows the last good time; the numbers underneath are from that last good read.
-
-The table lists the first 10 items that need action, with what 1Click has, what is on its way, how many sell per week, how many weeks the stock will last, and the suggested quantity. "(uncertain)" means the item has too little sales history to trust the number. Click the link under the table to open the full page with every item, the working behind each number, an Excel download, and a button that prepares a **draft** transfer (nothing is sent until someone creates the shipment from that draft).
-
-Only people with the US Replenishment role (and the System Manager / Super Admin) see this tile. Custom (made-to-order) items never appear.
-
-### 4.9 Material Not In Stock - Total Required
-**Question answered:** "For everything we still have to build, which materials are short in total?"
-
-**Columns:** Item Code (link, with a tick box), Required Qty, In Stock, Missing Qty (= Required - In Stock). Only items with Required above In Stock are listed. Numbers are rounded up. Sorted by item code.
-
-This tile **adds up all active orders together** before comparing with stock. Empty message: "All material for active orders is in stock."
-
-Active orders here means undispatched orders: New through Awaiting India Components, including Factory Assignment and Ready for Dispatch. On Hold, Shipped, Completed and later stages are out.
-
-**Tick box:** tick an item to filter the next tile to just the orders that need it. Only one tick at a time. Un-tick to clear.
-
-### 4.10 Active Orders - Material Not In Stock
-**Question answered:** "Which individual orders cannot be completed from current stock?"
-
-**One row per order and component** where that order alone needs more than we have. **Columns:** Internal Order ID (link), Order Type, Item Code (link), Required Qty, In Stock, Missing Qty, Order Date, Order Value. Sorted by order date.
-
-**Stock is not shared out between orders here.** Each order is compared with the full stock on its own.
-
-> **Example.** Item Y, 10 in stock. Two orders need 6 each. In **this** tile, neither appears (6 is not more than 10). In the **Total** tile, Y appears: 12 required, 10 in stock, **2 missing**. In **Buildable Orders**, the older order is Ready and the second is Short.
-
-Use the tick box in the Total tile to see which orders are behind a shortage.
-
-### 4.11 Stock Data Quality
-A checklist of problems that make the forecasts wrong. Each line shows a count (or OK). Click a line to see **where to fix it** and the affected records (up to 200, each a link).
+**How to read it**
+- Aim for **zero**. The count is the number of lines that are not OK, not the number of records.
+- Amber or red lines need action.
 
 | Line | What it means |
 |---|---|
 | Lyfe BOM components not matched to an Item | A BOM component code matches no item, so it is ignored. |
 | Open order lines without an Item | Their quantity cannot be counted as committed. |
-| Components where the Lyfe BOM disagrees with actual issues | BOM marked Unreliable. |
+| Components where the Lyfe BOM disagrees with actual issues | The BOM is marked Unreliable. |
 | Acrylic rods with unit Inch | Should be counted in "Nos". |
-| Acrylic rods with a decimal written as P | For example a 3.75" rod written with a P. It is not recognised as a rod. |
-| Pending Material Requests (not used) | For information; the page ignores them. |
+| Acrylic rods with a decimal written as P | For example, 2P75L should be written 2.75L. It is not recognised as a rod. |
+| Pending Material Requests (not used) | For information. The page ignores them. |
 | Stock with no use in 90 days | Dead stock, for information. |
 | Stock above 3x target cover | Excess stock, for information. |
 | Last week's forecast bias beyond +/-30% | The forecast has been consistently too high or too low. |
 | Nightly snapshot older than a day (or missing) | The nightly update did not run. |
 
-The aim is to keep this at zero. The count is the number of lines that are not OK, not the number of records.
+**What to do**
+1. Click the **Data issues** card.
+2. Open each amber or red line and follow its "Where to fix" note.
+3. Refresh and check again.
+
+**Who can see it:** by default, everyone who can open the page. An administrator can limit it to the Administrator user in Stock Forecast Settings. That also hides the Data issues card.
+
+**Example**
+"Open order lines without an Item: 7". Click it, open each order and link the correct item. Next day the line shows OK.
+
+> 📸 **Screenshot 24: Stock Data Quality**
+> - **Where to take it:** click the **Data issues** card so the checklist opens.
+> - **What must be visible:** the checklist lines with counts, and one line opened to show "Where to fix" and the record links.
+> - **Highlight:** blur any customer or order details in the record links.
+> - **File name:** `images/stock-forecast/24-data-quality.png`
+>
+> `![Screenshot 24: Stock Data Quality](images/stock-forecast/24-data-quality.png)`
 
 ---
 
-## 5. Filters and drill-downs
+## 5. Common questions (FAQ)
+
+**How do I find a tile I used to see?**
+Tiles are now in three tabs: Act now, Demand & forecast and Materials. See the table at the start of section 4.
+
+**Why is the first click on a tab slow?**
+A tab loads its tiles only when you open it. That keeps the page quick to open. **Refresh** reloads everything.
+
+**What filters can I use?**
 
 | Control | What it does |
 |---|---|
-| **Category and Item Code (bar at the top of the page)** | Narrows the whole page at once: the summary cards, Stockout Risk, the Category view, Material Usage, Buildable Orders, the Restock List and both Not In Stock tables. Pick any category, including a main category: it then covers all its sub-categories (for example *Railings* includes Handrail Brackets, Flanges, End Caps and the rest). Pick an item code to see just that item; picking one finish shows the product's combined "×N finishes" row. Use both together to combine them, and clear a box to remove it. Buildable Orders then lists only the orders that need a matching part, and each order's Ready / Partial / Short status stays the same as without the filter. The Tube and Acrylic tiles are not affected, and acrylic rows in the Restock List show only when nothing is selected. |
-| **Category filter (on a tile)** | The funnel at the top right of a tile limits just that tile to one category and its sub-categories. It is on every tile where a category makes sense: Stockout Risk, the Category view, Material Usage, Buildable Orders, Restock List, Demand Trends, Demand Forecast, Forecast vs Actual and both Material Not In Stock tables (not on Tube and Acrylic, which are one material each). It takes priority over the bar at the top for that tile. |
-| **Trailing days filter** | On Stockout Risk, Tube, Acrylic and Material Usage. Sets how many days of history define "daily use". |
-| **Refresh** | The main button reloads every tile. Each tile also has its own refresh arrow. A tile that fails shows "Data unavailable" with a **Retry** button; the others keep working. |
-| **Column filters** | On the Restock List, Buildable Orders and both Not In Stock tiles: type in the box under a heading to hide rows that do not contain that text. All boxes combine. |
-| **Tick box** | In the Total tile; filters the order table to the exact item. |
-| **Export to CSV** | Downloads what the table currently shows (header plus visible rows). |
-| **View forecast detail** | Full Stockout Risk list with search, risk filter and CSV. |
-| **Where used** | Shows which Lyfe BOMs contain the item and how many open orders carry each. |
-| **Go to links** | Open the Item or its stock ledger from an expanded row. |
-| **Click-through from cards** | Each summary card scrolls to its tile and flashes it. |
-| **Data issues checklist** | Click the Data issues card to open it in place. |
+| **Category and Item Code boxes (top)** | Narrow the whole page. A main category includes its sub-categories. Picking one finish shows the product's combined "×N finishes" row. Tube and Acrylic are not affected. |
+| **Funnel on a tile** | Sets that tile's own filter (days, top N, category). It wins over the top boxes for that tile. |
+| **Trailing days** | On Stockout Risk, Tube, Acrylic and Material Usage. Sets how many days of history define "daily use" (1 to 365). Leave it blank for the default, 30 days. |
+| **Refresh** | The main button reloads the page. Each tile also has its own refresh arrow. |
+| **Column boxes** | Under a table heading, hide rows that do not contain what you type. |
+| **Export** | CSV on the tables. Excel on the US page. |
 
----
+**Where does "daily use" come from?**
+From material **actually issued to the factory** for orders. It is not based on sales. Sales lines explain only a small part of what the factory takes. The page turns the last 26 weeks of issues into a forecast daily rate (the TSB method), leaving out one-off big orders. If you type your own Trailing days, it uses the plain average over those days instead. Transfers, receipts and stock corrections are not real use, so they are ignored. So is material taken from the Rejected Material warehouse.
 
-## 6. Which view answers which question
+**What counts as "stock on hand"?**
+What is on our shelves, added up across all warehouses, **except** the Rejected Material warehouse. Rejected material cannot be used.
 
-| View | Best for | Counts stock between orders? | Unit |
-|---|---|---|---|
-| **Stockout Risk** | "Which items will run out soon?" | n/a (uses daily use) | Units |
-| **Category-wise** | "Which product groups are in trouble?" | n/a | Item counts or dollars |
-| **Restock List** | "What should I buy, and how much?" | n/a | Units, rods, inches |
-| **Demand Trends** | "Which categories and items are we using more or less of?" | n/a | Units, % change |
-| **Demand Forecast** | "How much will each product need over the next N days, and will stock last?" | Adds open orders | Units |
-| **Forecast vs Actual** | "How close was the forecast to what we used?" | n/a | Units, % off |
-| **Buildable Orders** | "Which orders can we build today?" | **Yes**, oldest first; only Ready orders take stock | Orders and dollars |
-| **Material Not In Stock - Total** | "Which materials are short for all active orders together?" | No (adds all orders, compares once) | Units |
-| **Active Orders - Not In Stock** | "Which single order alone is short?" | **No**, each order sees full stock | Units |
-| **Tube / Acrylic** | "How long will tube / acrylic last?" | n/a | Feet / inches |
-| **US Warehouse Replenishment** | "What should we send to the US warehouse, and how many?" | Counts stock at 1Click and on its way, so it is not suggested twice | Units |
+**What is "Committed"?**
+Material already promised to open orders whose material has not been issued yet. Orders already issued are left out, so nothing is counted twice. Lines marked as adjustments, or with no linked Item, are not counted.
 
-A simple rule: **Stockout Risk and Restock List look at the pace of use. The three order views look at what open orders need.**
+**Why does Available differ from Stock on Hand?**
+Available is Stock on Hand minus Committed.
 
----
+**Why is an item Critical when it has 25 days of cover?**
+Its Available is below zero. Open orders already need more than we have.
 
-## 7. What to do — playbooks
+**Why is an item missing from Stockout Risk?**
+It has 30 or more days of cover, had no use in the window, is tube or acrylic (they have their own tiles), or is set to Make to Order or Do Not Stock.
 
-**A Critical item**
-1. Open **View forecast detail** and expand the item.
-2. Check **Confidence**. If Low, the daily use may be unreliable.
-3. Check **Last Received** in the Restock List to see if stock arrived recently.
-4. Confirm with the buyer that nothing is already on the way.
-5. Order the **Suggested Qty** (or more if a big order is coming).
+**Why is the suggested quantity bigger than I expected?**
+It restores the target cover (default 30 days), adds a safety buffer, and is rounded up to the Minimum Order Qty.
 
-**Stock to send to the US warehouse**
-1. Act now, **US Warehouse Replenishment**: open the full page.
-2. Check the banner at the top; if it warns that the 1Click read is old or failed, the numbers are from the last good read.
-3. Start with **Urgent**, click an item to see the working, adjust the quantity and tick the rows.
-4. **Add selected to draft Stock Transfer**, review the draft, then press **Create Lyfe Order** on it when ready. Nothing is sent before that.
+**Does the page know what I have already ordered?**
+No. It sees stock only when received. Check **Last Received** and ask the buyer.
 
-**An item with negative Available**
-1. Open orders already need more than we hold. It is Critical whatever the cover.
-2. Check how much is **BOM committed** and whether the BOM is reliable.
-3. In Material Not In Stock, tick the item to see which orders are affected.
-4. Buy at least the shortfall and tell Customer Support if ship dates will slip.
+**Why does a material appear in the Total tile but not in the order tile?**
+The Total tile adds all orders together. The order tile checks each order alone against full stock.
 
-**A Short order**
-1. In Buildable Orders, read the limiting components.
-2. Check each in the Restock List.
-3. Buy the missing items. Until then the order stays Short.
-
-**A stockout warning (Slack or the page)**
-1. Open the item on the Stockout Risk tile.
-2. Note the Stock-out date and Revenue exposed.
-3. Decide whether to expedite. Remember the page does not know supplier lead times.
-
-**An unreliable BOM**
-1. Open the item's detail and look at the BOM ratio.
-2. Ask Engineering to correct the Lyfe BOM (components, quantities, scrap).
-3. Until fixed, committed numbers for that component are lower than reality. Add a safety margin yourself.
-
-**Data issues**
-1. Click the Data issues card.
-2. Open each line marked in amber or red and use its "Where to fix" note.
-3. Re-check after a refresh.
-
-**A spike (trend arrow shows "up")**
-1. Look at the arrow: how far above the 90-day average?
-2. Ask whether it is a one-off (large order) or lasting. A single outsized order shows "⚑ unexpected order" instead of an arrow, so an arrow means several orders over time.
-3. If lasting, raise the target cover or buy extra. The forecast will take time to catch up.
-
----
-
-## 8. Slack alerts
-
-The page can send a **Stock cover alert** to Slack. It is **off by default**. An administrator switches it on in **Stock Forecast Settings** ("Send Risk Alerts to Slack").
-
-**When it is sent:** once a day, right after the nightly update (see section 9). It needs at least two days of saved data. An item is included if it is **Critical or High today** and one of these is true:
-- it moved to a **worse level** than yesterday (for example High to Critical);
-- it is **new** (it had no row yesterday); or
-- it has stayed **Critical for 7 days in a row** (a reminder, marked "still critical"; it repeats at 14 days, 21 days and so on).
-
-**What it says:** one grouped message listing, for each item, name and code, the level, days of stock and units on hand. Most severe first, then fewest days. **At most 15 items** per message, then "+N more".
-
-A stocked-out item is simply Critical. There is no separate rule for zero stock.
-
-**Daily Founder Briefing.** The morning briefing also has stock sections, sent once a day when the briefing is switched on:
-- **Projected Stockouts:** items due to run out within the briefing's look-ahead (default 7 days, so effectively Critical items). Top 10, with name, code, days left and units, risk, and the suggested action. It also shows how the count changed since yesterday.
-- **Tube & Acrylic Stock:** tube and acrylic rows that are Medium or worse, with feet or inches on hand and use per day.
-
-The briefing list uses the 7-day look-ahead, while the page uses 30 days. The Critical items are the same.
-
----
-
-## 9. The nightly update and forecast accuracy
-
-**Nightly update (snapshot).** Every night at about 1:15 AM the system saves a copy of every item's forecast: on hand, daily use, risk, available, stock-out date, suggested quantity, confidence. This copy is used for:
-- the alerts and history;
-- the Stockout Risk and Category tiles, if an administrator turns on "Stockout Tile Reads Snapshot" (off by default; faster page);
-- the accuracy check.
-
-If the nightly update is missing or older than a day, Stock Data Quality shows a red line. A custom Trailing days is always calculated live.
-
-**Forecast accuracy (weekly self-check).** Every Monday the system takes the saved forecast from about a week ago and compares what it predicted for that week with what was actually issued. It reports:
-- **Error %** — how far off the forecast was overall. Lower is better.
-- **Bias %** — whether it was consistently too high (positive) or too low (negative).
-
-A **high error** means daily use is jumpy and the forecast is a rough guide only. A **bias beyond +/-30%** raises a warning in Stock Data Quality. Use the numbers to decide whether to switch on the backlog-aware suggestion.
-
-Each Monday the system also tags items **A, B or C** by how much of the volume they make up (A = the fast movers that make up the first 80%). This is only used to report accuracy by group.
-
-**Who can see Data Quality:** by default, everyone who can open this page. An administrator can restrict it to the Administrator user only in Stock Forecast Settings, which also hides the Data issues card.
-
----
-
-## 10. Limits and things to keep in mind
-
-- **History is short.** Stock history starts in May 2026. There is no seasonality.
-- **No lead times and no supplier or PO data.** Incoming stock appears only when it is received. There is no reorder point, safety stock or "order by" date.
-- **The forecast is recent use.** It assumes the next weeks look like the last 30 days.
-- **BOM numbers are estimates.** The Lyfe BOM has historically explained only part of what the factory actually issues. Unreliable BOMs are ignored.
-- **Stock is not shared out between orders** in the two Not In Stock tiles. Use Buildable Orders for a first-come view.
-- **First-come allocation.** Buildable Orders goes by order date, not promised dispatch date, and is not an optimiser.
-- **Acrylic is in inches.** Stick counts are not shown, and short classes look conservative.
-- **Tube feet can be overstated** where pre-cut pieces were booked without a matching rod issue. A monthly physical count corrects this. Offcut waste is not modelled for tube.
-- **Items that were never used** do not appear, even if open orders need more than the stock.
-- **Dead stock can be seasonal.** With 5 months of history, treat the dead list as a review list.
-- **Revenue exposed is not blocked.** It is a risk figure. Use Buildable Orders for the real blocked value.
-
----
-
-## 11. FAQ
-
-**A tile I used to see is not on the page. Where is it?**
-Tiles are now grouped in three tabs (Act now, Demand & forecast, Materials). Use the "I want to..." table at the start of this guide to find it.
-
-**Why is the first click on a tab slow?**
-A tab only loads its tiles when you open it, which keeps the page quick to open. Next time you open it in the same visit it is already there; Refresh reloads everything.
+**Why is there a Short order when stock looks fine?**
+An older Ready order already took the stock.
 
 **Why can I not see the US Warehouse Replenishment tile?**
 It is shown only to System Manager, Super Admin and people with the US Replenishment Manager role.
 
-**Why is an item missing from Stockout Risk?**
-It has 30 or more days of cover, had no use in the window, is tube or acrylic (own tiles), or is set to Make to Order / Do Not Stock.
-
-**Why does Available differ from Stock on Hand?**
-Available subtracts what open orders have already promised.
-
-**Why is an item Critical when it has 25 days of cover?**
-Its Available is below zero: open orders already need more than we have.
-
-**Why is the suggested quantity bigger than I expected?**
-It restores the target cover (default 30 days) and is rounded up to the Minimum Order Qty.
-
-**Does the page know what I have already ordered?**
-No. It sees stock only when received. Check Last Received and ask the buyer.
-
-**Why does a material appear in the Total tile but not the order tile?**
-The Total tile adds all orders together. The order tile checks each order alone against full stock. See the example in section 4.10.
-
-**Why does a Short order exist when stock looks fine?**
-An older Ready order has already taken the stock.
-
-**Is rejected material counted?**
-Not in on-hand stock or in use. (The old Not In Stock tiles used to count it; they now exclude it too.)
-
 **Why is the trend arrow missing?**
-The change is under 25%, the window is 90 days or more, there is no 90-day history, or the item was issued fewer than 3 times in 90 days. If one big order caused the jump, you see "⚑ unexpected order" instead.
+The change is under 25%, there is no 90-day history, or the item was issued fewer than 3 times in 90 days. If one big order caused the jump, you see "⚑ unexpected order" instead.
+
+**What is a Lyfe BOM and how is it used?**
+It is our own recipe for a product: which components, how many, and the scrap allowance. For each open order, the page works out the material it needs. Details are in section 7.
+
+**What if a Lyfe BOM is wrong?**
+The system checks the last 90 days. If, over at least 20 orders, what the BOM predicted is far from what the factory really issued, that BOM is marked **Unreliable** and its numbers are not counted in Committed. Ask Engineering to correct it.
 
 **Can I change the 7 / 15 / 30 day levels?**
-Yes, an administrator can, in the briefing settings. The page and the nightly update use the same levels.
+Yes. An administrator can change them in the briefing settings. The page and the nightly update use the same levels.
 
 **How fresh are the numbers?**
 Most tiles are live when you load or refresh. The "Last updated" time is at the top.
+
+**Does the page send alerts?**
+It can, but the Slack alert is **off** by default. An administrator turns it on in Stock Forecast Settings ("Send Risk Alerts to Slack"). When on, it sends one message a day, after the nightly update, listing items that are Critical or High today and either moved to a worse level, are new, or stayed Critical for 7 days in a row. A message lists at most 15 items.
+
+The morning **Founder Briefing** has stock sections too (Projected Stockouts and Tube & Acrylic Stock), when the briefing is switched on.
+
+**What are the limits of the forecast?**
+- History starts in May 2026, so there is no seasonality.
+- The forecast does not know about promotions or new launches unless they are already open orders.
+- Incoming stock appears only when it is received. The page has no supplier or purchase order information.
+- BOM numbers are estimates. Unreliable BOMs are ignored.
+- Items never used do not appear, even if open orders need more than the stock.
+- Dead stock can be seasonal. With a few months of history, treat the dead list as a review list.
+- **Revenue exposed** is a risk figure, not proof an order is blocked. Use Buildable Orders for the real blocked value.
+
+**A tile says "Data unavailable".**
+Press **Retry** on the tile. If it keeps failing, tell the system team.
+
+**What should I do about a Critical item?**
+1. Open **View forecast detail** and expand the item.
+2. Check **Confidence**. If Low, the daily use may be unreliable.
+3. Check **Last Received** in the Restock List.
+4. Confirm with the buyer that nothing is already on the way.
+5. Order the **Suggested Qty**, or more if a big order is coming.
+
+**What should I do about an item with negative Available?**
+1. Open orders already need more than we hold, so it is Critical whatever the cover.
+2. Check how much is **BOM committed** and whether the BOM is reliable.
+3. In Material Not In Stock, tick the item to see which orders are affected.
+4. Buy at least the shortfall and tell Customer Support if ship dates will slip.
+
+**What should I do about a Short order?**
+1. In Buildable Orders, read the limiting parts.
+2. Check each part in the Restock List.
+3. Buy the missing items. Until then the order stays Short.
+
+**What should I do when a trend arrow shows "up"?**
+1. Look at how far it is above the 90-day average.
+2. Ask whether it is a one-off or lasting. A single outsized order shows "⚑ unexpected order" instead of an arrow, so an arrow means several orders over time.
+3. If lasting, raise the target cover or buy extra.
+
+---
+
+## 6. Glossary (A to Z)
+
+| Term | Plain meaning |
+|---|---|
+| **ABC class** | A label for how much of the volume an item makes up. Items are ranked by units issued in the last 90 days. A = the fast movers that make up the first 80%, B = the next 15% (up to 95%), C = the rest. It is worked out every Monday. It is used to report accuracy by group and to size safety stock. |
+| **Available** | Stock on Hand minus Committed. Below zero means orders already need more than we have. |
+| **Backlog-aware suggestion** | An optional way to work out Suggested Qty. It takes whichever is bigger, the committed amount or daily use × target cover, and subtracts what is on hand. Off by default. An administrator can turn it on in Stock Forecast Settings. |
+| **Base-level forecast** | A forecast for a base product (for example CMBR-200 Matte) with all its finishes added together. |
+| **Bias %** | Whether the forecast was consistently too high (positive) or too low (negative). |
+| **Blocked** | The dollar value of orders that truly cannot be fully built from current stock (Buildable Orders). |
+| **Child SKU** | A component SKU that belongs to a product. Used when a line has no BOM: the parts a previous order actually used. |
+| **Committed** | Material already promised to open orders that have not had their material issued yet. |
+| **Confidence** | How much history sits behind the daily-use number. **High** = the item moved in 8 or more of the last 13 weeks, **Medium** = 4 to 7 weeks, **Low** = under 4 weeks. |
+| **Consumption / Daily use** | How many units the factory takes from stock per day. By default this is a forecast rate worked out from the last 26 weeks of issues (the TSB method), with one-off big orders left out. If you choose your own Trailing days, it is the plain average over those days. |
+| **Days of cover** | How many days the stock on hand lasts at the daily use rate. |
+| **Dead stock** | Stock with no use in 90 days. |
+| **Error %** | How far off the forecast was overall. Lower is better. |
+| **Excess stock** | Stock above 3 times the target cover. |
+| **Finish** | The surface treatment of a product, for example polished brass. One product can have several finishes. |
+| **×N finishes** | One row standing for the same product in several finishes. Their stock, use and open orders are added together. |
+| **Forecast accuracy** | How close the forecast was to what was really used. Checked every Monday. |
+| **Lead time** | How long it takes from ordering to having the item. For safety stock, the page uses the item's lead time, or 14 days until a real one is measured. For the US warehouse, lead time is the factory time plus transit plus customs. |
+| **Live vs Snapshot** | **Live** means calculated right now. **Snapshot** means taken from last night's saved copy. |
+| **Lyfe BOM** | Our own recipe for a product: which components, how many of each, and the scrap allowance. |
+| **Minimum Order Qty (MOQ)** | The smallest pack or lot we can buy. The suggestion is rounded up to a whole multiple of it. |
+| **Nightly update (snapshot)** | A copy of every item's forecast saved at about 1:15 AM each night. |
+| **On hand** | What is physically on our shelves now, across all warehouses except Rejected Material. |
+| **One-off (unexpected) order** | One big issue that makes up at least half of an item's 90-day use and is at least 3 times the typical other issue. It is not treated as normal demand. |
+| **Reorder point** | The stock level at which we should order. It is daily use × lead time + safety stock. |
+| **Required Qty** | How much of an item the orders need in total. Example: 10 per order × 5 active orders = 50. |
+| **Revenue exposed** | The dollar value of open-order lines that contain an item at risk (Critical, High or Medium). A warning, not proof that the order cannot be built. |
+| **Risk level** | Critical, High, Medium or Low, based on days of cover. Default: Critical under 7 days, High 7 to under 15, Medium 15 to under 30, Low 30 or more. |
+| **Safety stock** | Extra stock we keep so a busy week does not leave us out. It is bigger for fast items and for items whose use jumps around. |
+| **Service level** | The share of the time we want to avoid running out. The US page uses 95%. A higher service level means more safety stock. |
+| **Stock position** | On the US page: stock at 1Click + stock on its way + stock in production. |
+| **Stock-out date** | Today plus the whole days of cover. The day we expect to hit zero if nothing is added. |
+| **Suggested (Order) Qty** | How many units to buy to get back to the target cover (plus safety stock). |
+| **Target cover** | How many days of stock we want to hold. Default 30. An item can have its own target. |
+| **Trailing days** | The number of past days used to work out daily use. Default 30. |
+| **Trend arrow** | Shown on Stockout Risk rows. "up +40%" means recent daily use is 40% higher than the 90-day average. |
+| **TSB** | The forecast method the page uses. It is made for items that sell now and then, with many empty weeks. It tracks how often the item sells and how much per sale, gives recent weeks the most weight and fades the forecast when an item stops selling. One-off big orders are left out of the rate. |
+| **Weeks of cover** | On the US page: stock at 1Click ÷ average weekly demand. |
+
+---
+
+## 7. For developers
+
+This section is for the people who maintain the dashboard. The full technical reference is `docs/stock-forecast-dashboard.md` in the `lh` repository. The US page is in `docs/us-replenishment-dashboard.md`. Every API is in `STOCK_FORECAST_API_DOCUMENTATION.md`. If this guide and the code disagree, the code is right.
+
+<details>
+<summary><strong>Data sources</strong></summary>
+
+- **Stock on hand:** stock balance of the item in every warehouse except the Rejected Material warehouse.
+- **Consumption:** Stock Ledger Entries of **Material Issue** stock entries (not cancelled, outflow only), excluding the Rejected warehouse. Transfers, receipts and reconciliations are not counted. Returns are netted for tube and acrylic.
+- **Committed:** open Lyfe Orders (not Cancelled, Merged, Split, Shipped, Completed or Return Successfully) whose material has not been issued. Lines marked as adjustments or with no Item are skipped.
+- **US replenishment:** US-destination Lyfe Order lines (demand), the 1Click stock snapshot, Stock Transfer Order 1Click lines (stock on its way) and Item Prices (value).
+</details>
+
+<details>
+<summary><strong>How each order's material is worked out (BOM logic)</strong></summary>
+
+In this order:
+1. The order's own component list, if it has one. It is used for the whole order.
+2. The Lyfe BOM of each line. Quantity per unit includes scrap. Only one level is opened.
+3. If a line has no BOM: what a previous Shipped or Completed order of the same product actually used (the child SKUs).
+4. Otherwise the item itself, 1 per unit sold.
+
+BOM example: kit K has component C1 × 2 with 5% scrap and component C2 × 1. Per kit, C1 = 2 × 1.05 = 2.1. An order of 3 kits needs C1 = 6.3 and C2 = 3.
+
+A BOM is marked **Unreliable** when, over at least 20 orders in the last 90 days, actual issues fall outside 70% to 130% of the prediction. With fewer than 20 orders the rating is **Unknown**.
+</details>
+
+<details>
+<summary><strong>Calculations (stock tiles)</strong></summary>
+
+- **Daily use:** the TSB forecast on the item's last 26 weekly totals, with one-off bulk orders removed. A custom Trailing days window, or an item whose TSB is 0, uses the plain average (units issued in the window ÷ days in the window).
+- **Days of cover** = stock on hand ÷ daily use. Zero or negative stock is Critical.
+- **Available** = on hand − committed. Below zero is always Critical.
+- **Suggested qty (default)** = daily use × target cover − available, rounded up to a whole number, then rounded up to the Minimum Order Qty if the item has one. Worked example: on hand 60, daily use 3, committed 28, so available 32. Target cover 30 days. Need = 3 × 30 − 32 = 58. With a minimum order of 25, the suggestion is 75.
+- **Backlog-aware (optional):** the bigger of committed and daily use × target cover, minus on hand. Same example: the bigger of 28 and 90 is 90, minus 60 on hand = 30.
+- **Safety stock** = z × spread of weekly use (last 13 weeks, quiet weeks count as 0) × √(lead time ÷ 7). z depends on the ABC class: A 2.05 (98%), B 1.65, C 1.28. Unclassified items use B. It needs 4 or more weeks with use, otherwise it is 0, and it is capped at 30 days of use.
+- **Reorder point** = daily use × lead time + safety stock.
+- **ABC class:** items are ranked by units issued in the last 90 days. A is the first 80% of units, B up to 95%, C the rest. Items you lock in the Item are skipped.
+- **Target cover** = the item's own Target Cover (days) if set, otherwise the Stock Forecast Settings value (default 30).
+- **Tube:** used = rod feet issued − returned + cut pieces issued × their length. Order rods = (keep − on hand) ÷ 100, rounded up.
+- **Acrylic:** on hand = sticks × length in inches. Demand = whole sticks issued minus returned, in inches.
+- **Buildable Orders:** oldest order date first. Only Ready orders take stock.
+- **Forecast vs Actual:** forecast for a week = units issued in the 30 days before the week ÷ 30 × 7. It rebuilds and scores the older 30-day-average rule, so it measures that method, not TSB.
+- **Base-level Forecast:** reads Material Issue entries of the last 26 weeks, groups finished SKUs by base product and base state, adds open-order demand and stock.
+</details>
+
+<details>
+<summary><strong>Calculations (US Warehouse Replenishment)</strong></summary>
+
+- **Weekly demand:** units on US-destination Lyfe Order lines per Monday-start week, whichever warehouse shipped them. Cancelled, Merged and Split orders and stock-transfer orders are left out. The current incomplete week is not counted. Weeks are zero-filled from the item's first sale.
+- **Weighted average:** newest 4 weeks 50%, weeks 5 to 12 30%, weeks 13 to 26 20%. A band with no weeks yet is skipped and the others re-weighted.
+- **Lead time (weeks)** = factory working days ÷ working days per week + transit weeks + customs weeks. Defaults: 3 ÷ 6 + 3 + 1 = 4.5.
+- **Safety stock** = Z × standard deviation of weekly demand × √lead time. Z comes from the service level (95% = 1.645).
+- **Reorder point** = average × lead time + safety stock. **Target** = reorder point + average × coverage weeks (default 4).
+- **Stock position** = 1Click available + in transit + in production. In production is 0 for now.
+- **Suggested qty** = max(0, target − position), rounded up to whole units, or to Minimum Order Qty multiples when set. Overstock suggests 0.
+- **Stock on its way** = Stock Transfer Order 1Click lines whose Lyfe Order is not yet delivered to the US warehouse.
+- **Suggested value** = suggested qty × Item Price from the price list set in US Replenishment Settings (default Standard Selling).
+- Every number is set in **US Replenishment Settings**.
+</details>
+
+<details>
+<summary><strong>Refresh timing and scheduled jobs</strong></summary>
+
+| When | What runs |
+|---|---|
+| On page load or Refresh | Live tiles read the database. Stockout rows are cached for about 45 seconds. US rows are cached for 60 seconds. |
+| Every night, about 1:15 AM | **Nightly snapshot** of every item's forecast. Used for history, alerts, the accuracy check, and the Stockout and Category tiles if "Stockout Tile Reads Snapshot" is on (off by default). If it is missing or older than a day, Stock Data Quality shows a red line. A custom Trailing days is always live. |
+| Every Monday, about 2:30 AM | Item ABC classes, last week's forecast accuracy (the saved forecast from about a week ago against what was issued), measured lead times from Lyfe POs, and the US replenishment weekly log. |
+| Hourly check, every 4 hours by default | **1Click stock sync** into the US stock snapshot. A failed sync keeps the last good snapshot and shows a warning. |
+| Once a day, after the nightly update | Optional Slack risk alert (off by default). |
+
+Who can see what: Stock Forecast endpoints use the `stock_forecast` role set (System Manager, Super Admin, Factory). The US tile and page use the `us_replenishment` role set (System Manager, Super Admin, US Replenishment Manager).
+</details>
+
+---
+
+## Screenshot checklist
+
+| # | File name | Page / tab | What to capture | Done |
+|---|---|---|---|---|
+| 1 | `images/stock-forecast/01-overview.png` | Stock Forecast, Act now | Whole page top: cards, filters, tabs, first tiles | ☐ |
+| 2 | `images/stock-forecast/02-summary-cards.png` | Top of page | Four cards with numbers | ☐ |
+| 3 | `images/stock-forecast/03-restock-list.png` | Act now | Restock List with Why and Last Received | ☐ |
+| 4 | `images/stock-forecast/04-restock-list-days.png` | Act now | Restock List funnel open with 14 days | ☐ |
+| 5 | `images/stock-forecast/05-stockout-risk.png` | Act now | Stockout Risk rows, badges, trend arrow | ☐ |
+| 6 | `images/stock-forecast/06-stockout-risk-detail.png` | Act now | View forecast detail with an expanded row | ☐ |
+| 7 | `images/stock-forecast/07-us-tile.png` | Act now | US Warehouse Replenishment tile | ☐ |
+| 8 | `images/stock-forecast/08-us-page.png` | `/app/us-replenishment` | Full page: tiles, filters, table, buttons | ☐ |
+| 9 | `images/stock-forecast/09-us-item-why.png` | `/app/us-replenishment` | Item detail window with the step-by-step numbers | ☐ |
+| 10 | `images/stock-forecast/10-draft-transfer.png` | Stock Transfer Order 1Click | Draft with items and Create Lyfe Order button | ☐ |
+| 11 | `images/stock-forecast/11-not-in-stock-total.png` | Act now | Material Not In Stock - Total Required | ☐ |
+| 12 | `images/stock-forecast/12-active-orders-not-in-stock.png` | Act now | Active Orders - Material Not In Stock (blur names) | ☐ |
+| 13 | `images/stock-forecast/13-demand-trends.png` | Demand & forecast | Demand Trends with Orders column | ☐ |
+| 14 | `images/stock-forecast/14-demand-forecast.png` | Demand & forecast | Demand Forecast with a red "left after" | ☐ |
+| 15 | `images/stock-forecast/15-base-forecast.png` | Demand & forecast | Base-level Forecast rows | ☐ |
+| 16 | `images/stock-forecast/16-category-forecast.png` | Demand & forecast | Category bars and toggle | ☐ |
+| 17 | `images/stock-forecast/17-category-drilldown.png` | Demand & forecast | Sub-group or item list after clicking a bar | ☐ |
+| 18 | `images/stock-forecast/18-material-usage.png` | Demand & forecast | Material Usage list | ☐ |
+| 19 | `images/stock-forecast/19-forecast-vs-actual.png` | Demand & forecast | Summary, chart and Biggest misses | ☐ |
+| 20 | `images/stock-forecast/20-tube-stock.png` | Materials | Tube Stock card | ☐ |
+| 21 | `images/stock-forecast/21-tube-stock-details.png` | Materials | Tube Stock details popup | ☐ |
+| 22 | `images/stock-forecast/22-acrylic-stock.png` | Materials | Acrylic Rod Stock card | ☐ |
+| 23 | `images/stock-forecast/23-buildable-orders.png` | Materials | Buildable Orders (blur names and values) | ☐ |
+| 24 | `images/stock-forecast/24-data-quality.png` | Data issues card | Checklist with one line opened | ☐ |
 
 ---
 
