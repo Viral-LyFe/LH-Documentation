@@ -106,7 +106,8 @@ Click the card that worries you. The page opens the right tab and jumps to that 
 
 **Screenshot 2: Summary cards**
 
-<img width="915" height="722" alt="02-summary-cards" src="https://github.com/user-attachments/assets/5180e94b-4d69-49cc-9a8d-bfa38ea6fff1" />
+<img width="915" height="722" alt="02-summary-cards" src="https://github.com/user-attachments/assets/8cbdc8b5-acb2-4e8e-bffb-9f2d526d064d" />
+
 
 
 
@@ -245,19 +246,22 @@ An item sells 10 a week. The shipment takes about 4.5 weeks (3 working days at t
 
 **Screenshot 7: US Warehouse Replenishment tile**
 
-<img width="915" height="722" alt="07-us-replenishment-tile" src="https://github.com/user-attachments/assets/32752b42-58ac-4b0b-be46-fe420e16e409" />
+<img width="915" height="722" alt="07-us-replenishment-tile" src="https://github.com/user-attachments/assets/e8ce0ab3-7df8-4f7c-9a7c-0272ca211307" />
+
 
 
 
 **Screenshot 8: US Warehouse Replenishment full page**
 
-<img width="915" height="722" alt="08-us-replenishment-page" src="https://github.com/user-attachments/assets/c71bca38-1aae-4f59-84e2-a92ce51eb1bf" />
+<img width="915" height="722" alt="08-us-replenishment-page" src="https://github.com/user-attachments/assets/8adcd751-9efd-4aa2-880b-fce07f9f5c40" />
+
 
 
 
 **Screenshot 9: US page, item detail ("why")**
 
-<img width="915" height="722" alt="09-us-item-detail" src="https://github.com/user-attachments/assets/463e50f7-cc34-41ae-a16b-a2e533db7a5e" />
+<img width="915" height="722" alt="09-us-item-detail" src="https://github.com/user-attachments/assets/258472bf-106b-40f3-b9ee-ba34f4490cd7" />
+
 
 
 
@@ -467,7 +471,8 @@ Brass tube: 438 ft issued in 30 days, 10 ft returned. The tile shows the net amo
 
 **Screenshot 18: Material Usage**
 
-<img width="915" height="722" alt="18-material-usage" src="https://github.com/user-attachments/assets/abf689d5-acd7-420a-9cbc-fcecd9475bdd" />
+<img width="915" height="722" alt="18-material-usage" src="https://github.com/user-attachments/assets/0e229b8e-2998-4f35-820d-aec97bd86d5a" />
+
 
 
 
@@ -636,7 +641,8 @@ A checklist of problems that make the forecast wrong. Each line shows a count, o
 
 **Screenshot 24: Stock Data Quality**
 
-<img width="915" height="722" alt="24-stock-data-quality" src="https://github.com/user-attachments/assets/e576e64e-b7dc-4157-aac5-20cd3cc1c34e" />
+<img width="915" height="722" alt="24-stock-data-quality" src="https://github.com/user-attachments/assets/98ea4ea5-583c-4698-916e-9a56883d75b2" />
+
 
 
 
