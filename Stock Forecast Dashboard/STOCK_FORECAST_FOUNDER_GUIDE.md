@@ -2,13 +2,7 @@
 
 *Last updated: 9 Nov 2026*
 
-> 📸 **Screenshot 1: Stock Forecast page overview**
-> - **Where to take it:** Stock Forecast page, **Act now** tab, no filters, scrolled to the top.
-> - **What must be visible:** the four summary cards, the Category and Item Code boxes, the three tabs, and the first two tiles with real data.
-> - **Highlight:** draw an arrow to the three tabs and a circle around the four summary cards.
-> - **File name:** `images/stock-forecast/01-overview.png`
->
-> `![Screenshot 1: Stock Forecast page overview](images/stock-forecast/01-overview.png)`
+<img width="1534" height="734" alt="image" src="https://github.com/user-attachments/assets/2ceb39a1-cf23-4aa8-8b6d-0996421b22ba" />
 
 ---
 
