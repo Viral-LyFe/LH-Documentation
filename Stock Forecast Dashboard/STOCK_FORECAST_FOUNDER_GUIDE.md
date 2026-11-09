@@ -104,13 +104,11 @@ Click the card that worries you. The page opens the right tab and jumps to that 
 **Example**
 "Orders short now: 6 · $4,200. 2 ready." Click it. Buildable Orders opens and shows which six orders lack material.
 
-> 📸 **Screenshot 2: Summary cards**
-> - **Where to take it:** top of the Stock Forecast page, no filters.
-> - **What must be visible:** all four cards with numbers, and their colours.
-> - **Highlight:** circle the "Data issues" card.
-> - **File name:** `images/stock-forecast/02-summary-cards.png`
->
-> `![Screenshot 2: Summary cards](images/stock-forecast/02-summary-cards.png)`
+**Screenshot 2: Summary cards**
+
+<img width="915" height="666" alt="02-summary-cards" src="https://github.com/user-attachments/assets/2b676248-f97f-4a4e-9852-d4801d55e7e9" />
+
+
 
 ---
 
@@ -137,21 +135,15 @@ What we need to buy, and which items have enough stock for the next N days. It i
 **Example**
 An item uses 1.5 a day. For 14 days it needs 21. We hold 32, but 20 are promised to open orders, so only 12 are free. It is short by 9, so it goes on the list.
 
-> 📸 **Screenshot 3: Restock List**
-> - **Where to take it:** Act now tab, Restock List tile, days left empty.
-> - **What must be visible:** the summary line, at least five rows, and the Why and Last Received columns.
-> - **Highlight:** circle one **Why** sentence.
-> - **File name:** `images/stock-forecast/03-restock-list.png`
->
-> `![Screenshot 3: Restock List](images/stock-forecast/03-restock-list.png)`
+**Screenshot 3: Restock List**
 
-> 📸 **Screenshot 4: Restock List, cover for the next N days**
-> - **Where to take it:** Restock List tile, funnel icon open, 14 typed in the days box.
-> - **What must be visible:** the filter box with 14, and the updated summary line.
-> - **Highlight:** arrow to the days box.
-> - **File name:** `images/stock-forecast/04-restock-list-days.png`
->
-> `![Screenshot 4: Restock List days filter](images/stock-forecast/04-restock-list-days.png)`
+<img width="915" height="666" alt="03-restock-list" src="https://github.com/user-attachments/assets/bbcea564-1fe7-423a-913e-9884d43d7939" />
+
+
+**Screenshot 4: Restock List, cover for the next N days**
+
+<img width="915" height="666" alt="04-restock-list-days" src="https://github.com/user-attachments/assets/fa8f474a-3873-4665-a3f6-67bc58ac9f68" />
+
 
 ---
 
@@ -192,21 +184,15 @@ Every item that was used recently and has **under 30 days** of stock left. Items
 **Example**
 CMBR-200-PB: 60 on hand, forecast daily use 3. Cover = 60 ÷ 3 = **20 days**. That is Medium. The stock-out date is today plus 20 days.
 
-> 📸 **Screenshot 5: Stockout Risk**
-> - **Where to take it:** Act now tab, Stockout Risk tile.
-> - **What must be visible:** at least one Critical and one High row, a trend arrow, the footer counts and the Live or Snapshot label.
-> - **Highlight:** circle the risk badge and the "exposes $X" text. Blur nothing (no customer data here).
-> - **File name:** `images/stock-forecast/05-stockout-risk.png`
->
-> `![Screenshot 5: Stockout Risk](images/stock-forecast/05-stockout-risk.png)`
+**Screenshot 5: Stockout Risk**
 
-> 📸 **Screenshot 6: Stockout Risk, item detail**
-> - **Where to take it:** click **View forecast detail**, then click one row to expand it.
-> - **What must be visible:** the search box, risk filter, the expanded row with daily use, committed, confidence, Where used and the Go to links.
-> - **Highlight:** arrow to **Where used**.
-> - **File name:** `images/stock-forecast/06-stockout-risk-detail.png`
->
-> `![Screenshot 6: Stockout Risk detail](images/stock-forecast/06-stockout-risk-detail.png)`
+<img width="915" height="666" alt="05-stockout-risk" src="https://github.com/user-attachments/assets/3f09b941-9b75-4226-99ac-104f0df16417" />
+
+
+**Screenshot 6: Stockout Risk, item detail**
+
+<img width="915" height="666" alt="06-stockout-risk-detail" src="https://github.com/user-attachments/assets/d225be08-faf9-451d-83ac-4ed1d5c1602f" />
+
 
 ---
 
@@ -248,29 +234,20 @@ Which items we should send to the 1Click warehouse in the US, and how many. US c
 **Example**
 An item sells 10 a week. The shipment takes about 4.5 weeks (3 working days at the factory, 3 weeks of transit, 1 week for customs and receiving). So the reorder point is 45. We want 4 more weeks of cover, so the target is 85. If 10 are at 1Click and none are on the way, the suggestion is 75. If 75 are already on the way, the suggestion is 0.
 
-> 📸 **Screenshot 7: US Warehouse Replenishment tile**
-> - **Where to take it:** Act now tab, US Warehouse Replenishment tile (needs the US Replenishment Manager role).
-> - **What must be visible:** the counts line, the sync time, the table rows and the "Open the full page" link.
-> - **Highlight:** circle the last 1Click sync time.
-> - **File name:** `images/stock-forecast/07-us-tile.png`
->
-> `![Screenshot 7: US tile](images/stock-forecast/07-us-tile.png)`
+**Screenshot 7: US Warehouse Replenishment tile**
 
-> 📸 **Screenshot 8: US Warehouse Replenishment full page**
-> - **Where to take it:** `/app/us-replenishment`, no filters.
-> - **What must be visible:** the tiles on top, the filters, the table with tick boxes, quantity boxes and status pills, and the three buttons.
-> - **Highlight:** arrow to the Suggested Qty box and to **Add selected to draft Stock Transfer**.
-> - **File name:** `images/stock-forecast/08-us-page.png`
->
-> `![Screenshot 8: US page](images/stock-forecast/08-us-page.png)`
+<img width="915" height="666" alt="07-us-replenishment-tile" src="https://github.com/user-attachments/assets/9fdf4e26-82c9-4f16-b83e-a6484bf49338" />
 
-> 📸 **Screenshot 9: US page, item detail ("why")**
-> - **Where to take it:** click an item code on the full page.
-> - **What must be visible:** the step-by-step numbers, the weekly demand chart and the stock history chart.
-> - **Highlight:** circle the "Suggested qty" line.
-> - **File name:** `images/stock-forecast/09-us-item-why.png`
->
-> `![Screenshot 9: US item detail](images/stock-forecast/09-us-item-why.png)`
+
+**Screenshot 8: US Warehouse Replenishment full page**
+
+<img width="1536" height="674" alt="08-us-replenishment-page" src="https://github.com/user-attachments/assets/6ff2f4a2-11f8-49b0-a3ff-a6eddcebe30e" />
+
+
+**Screenshot 9: US page, item detail ("why")**
+
+<img width="1536" height="674" alt="09-us-item-detail" src="https://github.com/user-attachments/assets/436bccd8-a628-4a6b-873f-21c490877b74" />
+
 
 > 📸 **Screenshot 10: Draft Stock Transfer Order**
 > - **Where to take it:** the draft opened after pressing **Add selected to draft Stock Transfer**.
@@ -300,13 +277,10 @@ For everything we still have to build, which materials are short in total. It ad
 **Example**
 Item Y: 10 in stock. Two orders each need 6. Total required = 12. Missing = **2**.
 
-> 📸 **Screenshot 11: Material Not In Stock - Total Required**
-> - **Where to take it:** Act now tab, this tile.
-> - **What must be visible:** the columns, at least four rows and a tick box.
-> - **Highlight:** circle the Missing Qty column.
-> - **File name:** `images/stock-forecast/11-not-in-stock-total.png`
->
-> `![Screenshot 11: Not in stock total](images/stock-forecast/11-not-in-stock-total.png)`
+**Screenshot 11: Material Not In Stock - Total Required**
+
+<img width="915" height="666" alt="11-material-not-in-stock-total" src="https://github.com/user-attachments/assets/949cd790-cd8e-4acc-a874-6044221398b8" />
+
 
 ---
 
@@ -325,13 +299,10 @@ Use the tick box in the Total tile to see which orders are behind a shortage. Te
 **Example**
 Item Y: 10 in stock. Two orders need 6 each. In **this** tile neither order appears, because 6 is not more than 10. In the **Total** tile, Y appears with 2 missing. In **Buildable Orders**, the older order is Ready and the second is Short.
 
-> 📸 **Screenshot 12: Active Orders - Material Not In Stock**
-> - **Where to take it:** Act now tab, this tile, after ticking one item in the Total tile.
-> - **What must be visible:** the filtered rows and the columns.
-> - **Highlight:** blur customer names if any are shown. Circle the Missing Qty column.
-> - **File name:** `images/stock-forecast/12-active-orders-not-in-stock.png`
->
-> `![Screenshot 12: Active orders not in stock](images/stock-forecast/12-active-orders-not-in-stock.png)`
+**Screenshot 12: Active Orders - Material Not In Stock**
+
+<img width="915" height="666" alt="12-active-orders-material" src="https://github.com/user-attachments/assets/12314f36-ecc6-407e-99ea-dd33d55feaae" />
+
 
 ---
 
@@ -360,13 +331,10 @@ Spot demand picking up early and check that rising items have enough stock. See 
 **Example**
 UHRB-150: 50 used in the last 30 days, against 6 in the 30 days before. That is ↑ +733%, with 4 days of stock left. Check it now.
 
-> 📸 **Screenshot 13: Demand Trends**
-> - **Where to take it:** Demand & forecast tab, Demand Trends tile, 30 days, top 10.
-> - **What must be visible:** the category chart, the rising-items table with the Orders column and the trend lines.
-> - **Highlight:** circle the Orders column and one ↑ arrow.
-> - **File name:** `images/stock-forecast/13-demand-trends.png`
->
-> `![Screenshot 13: Demand Trends](images/stock-forecast/13-demand-trends.png)`
+**Screenshot 13: Demand Trends**
+
+<img width="915" height="666" alt="13-demand-trends" src="https://github.com/user-attachments/assets/22dba793-4474-4806-b914-f581aeef12ff" />
+
 
 ---
 
@@ -395,13 +363,10 @@ Use it to plan ahead for the next 30 or 60 days. Items that run short are ordere
 - Expected: 231 + 16 = 247.
 - Left after 30 days: 51 on hand − 247 = **−196** (red). It will run short.
 
-> 📸 **Screenshot 14: Demand Forecast**
-> - **Where to take it:** Demand & forecast tab, Demand Forecast tile, 30 days.
-> - **What must be visible:** the summary line, rows with the grey and dashed lines, and at least one red "left after" number.
-> - **Highlight:** circle a red negative number.
-> - **File name:** `images/stock-forecast/14-demand-forecast.png`
->
-> `![Screenshot 14: Demand Forecast](images/stock-forecast/14-demand-forecast.png)`
+**Screenshot 14: Demand Forecast**
+
+<img width="915" height="666" alt="14-demand-forecast" src="https://github.com/user-attachments/assets/591812de-16c5-4c4f-a2e1-e96a0d4eab87" />
+
 
 ---
 
@@ -424,13 +389,10 @@ Across all groups on 6 Nov 2026, combined safety stock was 773 units. Keeping sa
 
 **Choose how many rows:** use the funnel icon (default 25).
 
-> 📸 **Screenshot 15: Base-level Forecast**
-> - **Where to take it:** Demand & forecast tab, Base-level Forecast tile.
-> - **What must be visible:** rows with Finishes, Days left, Safety stock and Order qty.
-> - **Highlight:** circle the Finishes column.
-> - **File name:** `images/stock-forecast/15-base-forecast.png`
->
-> `![Screenshot 15: Base-level Forecast](images/stock-forecast/15-base-forecast.png)`
+**Screenshot 15: Base-level Forecast**
+
+<img width="1536" height="674" alt="15-base-level-forecast" src="https://github.com/user-attachments/assets/a766b41e-0c95-4b03-993e-a772f8946b3f" />
+
 
 ---
 
@@ -455,21 +417,15 @@ One bar per top-level category, split into Critical, High, Medium and Low item c
 **Example**
 "Railings" shows 12 Critical items. Click the bar, then a sub-group, and you see which items need buying.
 
-> 📸 **Screenshot 16: Category-wise Stock Forecast**
-> - **Where to take it:** Demand & forecast tab, Category tile.
-> - **What must be visible:** at least five bars with the four colours and the toggle.
-> - **Highlight:** circle the toggle and one red segment.
-> - **File name:** `images/stock-forecast/16-category-forecast.png`
->
-> `![Screenshot 16: Category forecast](images/stock-forecast/16-category-forecast.png)`
+**Screenshot 16: Category-wise Stock Forecast**
 
-> 📸 **Screenshot 17: Category drill-down**
-> - **Where to take it:** click one bar, then one sub-group.
-> - **What must be visible:** the sub-group list or item list with the search box and risk filter.
-> - **Highlight:** arrow to the Back link.
-> - **File name:** `images/stock-forecast/17-category-drilldown.png`
->
-> `![Screenshot 17: Category drill-down](images/stock-forecast/17-category-drilldown.png)`
+<img width="1536" height="674" alt="16-category-forecast" src="https://github.com/user-attachments/assets/df2ec6aa-628c-4326-989a-68b00c95fc32" />
+
+
+**Screenshot 17: Category drill-down**
+
+<img width="1536" height="674" alt="17-category-drilldown" src="https://github.com/user-attachments/assets/34c36b24-9c9a-4ae5-9a9a-e0b3aa0d041a" />
+
 
 ---
 
@@ -490,13 +446,10 @@ Use it to see where the factory's material is really going. Check that the bigge
 **Example**
 Brass tube: 438 ft issued in 30 days, 10 ft returned. The tile shows the net amount.
 
-> 📸 **Screenshot 18: Material Usage**
-> - **Where to take it:** Demand & forecast tab, Material Usage tile.
-> - **What must be visible:** the scroll box with at least eight rows.
-> - **Highlight:** circle the top row.
-> - **File name:** `images/stock-forecast/18-material-usage.png`
->
-> `![Screenshot 18: Material Usage](images/stock-forecast/18-material-usage.png)`
+**Screenshot 18: Material Usage**
+
+<img width="1536" height="674" alt="18-material-usage" src="https://github.com/user-attachments/assets/de2b6c8d-640f-4e19-af0f-6afa4e5f791b" />
+
 
 ---
 
@@ -520,13 +473,10 @@ Use it to judge how much to trust the forecast. A high "off by" figure means tre
 **Example**
 Last 12 weeks: forecast 5,075 against 5,407 used. The total is 6.1% low, but product by product it is 93.8% off.
 
-> 📸 **Screenshot 19: Forecast vs Actual**
-> - **Where to take it:** Demand & forecast tab, Forecast vs Actual tile, 12 weeks.
-> - **What must be visible:** the plain-words summary, the bar and line chart and the Biggest misses list.
-> - **Highlight:** circle the "In total" and "Product by product" sentences.
-> - **File name:** `images/stock-forecast/19-forecast-vs-actual.png`
->
-> `![Screenshot 19: Forecast vs Actual](images/stock-forecast/19-forecast-vs-actual.png)`
+**Screenshot 19: Forecast vs Actual**
+
+<img width="1536" height="674" alt="19-forecast-vs-actual" src="https://github.com/user-attachments/assets/ebfd34ac-92c4-4d43-a04f-dfad48f3b9f0" />
+
 
 ---
 
@@ -555,21 +505,15 @@ Order the rods shown in the **Order ft / rods** column. Do a physical stick coun
 **Example**
 A brass tube has 79.6 ft of rod plus 5 pre-cut pieces of 4 ft (20 ft), so **99.6 ft** on hand. Used in 30 days: 400 ft − 10 ft returned + 12 pieces × 4 ft = **438 ft**. Per day = 14.6 ft. Cover = 99.6 ÷ 14.6 = **6.8 days** (Critical). Keep = 438 ft. Order = 438 − 99.6 = 338.4 ft, which is 4 rods rounded up.
 
-> 📸 **Screenshot 20: Tube Stock**
-> - **Where to take it:** Materials tab, Tube Stock tile.
-> - **What must be visible:** the 5 urgent rows with all columns.
-> - **Highlight:** circle the Order ft / rods column.
-> - **File name:** `images/stock-forecast/20-tube-stock.png`
->
-> `![Screenshot 20: Tube Stock](images/stock-forecast/20-tube-stock.png)`
+**Screenshot 20: Tube Stock**
 
-> 📸 **Screenshot 21: Tube Stock details**
-> - **Where to take it:** click "show details" on the Tube Stock tile.
-> - **What must be visible:** the popup with one row per pipe.
-> - **Highlight:** circle the "(cut pieces)" row if shown.
-> - **File name:** `images/stock-forecast/21-tube-stock-details.png`
->
-> `![Screenshot 21: Tube details](images/stock-forecast/21-tube-stock-details.png)`
+<img width="1536" height="674" alt="20-tube-stock" src="https://github.com/user-attachments/assets/df96ffb1-4c4c-4f7c-8c51-6c04dab40b61" />
+
+
+**Screenshot 21: Tube Stock details**
+
+<img width="1536" height="674" alt="21-tube-stock-details" src="https://github.com/user-attachments/assets/45d9c162-500c-48f8-8887-00066999e3b5" />
+
 
 ---
 
@@ -593,13 +537,10 @@ Order long sticks for diameters that are heavily used. Book unused remainders as
 **Example**
 1.5" rods, over 48": 10 sticks of 60" + 5 sticks of 72" = 600 + 360 = **960 inches**. Used in 30 days: (6 − 1) × 60 + 2 × 72 = **444 inches**. Per day = 14.8. Cover = 960 ÷ 14.8 = **64.9 days** (Low).
 
-> 📸 **Screenshot 22: Acrylic Rod Stock**
-> - **Where to take it:** Materials tab, Acrylic Rod Stock tile.
-> - **What must be visible:** the five rows with diameter, length class, inches and days left.
-> - **Highlight:** circle the length class column.
-> - **File name:** `images/stock-forecast/22-acrylic-stock.png`
->
-> `![Screenshot 22: Acrylic Rod Stock](images/stock-forecast/22-acrylic-stock.png)`
+**Screenshot 22: Acrylic Rod Stock**
+
+<img width="1536" height="674" alt="22-acrylic-rod-stock" src="https://github.com/user-attachments/assets/791edd29-2126-4ed9-a189-fc4771cc270a" />
+
 
 ---
 
@@ -628,13 +569,10 @@ Read the limiting parts of each Short order. Check them in the Restock List and 
 **Example**
 Item X: 10 in stock. Order A (older) needs 6 and is **Ready**. It takes 6, leaving 4. Order B needs 6 but only 4 are left, so B is **Short**: it needs 6, has 4 and is missing 2.
 
-> 📸 **Screenshot 23: Buildable Orders**
-> - **Where to take it:** Materials tab, Buildable Orders tile.
-> - **What must be visible:** the summary line and rows with Ready, Partial and Short status and their limiting parts.
-> - **Highlight:** blur customer names and order values if shown. Circle the **Blocked** figure.
-> - **File name:** `images/stock-forecast/23-buildable-orders.png`
->
-> `![Screenshot 23: Buildable Orders](images/stock-forecast/23-buildable-orders.png)`
+**Screenshot 23: Buildable Orders**
+
+<img width="1536" height="674" alt="23-buildable-orders" src="https://github.com/user-attachments/assets/24a9660f-9c21-414c-88fd-7e317503255f" />
+
 
 ---
 
@@ -670,13 +608,10 @@ A checklist of problems that make the forecast wrong. Each line shows a count, o
 **Example**
 "Open order lines without an Item: 7". Click it, open each order and link the correct item. Next day the line shows OK.
 
-> 📸 **Screenshot 24: Stock Data Quality**
-> - **Where to take it:** click the **Data issues** card so the checklist opens.
-> - **What must be visible:** the checklist lines with counts, and one line opened to show "Where to fix" and the record links.
-> - **Highlight:** blur any customer or order details in the record links.
-> - **File name:** `images/stock-forecast/24-data-quality.png`
->
-> `![Screenshot 24: Stock Data Quality](images/stock-forecast/24-data-quality.png)`
+**Screenshot 24: Stock Data Quality**
+
+<img width="1536" height="674" alt="24-stock-data-quality" src="https://github.com/user-attachments/assets/266cd868-3f90-4711-a55e-11124a7ac41c" />
+
 
 ---
 
@@ -915,30 +850,30 @@ Who can see what: Stock Forecast endpoints use the `stock_forecast` role set (Sy
 
 | # | File name | Page / tab | What to capture | Done |
 |---|---|---|---|---|
-| 1 | `images/stock-forecast/01-overview.png` | Stock Forecast, Act now | Whole page top: cards, filters, tabs, first tiles | ☐ |
-| 2 | `images/stock-forecast/02-summary-cards.png` | Top of page | Four cards with numbers | ☐ |
-| 3 | `images/stock-forecast/03-restock-list.png` | Act now | Restock List with Why and Last Received | ☐ |
-| 4 | `images/stock-forecast/04-restock-list-days.png` | Act now | Restock List funnel open with 14 days | ☐ |
-| 5 | `images/stock-forecast/05-stockout-risk.png` | Act now | Stockout Risk rows, badges, trend arrow | ☐ |
-| 6 | `images/stock-forecast/06-stockout-risk-detail.png` | Act now | View forecast detail with an expanded row | ☐ |
-| 7 | `images/stock-forecast/07-us-tile.png` | Act now | US Warehouse Replenishment tile | ☐ |
-| 8 | `images/stock-forecast/08-us-page.png` | `/app/us-replenishment` | Full page: tiles, filters, table, buttons | ☐ |
-| 9 | `images/stock-forecast/09-us-item-why.png` | `/app/us-replenishment` | Item detail window with the step-by-step numbers | ☐ |
+| 1 | `images/stock-forecast/01-overview.png` | Stock Forecast, Act now | Whole page top: cards, filters, tabs, first tiles | ☑ |
+| 2 | `images/stock-forecast/02-summary-cards.png` | Top of page | Four cards with numbers | ☑ |
+| 3 | `images/stock-forecast/03-restock-list.png` | Act now | Restock List with Why and Last Received | ☑ |
+| 4 | `images/stock-forecast/04-restock-list-days.png` | Act now | Restock List funnel open with 14 days | ☑ |
+| 5 | `images/stock-forecast/05-stockout-risk.png` | Act now | Stockout Risk rows, badges, trend arrow | ☑ |
+| 6 | `images/stock-forecast/06-stockout-risk-detail.png` | Act now | View forecast detail with an expanded row | ☑ |
+| 7 | `images/stock-forecast/07-us-tile.png` | Act now | US Warehouse Replenishment tile | ☑ |
+| 8 | `images/stock-forecast/08-us-page.png` | `/app/us-replenishment` | Full page: tiles, filters, table, buttons | ☑ |
+| 9 | `images/stock-forecast/09-us-item-why.png` | `/app/us-replenishment` | Item detail window with the step-by-step numbers | ☑ |
 | 10 | `images/stock-forecast/10-draft-transfer.png` | Stock Transfer Order 1Click | Draft with items and Create Lyfe Order button | ☐ |
-| 11 | `images/stock-forecast/11-not-in-stock-total.png` | Act now | Material Not In Stock - Total Required | ☐ |
-| 12 | `images/stock-forecast/12-active-orders-not-in-stock.png` | Act now | Active Orders - Material Not In Stock (blur names) | ☐ |
-| 13 | `images/stock-forecast/13-demand-trends.png` | Demand & forecast | Demand Trends with Orders column | ☐ |
-| 14 | `images/stock-forecast/14-demand-forecast.png` | Demand & forecast | Demand Forecast with a red "left after" | ☐ |
-| 15 | `images/stock-forecast/15-base-forecast.png` | Demand & forecast | Base-level Forecast rows | ☐ |
-| 16 | `images/stock-forecast/16-category-forecast.png` | Demand & forecast | Category bars and toggle | ☐ |
-| 17 | `images/stock-forecast/17-category-drilldown.png` | Demand & forecast | Sub-group or item list after clicking a bar | ☐ |
-| 18 | `images/stock-forecast/18-material-usage.png` | Demand & forecast | Material Usage list | ☐ |
-| 19 | `images/stock-forecast/19-forecast-vs-actual.png` | Demand & forecast | Summary, chart and Biggest misses | ☐ |
-| 20 | `images/stock-forecast/20-tube-stock.png` | Materials | Tube Stock card | ☐ |
-| 21 | `images/stock-forecast/21-tube-stock-details.png` | Materials | Tube Stock details popup | ☐ |
-| 22 | `images/stock-forecast/22-acrylic-stock.png` | Materials | Acrylic Rod Stock card | ☐ |
-| 23 | `images/stock-forecast/23-buildable-orders.png` | Materials | Buildable Orders (blur names and values) | ☐ |
-| 24 | `images/stock-forecast/24-data-quality.png` | Data issues card | Checklist with one line opened | ☐ |
+| 11 | `images/stock-forecast/11-not-in-stock-total.png` | Act now | Material Not In Stock - Total Required | ☑ |
+| 12 | `images/stock-forecast/12-active-orders-not-in-stock.png` | Act now | Active Orders - Material Not In Stock (blur names) | ☑ |
+| 13 | `images/stock-forecast/13-demand-trends.png` | Demand & forecast | Demand Trends with Orders column | ☑ |
+| 14 | `images/stock-forecast/14-demand-forecast.png` | Demand & forecast | Demand Forecast with a red "left after" | ☑ |
+| 15 | `images/stock-forecast/15-base-forecast.png` | Demand & forecast | Base-level Forecast rows | ☑ |
+| 16 | `images/stock-forecast/16-category-forecast.png` | Demand & forecast | Category bars and toggle | ☑ |
+| 17 | `images/stock-forecast/17-category-drilldown.png` | Demand & forecast | Sub-group or item list after clicking a bar | ☑ |
+| 18 | `images/stock-forecast/18-material-usage.png` | Demand & forecast | Material Usage list | ☑ |
+| 19 | `images/stock-forecast/19-forecast-vs-actual.png` | Demand & forecast | Summary, chart and Biggest misses | ☑ |
+| 20 | `images/stock-forecast/20-tube-stock.png` | Materials | Tube Stock card | ☑ |
+| 21 | `images/stock-forecast/21-tube-stock-details.png` | Materials | Tube Stock details popup | ☑ |
+| 22 | `images/stock-forecast/22-acrylic-stock.png` | Materials | Acrylic Rod Stock card | ☑ |
+| 23 | `images/stock-forecast/23-buildable-orders.png` | Materials | Buildable Orders (blur names and values) | ☑ |
+| 24 | `images/stock-forecast/24-data-quality.png` | Data issues card | Checklist with one line opened | ☑ |
 
 ---
 
