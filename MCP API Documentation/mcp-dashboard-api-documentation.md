@@ -61,10 +61,10 @@ name — omit `arguments` entirely, or pass `{}`, for a tool with no parameters)
 
 # 1. Founder Dashboard
 
-**File:** `lh/lyfe_hardware/mcp_tools/founder_dashboard.py` — 25 tools, `get_founder_*` prefix.
+**File:** `lh/lyfe_hardware/mcp_tools/founder_dashboard.py` — 40 tools, `get_founder_*` prefix. Stock Forecast page tile-to-tool map: see 1.0a.
 **Underlying Desk page:** `lh/lyfe_hardware/page/founder_dashboard/founder_dashboard.py`.
 
-## 1.0 Dashboard-level Security (applies to all 25 tools)
+## 1.0 Dashboard-level Security (applies to all 40 tools)
 
 - **Allowed roles:** `System Manager`, `Super Admin` (+ `Administrator`, which is not a role but the built-in superuser and always passes every role check).
 - **`Founder` does NOT grant access**, as of 2026-09-10 — removed per explicit decision, both from `DASHBOARD_ROLES["founder_dashboard"]` and from `founder_dashboard.json`'s own Page `roles` list (`bench migrate` run to sync `Has Role`). A user holding only the `Founder` role is denied on this dashboard via both MCP and the Desk page.
@@ -72,6 +72,34 @@ name — omit `arguments` entirely, or pass `{}`, for a tool with no parameters)
 - **Backend consistency:** `founder_dashboard.py`'s own `_check_permission()` (called by the underlying Desk-side whitelisted functions) also calls `require_dashboard_role("founder_dashboard")`, in addition to its pre-existing `frappe.has_permission("Lyfe Order", "read", throw=True)` base check. This closes a gap that existed before 2026-09-10, where any role with base `Lyfe Order` read (e.g. Customer Service, Sales User) could call these functions directly and bypass the page's intended role list.
 - **Two endpoints are permanently excluded from MCP, at any role:** `get_mcp_access_summary`/`get_mcp_access_drilldown` — these list which users currently hold live OAuth Bearer Tokens for this very MCP connector. No tool wraps them; surfacing "who is logged into MCP" *through* MCP would be circular and security-sensitive in its own right.
 - **Legacy `get_founder_dashboard_summary` (v1)** is also excluded — superseded by `get_founder_dashboard_summary_v2`, which `get_founder_summary` (below) delegates to.
+
+## 1.0a Stock Forecast page — tile to tool map
+
+Every tile and drilldown of `/app/stock-forecast` has an MCP tool returning the same data as the page (same Desk endpoint underneath). Filter arguments mirror the tile's filter button (Category = `item_group`, Trailing days = `days` / `period_days`).
+
+| Page element | Tool |
+|---|---|
+| KPI strip | `get_founder_tile_stock_summary` |
+| Stockout Risk (+ "View forecast detail") | `get_founder_tile_stockout_risk`, `get_founder_stockout_risk_drilldown` |
+| Material Usage (+ report) | `get_founder_tile_material_usage`, `get_founder_material_usage_drilldown` |
+| Category-wise Stock Forecast (levels 1 / 2 / items) | `get_founder_tile_category_forecast`, `get_founder_category_forecast_children`, `get_founder_stockout_risk_drilldown(include_all=1, exact=1)` |
+| Tube Stock (+ table) | `get_founder_tile_tube_stock`, `get_founder_tube_stock_drilldown` |
+| Acrylic Rod Stock (+ table) | `get_founder_tile_acrylic_stock`, `get_founder_acrylic_stock_drilldown` |
+| Buildable Orders | `get_founder_tile_buildable_orders` |
+| Restock List | `get_founder_tile_restock_list` |
+| Demand Trends | `get_founder_tile_trending_items` |
+| Demand Forecast | `get_founder_tile_demand_forecast` |
+| Base-level Forecast | `get_founder_tile_base_forecast` |
+| Forecast vs Actual | `get_founder_tile_forecast_accuracy` |
+| Material Not In Stock — Total Required | `get_founder_tile_material_shortfall` |
+| Active Orders — Material Not In Stock | `get_founder_tile_order_stock_shortfall` |
+| Stock Data Quality (+ record detail) | `get_founder_tile_data_quality`, `get_founder_data_quality_detail` |
+| "Where used" in the drilldown | `get_founder_where_used` |
+| US Warehouse Replenishment tile (summary; full page = `get_us_replenishment_dashboard`, item dialog = `get_us_replenishment_item_detail`, see `mcp-full-api-documentation.md` Part 12c) | `get_founder_tile_us_replenishment` (gate: System Manager, Super Admin, US Replenishment Manager) |
+| Forecast accuracy (WAPE / bias) | `get_founder_stock_forecast_accuracy` |
+| Everything at once | `get_founder_summary` (includes every visible tile) |
+
+Suggested flow for an AI client: `get_founder_tile_stock_summary` (what needs attention) → `get_founder_tile_buildable_orders` (which orders are blocked) → `get_founder_tile_restock_list` (what to order) → drill into `get_founder_stockout_risk_drilldown` / `get_founder_where_used` for the why. Quantities are in the item's own unit; tube is in feet / 100 ft rods, acrylic in inches.
 
 ## 1.1 `get_founder_summary`
 
@@ -157,11 +185,11 @@ name — omit `arguments` entirely, or pass `{}`, for a tool with no parameters)
 
 **API Details** — delegates to `founder_dashboard.get_tile_stockout_risk`.
 
-**Functional Details** — the dollar amount of open orders blocked on stockout risk, optionally scoped to one item group.
+**Functional Details** — the Stockout Risk tile: every item that will run out soon (cover under the Medium threshold, default 7/15/30 days = Critical/High/Medium) at the current rate of use, with what open orders already promised, the stock-out date and how much to order. Tube and acrylic rod items are in their own tiles. SKUs that differ only by finish are merged into one family row (`item_code` is the family, e.g. `WFL2-100`; `variants` lists each finish). Item rows with `available_qty < 0` (open orders already exceed stock) are always Critical.
 
-**Technical Details** — `(item_group: str | None) -> dict`.
+**Technical Details** — `(item_group: str | None = None, days: int | None = None, item_code: str | None = None) -> dict`. `item_code` = one Item (a finish variant keeps its merged family row). `item_group` includes child groups. `days` = trailing window 1–365 for the daily-use rate (default: Stock Forecast Settings demand window, 30); a custom window is always live, the default may come from the nightly snapshot. Keys: `critical_count`, `high_count`, `medium_count`, `total_at_risk`, `window_days`, `source` (`Live` or `Snapshot · date`), `period_label`, `top_items[]` = **every** at-risk item (the name is historical; it is no longer limited to 10), each with `item_code`, `item_name`, `item_group`, `current_qty` (on hand, Rejected warehouse excluded), `avg_daily_outflow` (units/day), `days_of_stock`, `risk_level`, `committed_qty`, `available_qty` (on hand − committed; below 0 forces Critical), `available_days`, `stockout_date`, `suggested_qty` (to target cover, MOQ applied), `confidence`, `bom_committed_qty`, `bom_reliability`, `trend_pct` (daily use vs 90-day average, null when not meaningful), `blocked_amount` / `blocked_orders` (shown as "Revenue exposed").
 
-**Security** — System Manager/Super Admin only.
+**Security** — System Manager/Super Admin only (`require_dashboard_role("founder_dashboard")` + `@audited_tool`). The Desk endpoint behind it also allows Factory (`stock_forecast` role set), but MCP stays founder-only.
 
 ## 1.10 `get_founder_tile_board_health`
 
@@ -227,11 +255,11 @@ name — omit `arguments` entirely, or pass `{}`, for a tool with no parameters)
 
 **API Details** — delegates to `founder_dashboard.get_tile_material_usage`.
 
-**Functional Details** — material/BOM usage summary for the last N days.
+**Functional Details** — what production actually used: net quantity issued (Material Issue for Order issues − returns) per item over the last N days, most used first.
 
-**Technical Details** — `(period_days: int = 30) -> dict`.
+**Technical Details** — `(period_days: int = 30, item_group: str | None = None, item_code: str | None = None) -> dict` (1–365). `item_group` includes child groups; `item_code` = one Item (a finish variant keeps its merged family row); both = intersection; blank = no filter (the Stock Forecast page filter bar, 2026-10-26). Keys: `most_used[]` = every issued item (`item_code`, `item_name`, `net_qty`), `least_used[]` (bottom 10, only when more than 10 items), `total_items`, `window_days`, `period_label`. Row-level records: `get_founder_material_usage_drilldown`.
 
-**Security** — System Manager/Super Admin only.
+**Security** — System Manager/Super Admin only (`require_dashboard_role("founder_dashboard")` + `@audited_tool`). The Desk endpoint behind it also allows Factory (`stock_forecast` role set), but MCP stays founder-only.
 
 ## 1.17 `get_founder_tile_customer_concentration`
 
@@ -317,11 +345,202 @@ name — omit `arguments` entirely, or pass `{}`, for a tool with no parameters)
 
 **API Details** — delegates to `founder_dashboard.get_stockout_risk_drilldown`.
 
-**Functional Details** — the row-level list of open orders blocked on stockout risk.
+**Functional Details** — the full Stockout Risk list behind the card ("View forecast detail" and its CSV): per item on hand, committed, available, avg daily use, days of stock, stock-out date, suggested quantity, confidence, risk level, Lyfe BOM committed quantity with its reliability and calibration ratio. Finish variants are merged into one row (`variants`). With `include_all=1` it is the dataset of the Category-wise chart (every item with usage) plus Revenue exposed per item.
 
-**Technical Details** — `() -> dict`.
+**Technical Details** — `(item_group: str | None = None, include_all: int = 0, exact: int = 0, days: int | None = None, item_code: str | None = None) -> list`. `item_code` = one Item (a finish variant keeps its merged family row). `item_group` includes child groups, or only the group's own items with `exact=1` (a chart sub-category; `"Other"` = items with no Item Group). `include_all=1` keeps items above the Medium threshold and adds `blocked_amount` / `blocked_orders`. `days` = trailing window (default Settings window). Row fields as in `get_founder_tile_stockout_risk`.
+
+**Security** — System Manager/Super Admin only (`require_dashboard_role("founder_dashboard")` + `@audited_tool`). The Desk endpoint behind it also allows Factory (`stock_forecast` role set), but MCP stays founder-only.
+
+## 1.26 `get_founder_tile_tube_stock`
+
+**API Details** — delegates to `founder_dashboard.get_tile_tube_stock` (`founder_briefing.data.get_tube_stock`).
+
+**Functional Details** — Tube Stock (feet): one row per pipe (tube material × diameter, cut lengths rolled up) with feet on hand (rod + pre-cut pieces × length), rods (÷100 ft), feet per day (Material Issue less Returns), days of cover, risk, feet to keep (daily need × target cover) and what to order in feet and rods.
+
+**Technical Details** — `(days: int | None = None) -> dict`. `days` = trailing window 1–365 (default Settings window). Keys: `rows[]` (`item_code`, `item_name`, `feet_on_hand`, `rods_on_hand`, `used_ft`, `ft_per_day`, `days_of_stock`, `risk_level`, `keep_ft`, `order_ft`, `order_rods`, …), `critical_count`, `high_count`, `window_days`, `period_label`.
+
+**Security** — System Manager/Super Admin only (`require_dashboard_role("founder_dashboard")` + `@audited_tool`). The Desk endpoint behind it also allows Factory (`stock_forecast` role set), but MCP stays founder-only.
+
+## 1.27 `get_founder_tile_acrylic_stock`
+
+**API Details** — delegates to `founder_dashboard.get_tile_acrylic_stock` (`get_acrylic_stock`).
+
+**Functional Details** — Acrylic Rod Stock (inches): one row per diameter and stick-length class (≤12, 13–24, 25–48, >48 in): sticks and inches on hand, inches per day (whole sticks issued less Returns), days of cover, risk. Whole sticks are drawn from the store (waste included); a longer stick can serve a shorter cut.
+
+**Technical Details** — `(days: int | None = None) -> dict`. `days` = trailing window 1–365 (default Settings window). Keys: `rows[]` (`diameter`, `length_class`, `sticks_on_hand`, `inches_on_hand`, `inches_per_day`, `days_of_stock`, `risk_level`), `critical_count`, `high_count`, `window_days`, `period_label`.
+
+**Security** — System Manager/Super Admin only (`require_dashboard_role("founder_dashboard")` + `@audited_tool`). The Desk endpoint behind it also allows Factory (`stock_forecast` role set), but MCP stays founder-only.
+
+## 1.28 `get_founder_tile_data_quality`
+
+**API Details** — delegates to `founder_dashboard.get_tile_data_quality` (`stock_forecast.quality.get_data_quality`).
+
+**Functional Details** — Stock Data Quality checklist: data problems that make stock forecasts wrong or incomplete (BOM components without an Item, order lines without an Item, BOMs disagreeing with real use, acrylic UoM/naming, pending Material Requests, dead/excess stock, forecast bias, snapshot freshness), each with count, severity, hint, a plain-words `fix` and the `doctype` to open. The records behind a line: `get_founder_data_quality_detail`.
+
+**Technical Details** — `() -> dict` (`checks[]` with `key`, `label`, `count`, `severity`, `hint`, `fix`, `doctype`; `issue_count`). **Visibility switch:** when Stock Forecast Settings > "Stock Data Quality (public view available)" is off, this tool (like the tile and the detail tool) is refused with `PermissionError` for everyone except the `Administrator` user.
+
+**Security** — System Manager/Super Admin only (`require_dashboard_role("founder_dashboard")` + `@audited_tool`). The Desk endpoint behind it also allows Factory (`stock_forecast` role set), but MCP stays founder-only.
+
+## 1.29 `get_founder_tube_stock_drilldown`
+
+**API Details** — delegates to `founder_dashboard.get_tube_stock_drilldown`.
+
+**Functional Details** — one row per pipe (tube material × diameter), changed 2026-10-02 from a finish / cut-length split: feet used in the last 30 days, feet per day, on hand, days left, risk, `keep_ft` (daily need × target cover days — Stock Forecast Settings, or the Item's `custom_target_cover_days`), `order_ft` and `order_rods` (missing to reach it, rods of 100 ft). Same rows as the dashboard table.
+
+**Technical Details** — `() -> list`.
 
 **Security** — System Manager/Super Admin only.
+
+## 1.30 `get_founder_acrylic_stock_drilldown`
+
+**API Details** — delegates to `founder_dashboard.get_acrylic_stock_drilldown`.
+
+**Functional Details** — acrylic pieces and inches used in the last 30 days per diameter and cut length.
+
+**Technical Details** — `() -> list`.
+
+**Security** — System Manager/Super Admin only.
+
+## 1.31 `get_founder_where_used`
+
+**API Details** — delegates to `founder_dashboard.get_where_used`.
+
+**Functional Details** — the Lyfe BOMs that use a component item: parent item, name, quantity per unit, open orders carrying the parent.
+
+**Technical Details** — `(item_code: str) -> list`.
+
+**Security** — System Manager/Super Admin only.
+
+## 1.32 `get_founder_stock_forecast_accuracy`
+
+**API Details** — reads `Stock Forecast Accuracy` and `Stock Forecast Settings.last_run`.
+
+**Functional Details** — error (WAPE %) and bias % of the 7-day stock forecast against what was really issued, per recent week, overall and per ABC class; plus when the nightly snapshot last ran. Empty until a week of snapshots exists.
+
+**Technical Details** — `(weeks: int = 8) -> dict` (`last_snapshot_run`, `weeks[]`).
+
+**Security** — System Manager/Super Admin only.
+
+## 1.33 `get_founder_tile_category_forecast`
+
+**API Details** — delegates to `founder_dashboard.get_tile_category_forecast`.
+
+**Functional Details** — Category-wise Stock Forecast, level 1: the item-level stock forecast (same on-hand, usage, exclusions and risk thresholds as Stockout Risk, but including items with plenty of cover) rolled up per top-level Item Group. Per group: items with usage (30 d), Critical / High / Medium / Low counts, at-risk total and **Revenue exposed** (value of open order lines of at-risk items, with the distinct order count). No pooled days-of-stock: one stocked-out item always shows as Critical.
+
+**Technical Details** — `(item_group: str | None = None, item_code: str | None = None) -> dict`. `item_group` includes child groups; `item_code` = one Item (a finish variant keeps its merged family row); both = intersection; blank = no filter (the Stock Forecast page filter bar, 2026-10-26). Keys: `nodes[]` (`key`, `label`, `items`, `critical`, `high`, `medium`, `low`, `at_risk`, `blocked_value`, `blocked_orders`, `direct_only`), `pseudo[]` (tube and acrylic rows), `totals`, `dead`, `excess`, `period_label`. Next level: `get_founder_category_forecast_children(group=node.key)`; items: `get_founder_stockout_risk_drilldown(item_group, include_all=1, exact=1)`.
+
+**Security** — System Manager/Super Admin only (`require_dashboard_role("founder_dashboard")` + `@audited_tool`). The Desk endpoint behind it also allows Factory (`stock_forecast` role set), but MCP stays founder-only.
+
+## 1.34 `get_founder_tile_stock_summary`
+
+**API Details** — delegates to `founder_dashboard.get_tile_stock_summary` (feeds the Stock Forecast page's KPI strip and the Founder Dashboard's Stock banner).
+
+**Functional Details** — one-glance stock numbers over the full at-risk list: Critical / High / Medium counts, the item with the shortest cover, Revenue exposed, and the KPI decision cards (orders that cannot be built, items to reorder), plus the number of stock data-quality issues.
+
+**Technical Details** — `(item_group: str | None = None, item_code: str | None = None) -> dict`. `item_group` includes child groups; `item_code` = one Item (a finish variant keeps its merged family row); both = intersection; blank = no filter (the Stock Forecast page filter bar, 2026-10-26). The decision cards follow the same filter. Keys: `critical_count`, `high_count`, `medium_count`, `total_at_risk`, `shortest` (`item_code`, `item_group`, `days_of_stock` or null), `blocked_amount` / `blocked_orders` (Revenue exposed), `short_orders`, `short_value`, `ready_orders` (from Buildable Orders), `reorder_count` (Restock List rows), `period_label`, `issue_count` (omitted when the caller may not see data quality).
+
+**Security** — System Manager/Super Admin only (`require_dashboard_role("founder_dashboard")` + `@audited_tool`). The Desk endpoint behind it also allows Factory (`stock_forecast` role set), but MCP stays founder-only.
+
+## 1.35 `get_founder_tile_buildable_orders`
+
+**API Details** — delegates to `founder_dashboard.get_tile_buildable_orders` (`stock_forecast.bom.allocate_orders`).
+
+**Functional Details** — which active orders can be built from the stock on hand. Active = Lyfe Orders not yet dispatched whose material has not been issued (Custom lines without a BOM skipped). Orders are served oldest order date first and stock is handed out in that order; **only a Ready order takes stock**, so a blocked order never holds material back from a later one.
+
+**Technical Details** — `(item_group: str | None = None, item_code: str | None = None) -> dict`. `item_group` includes child groups; `item_code` = one Item (a finish variant keeps its merged family row); both = intersection; blank = no filter (the Stock Forecast page filter bar, 2026-10-26). Keeps only orders with a matching component; statuses are always allocated over every order. Keys: `orders[]` (`order_name`, `internal_order_id`, `order_type`, `order_date`, `order_value`, `status` = `Ready` (all components available) | `Partial` (some short) | `Short` (every component short), `short[]` = limiting components `{item_code, required_qty, available_qty (left at its turn), missing_qty}`), `ready_count`, `partial_count`, `short_count`, `blocked_orders`, `blocked_value` (value of the Partial + Short orders = the true "Blocked $"), `ready_value`.
+
+**Security** — System Manager/Super Admin only (`require_dashboard_role("founder_dashboard")` + `@audited_tool`). The Desk endpoint behind it also allows Factory (`stock_forecast` role set), but MCP stays founder-only.
+
+## 1.36 `get_founder_tile_restock_list`
+
+**API Details** — delegates to `founder_dashboard.get_tile_restock_list`.
+
+**Functional Details** — one buy list: every item at Critical / High / Medium risk with a quantity to order — items (suggested quantity, Item Minimum Order Qty applied), tube in 100 ft rods, acrylic in inches — most urgent first (open orders above stock, then risk, then fewest days of cover). Restocking is booked only as Stock Entry (Material Receipt), so there is no on-order signal; `last_received` shows the latest receipt. No suppliers, Material Requests or POs.
+
+**Technical Details** — `(item_group: str | None = None, item_code: str | None = None, days: int | None = None) -> dict`. `days` = cover for the next N days (1-365; blank = each item's target cover): listed when free stock is below 30-day daily use × N; adds `cover_days`, `short_count`, `enough_count`, `enough[]` and a plain-words `reason` per row. `item_group` includes child groups; `item_code` = one Item (a finish variant keeps its merged family row); both = intersection; blank = no filter (the Stock Forecast page filter bar, 2026-10-26). Tube rows filter by pipe item; Acrylic rows only when no filter is set. Keys: `rows[]` (`item_code`, `item_name`, `kind` = `Item` | `Tube` | `Acrylic`, `risk_level`, `on_hand`, `available_qty`, `days_of_stock`, `order_qty`, `unit`, `last_received`), `total`, `target_cover_days`.
+
+**Security** — System Manager/Super Admin only (`require_dashboard_role("founder_dashboard")` + `@audited_tool`). The Desk endpoint behind it also allows Factory (`stock_forecast` role set), but MCP stays founder-only.
+
+## 1.36a `get_founder_tile_trending_items`
+
+**API Details** — delegates to `founder_dashboard.get_tile_trending_items` (`stock_forecast.trends`).
+
+**Functional Details** — Demand Trends: Material Issue use in the last N days against the N days before, per category (up / down / steady / new) and for the top rising items (3+ issues, at least 25% more use or new, not one bulk order; ranked by the rise in units), each with use per period for a trend line.
+
+**Technical Details** — `(item_group: str | None = None, item_code: str | None = None, days: int | None = None, top: int | None = None) -> dict`. `days` 1-365 (default 30), `top` 1-100 (default 10); `item_group` includes child groups and switches categories to its own sub-groups; `item_code` = one Item. Keys: `window_days`, `top`, `bucket_days`, `bucket_ends`, `min_pct`, `min_issues`, `history_short`, `history_from`, `categories[]` (`category`, `now`, `prev`, `items`, `series`, `change_pct`, `direction`), `items[]` (`key`, `members`, `item_name`, `item_group`, `category`, `variant_count`, `now`, `prev`, `series`, `change_pct`, `change_units`, `days_of_stock`, `risk_level`). Plus `tube` (2026-10-27): the same keys for the tube items alone (store pipes and cut lengths), which the main keys exclude; no nested `tube`.
+
+**Security** — System Manager/Super Admin only (`require_dashboard_role("founder_dashboard")` + `@audited_tool`). The Desk endpoint behind it also allows Factory (`stock_forecast` role set), but MCP stays founder-only.
+
+## 1.36b `get_founder_tile_demand_forecast`
+
+**API Details** — delegates to `founder_dashboard.get_tile_demand_forecast`.
+
+**Functional Details** — expected use per product over the next N days: forecast (30-day average daily use × N) plus units on open orders, against stock on hand; a negative "left after" is the same shortfall the Restock List orders.
+
+**Technical Details** — `(item_group: str | None = None, item_code: str | None = None, days: int | None = None, top: int | None = None) -> dict`. `days` 1-365 (default 30), `top` 1-100 (default 10). Keys: `days`, `top`, `backlog_aware`, `history_ends`, `total_items`, `short_items`, `totals`, `items[]` (`item_code`, `item_name`, `item_group`, `variant_count`, `daily`, `forecast`, `committed`, `expected`, `on_hand`, `left_after`, `short`, `risk_level`, `confidence`, `history`, `per_week`). Plus `tube` (2026-10-27): the same keys for the tube items alone (store pipes and cut lengths), which the main keys exclude; no nested `tube`. Tube rows are live and not part of `short_items`.
+
+**Security** — System Manager/Super Admin only (`require_dashboard_role("founder_dashboard")` + `@audited_tool`). The Desk endpoint behind it also allows Factory (`stock_forecast` role set), but MCP stays founder-only.
+
+## 1.36b `get_founder_tile_base_forecast`
+
+Base-level Forecast tile (2026-11-06): finishes of one base SKU and base state added together, forecast with TSB. Role: System Manager or Super Admin (founder dashboard gate).
+
+| Argument | Type | Meaning |
+|---|---|---|
+| `item_group` | string, optional | Category filter (includes child groups) |
+| `top` | int, optional | Groups to return, 1-200, default 25 |
+
+Returns `total_groups`, `top`, `at_risk`, `safety_pooled`, `safety_per_finish` and `rows[]` `{base_sku, base_state, finishes, on_hand, committed, available_qty, forecast_per_day, used_per_day, days_of_stock, risk_level, safety_stock, safety_if_per_finish, reorder_point, suggested_qty}`, most urgent first. Delegates to `get_tile_base_forecast`. See `stock-forecast-dashboard.md`.
+
+## 1.36c `get_founder_tile_forecast_accuracy`
+
+**API Details** — delegates to `founder_dashboard.get_tile_forecast_accuracy` (`stock_forecast.trends.forecast_vs_actual`).
+
+**Functional Details** — for the last N complete weeks, the forecast as it stood when each week began (Material Issues in the 30 days before / 30 × 7) against units really issued: overall and weekly totals, error and bias, and the products with the biggest misses.
+
+**Technical Details** — `(item_group: str | None = None, item_code: str | None = None, weeks: int | None = None, top: int | None = None) -> dict`. `weeks` 1-52 (default 12, capped by history), `top` 1-100. Keys: `weeks`, `limited_by_history`, `history_from`, `top`, `overall` (`forecast`, `actual`, `error_pct`, `bias_pct`, `items`), `week_rows[]`, `items[]` (`item_code`, `variant_count`, `forecast`, `actual`, `diff`, `miss`, `error_pct`). Plus `tube` (2026-10-27): the same keys for the tube items alone (store pipes and cut lengths), which the main keys exclude; no nested `tube`.
+
+**Security** — System Manager/Super Admin only (`require_dashboard_role("founder_dashboard")` + `@audited_tool`). The Desk endpoint behind it also allows Factory (`stock_forecast` role set), but MCP stays founder-only.
+
+## 1.37 `get_founder_tile_material_shortfall`
+
+**API Details** — delegates to `founder_dashboard.get_tile_material_shortfall`.
+
+**Functional Details** — "Material Not In Stock — Total Required": per item, the total needed to complete all active orders against stock on hand (Bin over all warehouses except Rejected). Required per order: the order's own component list, else each line's Lyfe BOM components (scrap added), else the child SKUs (CJ Shipment Items with an Item Code) of a previous Shipped/Completed order of the item (single-item order preferred, newest first), else the item itself.
+
+**Technical Details** — `(item_group: str | None = None, item_code: str | None = None) -> dict`. `item_group` includes child groups; `item_code` = one Item (a finish variant keeps its merged family row); both = intersection; blank = no filter (the Stock Forecast page filter bar, 2026-10-26). Keys: `rows[]` (`item_code`, `required_qty`, `in_stock`) for items whose total required exceeds stock, `total`. Missing = required − in stock (the dashboard rounds required and missing up).
+
+**Security** — System Manager/Super Admin only (`require_dashboard_role("founder_dashboard")` + `@audited_tool`). The Desk endpoint behind it also allows Factory (`stock_forecast` role set), but MCP stays founder-only.
+
+## 1.38 `get_founder_tile_order_stock_shortfall`
+
+**API Details** — delegates to `founder_dashboard.get_tile_order_stock_shortfall`.
+
+**Functional Details** — "Active Orders — Material Not In Stock": the same shortfall order by order. Each order is compared with the full stock (stock is not shared out between orders; use Buildable Orders for that).
+
+**Technical Details** — `(item_group: str | None = None, item_code: str | None = None) -> dict`. `item_group` includes child groups; `item_code` = one Item (a finish variant keeps its merged family row); both = intersection; blank = no filter (the Stock Forecast page filter bar, 2026-10-26). Keys: `rows[]` (`order_name`, `internal_order_id`, `order_type`, `order_date`, `order_value`, `item_code`, `required_qty`, `in_stock`), `total`.
+
+**Security** — System Manager/Super Admin only (`require_dashboard_role("founder_dashboard")` + `@audited_tool`). The Desk endpoint behind it also allows Factory (`stock_forecast` role set), but MCP stays founder-only.
+
+## 1.39 `get_founder_category_forecast_children`
+
+**API Details** — delegates to `founder_dashboard.get_category_forecast_children`.
+
+**Functional Details** — level 2 of the Category-wise Stock Forecast: the own Item Groups of one top-level group, with Critical / High / Medium / Low counts, at-risk total and Revenue exposed.
+
+**Technical Details** — `(group: str, item_group: str | None = None, item_code: str | None = None) -> dict`. `item_group` / `item_code` as on `get_founder_tile_category_forecast`. `group` = a `nodes[].key` from `get_founder_tile_category_forecast`. Items behind a sub-group: `get_founder_stockout_risk_drilldown(item_group=<sub-group>, include_all=1, exact=1)`.
+
+**Security** — System Manager/Super Admin only (`require_dashboard_role("founder_dashboard")` + `@audited_tool`). The Desk endpoint behind it also allows Factory (`stock_forecast` role set), but MCP stays founder-only.
+
+## 1.40 `get_founder_data_quality_detail`
+
+**API Details** — delegates to `founder_dashboard.get_data_quality_detail` (`stock_forecast.quality.get_quality_detail`).
+
+**Functional Details** — the records behind one Stock Data Quality line, with a plain-words fix instruction and the DocType to open.
+
+**Technical Details** — `(key: str) -> dict`. `key` = a `checks[].key` from `get_founder_tile_data_quality`. Keys: `key`, `fix`, `doctype`, `columns[]`, `rows[]` (`doctype`, `name`, `cells[]`; capped). Same public-view visibility switch as the tile.
+
+**Security** — System Manager/Super Admin only (`require_dashboard_role("founder_dashboard")` + `@audited_tool`). The Desk endpoint behind it also allows Factory (`stock_forecast` role set), but MCP stays founder-only.
 
 ---
 

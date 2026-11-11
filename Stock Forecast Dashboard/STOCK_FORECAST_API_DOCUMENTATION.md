@@ -29,7 +29,7 @@ Example responses below were produced on 2026-10-07 on site `lyfelocal.com` as `
 6. Shared row fields (stockout row)
 7. Common errors
 8. Desk endpoints (24)
-9. MCP tools, dashboard family (23)
+9. MCP tools, dashboard family (24) and the US Warehouse Replenishment page tools (3)
 10. MCP tools, forecasting family (5) and legacy whitelisted function (1)
 11. Scheduled jobs
 12. Calls that exist in the shared JS but are NOT made by the stock page
@@ -913,6 +913,7 @@ All tools: `@mcp.tool()` + `@audited_tool`; first `require_dashboard_role("found
 | `get_founder_tile_material_shortfall` | `item_group: str\|None = None`, `item_code: str\|None = None` | `get_tile_material_shortfall` (8.11) | 8.11 |
 | `get_founder_tile_order_stock_shortfall` | `item_group: str\|None = None`, `item_code: str\|None = None` | `get_tile_order_stock_shortfall` (8.12) | 8.12 |
 | `get_founder_tile_data_quality` | none | `get_tile_data_quality` (8.13) | 8.13 |
+| `get_founder_tile_us_replenishment` (in `mcp_tools/us_replenishment.py`; gate is `us_replenishment`, not `founder_dashboard`) | none | `get_tile_us_replenishment` (8.10d) | 8.10d |
 | `get_founder_data_quality_detail` | `key: str` (required) | `get_data_quality_detail` (8.14) | 8.14 |
 | `get_founder_stockout_risk_drilldown` | `item_group: str\|None`, `include_all: int = 0`, `exact: int = 0`, `days: int\|None`, `item_code: str\|None` | `get_stockout_risk_drilldown` (8.15) | 8.15 (array) |
 | `get_founder_tube_stock_drilldown` | none | `get_tube_stock_drilldown` (8.16) | array |
@@ -923,7 +924,7 @@ All tools: `@mcp.tool()` + `@audited_tool`; first `require_dashboard_role("found
 
 Notes:
 
-- There is no MCP tool for `get_stock_forecast_page` (layout only, nothing to read for an AI client). The `STOCK_PAGE_TILES` tools (summary, stockout, category, tube, acrylic, material_usage, buildable, restock, material_shortfall, order_stock_shortfall, data_quality) all exist.
+- There is no MCP tool for `get_stock_forecast_page` (layout only, nothing to read for an AI client). The `STOCK_PAGE_TILES` tools (summary, stockout, category, tube, acrylic, material_usage, buildable, restock, us_replenishment, trending, demand forecast, base forecast, forecast accuracy, material_shortfall, order_stock_shortfall, data_quality) all exist.
 - Return type annotations in the code (`-> dict` / `-> list`) are informational; MCP tools returning arrays (drilldowns, where_used) get no guidance sidecar.
 - `get_founder_tile_material_usage` and the data-quality tools are described in the tool docstrings as "same result as the dashboard tile".
 - A typed `int` MCP argument that the client sends as a string is the client's concern; the Desk endpoint re-coerces (`days`, `period_days`, `include_all`, `exact`).
@@ -952,6 +953,44 @@ Result: identical to the 8.2 response.
 - **Page usage:** not called by the page; the data-quality `bias` / `snapshot` checks read the same tables.
 
 ---
+
+### 9.2 US Warehouse Replenishment page tools (`mcp_tools/us_replenishment.py`, added 2026-11-11)
+
+Three read-only tools, `@mcp.tool()` + `@audited_tool`, first `require_dashboard_role("us_replenishment")` (System Manager, Super Admin, US Replenishment Manager; Factory is refused), then `frappe.call` of the page's own endpoint, which checks the role again. They return exactly what the page `/app/us-replenishment` shows. The page's write actions (`sync_now`, `create_draft_transfer`, `export_excel`) have no tool. Functional reference: `docs/us-replenishment-dashboard.md` and the US logic guide.
+
+| MCP tool | Arguments | Delegates to |
+|---|---|---|
+| `get_us_replenishment_dashboard` | `item_group: str\|None` (includes child groups), `status: str\|None` (Urgent / Reorder / OK / Overstock / Not stocked yet), `min_demand: float = 0` | `page.us_replenishment.get_dashboard` |
+| `get_us_replenishment_item_detail` | `item_code: str` (required) | `page.us_replenishment.get_item_detail` |
+| `get_founder_tile_us_replenishment` | none | `get_tile_us_replenishment` (8.10d) |
+
+**`get_us_replenishment_dashboard` response** (real call, local copy of production, rows cut to one; `n_rows` is not part of the response):
+
+```json
+{
+  "tiles": {"urgent": 15, "reorder": 4, "overstock": 0, "suggested_units": 480, "suggested_value": 0.0},
+  "sync": {"last_success_at": null, "last_attempt_at": "2026-11-11T00:35:50", "status": "Failed",
+           "error": "1Click returned zero stock for every SKU; ...", "warning": "1Click stock has never been synced, so there are no numbers to show."},
+  "unmapped": {"lines": 589, "units": 817.0},
+  "rows": [{"item_code": "CMBR-200-PB", "item_name": "Combination Foot Rail Bracket - Polished Brass / 2\"", "item_group": "BRACKETS",
+            "status": "Urgent", "reason": "Stock position is below safety stock", "confidence": "High",
+            "avg_weekly_demand": 3.48, "demand_std_dev": 6.5, "bands": {"recent": [1.75, 0.5], "mid": [6.5, 0.3], "old": [3.29, 0.2]},
+            "history_weeks": 52, "selling_weeks": 7, "z": 1.645, "lead_time_weeks": 4.5, "safety_stock": 22.7,
+            "reorder_point": 38.4, "target_stock": 52.3, "available": 0.0, "in_transit": 13.0, "in_production": 0.0,
+            "stock_position": 13.0, "weeks_of_cover": 0.0, "pack_size": 0, "suggested_qty": 40, "rate": 0.0, "suggested_value": 0.0}]
+}
+```
+
+Rows are sorted Urgent first. `bands` is `{band: [mean, weight used]}`. `weeks_of_cover` is shelf only (the Urgent test adds stock in transit). `rate` is the Item Price from the settings price list (0 when none).
+
+**`get_us_replenishment_item_detail` response:** `row` (as above, null if the item is not on the dashboard), `weeks[]` (Monday start dates) with `demand[]` (units per week), `stock_history[]` (`{at, available, onhand}`, last 120 days; empty until 2 sync days exist), `transfers[]`, `lead_parts`:
+
+```json
+{"transfers": [{"transfer": "USR-2026-05081", "lyfe_order": "LYF-MN-2026-0038", "state": "On its way (Shipped)", "qty": 13.0, "date": "2026-11-02"}],
+ "lead_parts": {"factory_weeks": 0.5, "transit_weeks": 3.0, "customs_weeks": 1.0, "coverage_weeks": 4.0, "service_level_pct": 95.0}}
+```
+
+A transfer `state` is "On its way (<workflow state>)" (counted as in transit) or "Draft (not sent yet, not counted)".
 
 ## 10. MCP tools, forecasting family, and the legacy whitelisted function
 

@@ -64,7 +64,7 @@ POST https://<your-site>/api/method/lh.mcp.handle_mcp
 - **To list every available tool** (names, descriptions, input schemas) instead of
   calling one, send `"method": "tools/list"` with `"params": {}` instead of
   `"tools/call"`. See the full API doc's server-wide note on tool discovery being
-  unfiltered by role — this lists every one of the 160 tools to any authenticated
+  unfiltered by role — this lists every one of the 166 tools to any authenticated
   caller regardless of what they're actually permitted to call.
 
 - **Response** is a bare JSON-RPC 2.0 response object — **not** wrapped in Frappe's
@@ -127,7 +127,7 @@ Every tool is documented with the same four sections:
 
 ## Table of contents
 
-- [Part 1 — Doctype tools (`get_<doctype>` / `list_<doctype>`)](#part-1--doctype-tools) — 52 tools
+- [Part 1 — Doctype tools (`get_<doctype>` / `list_<doctype>`)](#part-1--doctype-tools) — 54 tools
 - [Part 2 — PnL / financial tools](#part-2--pnl--financial-tools) — 3 tools
 - [Part 3 — Forecasting tools](#part-3--forecasting-tools) — 4 tools
 - [Part 4 — Receivables tool](#part-4--receivables-tool) — 1 tool
@@ -138,10 +138,11 @@ Every tool is documented with the same four sections:
 - [Part 9 — Item Data Completeness Dashboard tools](#part-9--item-data-completeness-dashboard-tools) — 9 tools
 - [Part 10 — PM Operations Dashboard tools](#part-10--pm-operations-dashboard-tools) — 9 tools
 - [Part 11 — Founder / Customer Intelligence / Quotation Analysis Dashboard tools](#part-11--founder--customer-intelligence--quotation-analysis-dashboard-tools) — 53 tools (see companion doc for full detail)
-- [Part 12 — Order Analysis Dashboard tools](#part-12--order-analysis-dashboard-tools) — 14 tools
+- [Part 12 — Order Analysis Dashboard tools](#part-12--order-analysis-dashboard-tools) — 15 tools
+- [Part 12c — US Warehouse Replenishment tools](#part-12c--us-warehouse-replenishment-tools-added-2026-11-11) — 3 tools
 - [Part 13 — Search tools](#part-13--search-tools) — 2 tools
 
-**Total: 160 tools** (158 + 2 new search tools, 2026-09-24), confirmed by reading `mcp._tool_registry` on a live site.
+**Total: 169 tools** (166 + the 3 US Warehouse Replenishment tools, 2026-11-11) (160 + `get_active_returns`, `get_order_analysis_returns_rto`, `get_returns_dashboard_summary`, `get_returns_dashboard_breakdown`, `get_lyfe_order_return`, `list_lyfe_order_return`, 2026-10-13), confirmed by reading `mcp._tool_registry` on a live site.
 
 ---
 
@@ -152,8 +153,8 @@ Every tool is documented with the same four sections:
 ### 1. API Details
 
 - **Tool names:** `get_<snake_case_doctype>`, `list_<snake_case_doctype>` — one pair per doctype below.
-- **Allowlisted doctypes (26):**
-  `Lyfe Order`, `Item`, `Lyfe BOM`, `Custom BOM Items`, `Project`, `Task`, `Project Task Status`, `SLA Rule`, `SLA Task Link`, `SLA Violation Cache`, `SLA Escalation Log`, `Quotation`, `Sales Invoice`, `Daily Work Log`, `External Learning Record`, `Reconciliation Flag`, `Employee`, `Attendance`, `Employee Checkin`, `Leave Application`, `Appraisal`, `Employee Skill Map`, `Energy Point Log`, `Energy Point Rule`, `Job Opening`, `LMS Enrollment` — 26 doctypes × 2 tools = 52.
+- **Allowlisted doctypes (27):**
+  `Lyfe Order`, `Lyfe Order Return` (added 2026-10-13; its `customer` is masked exactly like `Lyfe Order.customer` via `_MIRRORED_PERMLEVEL_FIELDS` in `doctypes.py`, which also covers the filter/sort guard and `search_records`), `Item`, `Lyfe BOM`, `Custom BOM Items`, `Project`, `Task`, `Project Task Status`, `SLA Rule`, `SLA Task Link`, `SLA Violation Cache`, `SLA Escalation Log`, `Quotation`, `Sales Invoice`, `Daily Work Log`, `External Learning Record`, `Reconciliation Flag`, `Employee`, `Attendance`, `Employee Checkin`, `Leave Application`, `Appraisal`, `Employee Skill Map`, `Energy Point Log`, `Energy Point Rule`, `Job Opening`, `LMS Enrollment` — 27 doctypes × 2 tools = 54.
 - **Registration:** `expose_doctype(mcp, doctype)` from `apps/frappe-mcp/frappe_mcp/server/tools/doctype.py`, called once per doctype inside `register()`.
 
 ### 2. Functional Details
@@ -170,7 +171,7 @@ Every tool is documented with the same four sections:
   - `get_` calls `frappe.get_doc(doctype, name)`, then `doc.apply_fieldlevel_read_permissions()` (Frappe core), then `doc.as_dict()`.
   - `list_` calls `frappe.db.get_list(doctype, filters=filters or {}, fields=fields or ["name"], limit=limit, start=offset, order_by=order_by)` — a direct SQL query, no field-level filtering built in at the Frappe-core layer.
 - **List-limit clamping (`_clamp_list_limit`):** the fork's own JSON-schema `minimum: 1` on `limit` is never actually enforced by the live request path (confirmed: the dispatcher calls the handler function directly, bypassing the schema validator) — a caller passing `limit=0` would otherwise get Frappe's own `DatabaseQuery` behavior of "no LIMIT clause at all," returning the entire table. `lh`'s wrapper force-clamps `limit` into `[1, 200]` before the query runs, for every caller except Super Admin/Administrator (see Security). `offset` is always normalized to a non-negative integer regardless of role.
-- **Filter/sort-inference blocking (`_require_no_masked_filter_or_sort`):** a caller could otherwise infer a permlevel-masked field's real value without it ever appearing in the output — e.g. binary-searching a masked Currency field via repeated `filters={"cost_of_goods": [">", X]}` calls, or sorting by a masked email field and reading off the row order. Before the query runs, every fieldname referenced in `filters`/`order_by` is checked against the doctype's permlevel-masked fields for the caller; if any match, the whole call is rejected with `PermissionError` rather than silently answering.
+- **Filter/sort-inference blocking (`_require_no_masked_filter_or_sort`):** a caller could otherwise infer a permlevel-masked field's real value without it ever appearing in the output — e.g. binary-searching a masked Currency field via repeated `filters={"cost_of_goods": [">", X]}` calls, or sorting by a masked email field and reading off the row order. Before the query runs, every fieldname referenced in `filters`/`order_by` is checked (since 6 Nov 2026 this also covers JSON-string filters, 4-element `[doctype, field, op, value]` filters and quoted/wrapped/table-prefixed `order_by` terms) against the doctype's permlevel-masked fields for the caller; if any match, the whole call is rejected with `PermissionError` rather than silently answering.
 - **Field masking (`_strip_masked_keys`):** applied to the *result* after the underlying handler runs. Deletes (does not null) any key on a permlevel-restricted field the caller's roles can't read — including fields nested inside child-table rows returned by `get_<doctype>` (e.g. `ShipStation Order Item.cogs` inside a `Lyfe Order`'s `order_items`). This exists because Frappe core's own masking (`apply_fieldlevel_read_permissions()`) only deletes the in-memory attribute; `Document.as_dict()` then re-populates the key from the field's type default (e.g. `0.0` for Currency) — so a masked field's key and a misleading default value would otherwise both survive into the JSON response. `frappe.db.get_list()` (used by `list_`) never applies permlevel masking at all on its own.
 
 ### 4. Security
@@ -224,6 +225,8 @@ Every tool is documented with the same four sections:
 
 **File:** `lh/lyfe_hardware/mcp_tools/forecasting.py`. Delegates to real, backtested exponential-smoothing calculations (`lyfe_hardware/forecasting/exponential_smoothing.py`) and the Founder Briefing's stockout projection — not an invented model.
 
+*Since 6 Nov 2026 the `*_demand_forecast_api` functions these tools call, and `get_stuck_orders_api` (stuck orders tool), also check the caller's role themselves (Factory, Founder, Founder-AI, Super Admin, System Manager), so a direct `/api/method` call is gated the same way as the MCP tool. The MCP gate itself is unchanged.*
+
 ### `get_demand_forecast`
 
 **1. API Details** — delegates to `exponential_smoothing.get_sku_demand_forecast_api` (if `sku` given) or `get_item_group_demand_forecast_api` (otherwise).
@@ -265,6 +268,27 @@ Every tool is documented with the same four sections:
 **4. Security** — Super Admin/Founder-AI only, same gate.
 
 ---
+
+### Stock summary tool (added 2026-10-05)
+
+`get_founder_tile_stock_summary(item_group)` in `founder_dashboard.py` (see `mcp-dashboard-api-documentation.md` §1.34): full-list at-risk counts, shortest cover, blocked $. Gate unchanged at the MCP layer (`require_dashboard_role("founder_dashboard")`); the Desk endpoints behind the stock tiles now use the separate `stock_forecast` role key (System Manager, Super Admin, Factory) so Factory can open the Stock Forecast page.
+
+### Stock Forecast page tools (completed 2026-10)
+
+Every tile and drilldown of `/app/stock-forecast` has a `get_founder_*` tool (41 in `founder_dashboard.py`); tile-to-tool map and full argument/return documentation: `mcp-dashboard-api-documentation.md` §1.0a and §1.9 - §1.40. Added: `get_founder_tile_buildable_orders`, `get_founder_tile_restock_list`, `get_founder_tile_trending_items` (2026-10-26), `get_founder_tile_material_shortfall`, `get_founder_tile_order_stock_shortfall`, `get_founder_category_forecast_children`, `get_founder_data_quality_detail`; new optional arguments: `days` on the stockout / tube / acrylic tiles, `days` (cover for the next N days, 2026-10-26) on the restock list, `days` and `top` (Demand Trends, 2026-10-26) on the trending items tile, new `get_founder_tile_base_forecast` (item_group, top; 2026-11-06), new `get_founder_tile_demand_forecast` (days, top) and `get_founder_tile_forecast_accuracy` (weeks, top) (2026-10-26); these two and the trending items tile also return a `tube` object with the same keys for the tube items alone (2026-10-27), `include_all`, `exact` and `days` on the stockout drilldown. Since 2026-10-26 (Stock Forecast page filter bar): optional `item_group` (includes child groups) and `item_code` on `get_founder_tile_stock_summary`, `get_founder_tile_stockout_risk`, `get_founder_tile_category_forecast`, `get_founder_category_forecast_children`, `get_founder_tile_material_usage`, `get_founder_tile_buildable_orders`, `get_founder_tile_restock_list`, `get_founder_tile_material_shortfall`, `get_founder_tile_order_stock_shortfall`, and `item_code` on `get_founder_stockout_risk_drilldown`. (The live registry now holds 181 tools; the "160" totals in this file predate these and other additions.)
+
+### Stock Forecasting tools (added 2026-10-01)
+
+Four more tools in `forecasting.py`, all `require_founder_ai_or_super_admin()` + `@audited_tool`, delegating to `founder_briefing.data` / `stock_forecast`. They return the same figures as the Founder Dashboard's Stock Forecasting section (the dashboard-gated equivalents are `get_founder_tile_tube_stock` etc. in `mcp-dashboard-api-documentation.md` §1.26–1.32).
+
+| Tool | Signature | What it returns |
+|---|---|---|
+| `get_tube_stock_forecast` | `() -> list` | Tube cover per material × diameter in feet (rod + pre-cut pieces), feet/day (30 d), days of cover, risk. |
+| `get_acrylic_stock_forecast` | `() -> list` | Acrylic rod cover per diameter × stick-length class in inches (whole sticks issued less Returns), days of cover, risk. |
+| `get_component_forecast` | `(item_code: str) -> dict` | One stocked item: on hand, daily use, days of stock, committed (order lines + Lyfe BOM), available, stock-out date, suggested qty, BOM reliability, where-used. `{"error": ...}` if no consumption in 30 days or tube/acrylic rolled-up. |
+| `get_dead_and_excess_stock` | `() -> list` | Stock with no use in 90 days ("Dead") or above 3× target cover ("Excess"). |
+
+Also: `get_stockout_forecast` now uses on hand from `Bin` (excluding `FAC-Rejected Material Warehouse`), consumption = Material Issue stock entries only, a stock-only `recommended_action` (no PO logic), excludes tube/acrylic rolled-up items and Make-to-Order/Do-Not-Stock items, and requires System Manager / Super Admin / Founder-AI on the underlying `get_projected_stockouts_api`.
 
 ## Part 4 — Receivables tool
 
@@ -330,7 +354,7 @@ Every tool is documented with the same four sections:
 
 **3. Technical Details** — `(filters: str | None = None) -> dict`. `filters` JSON string: `from_date`, `to_date`, `order_status`, `order_source`, `order_priority`, `show_completed`.
 
-**4. Security** — **No role gate at all** (this tool has no `require_*` call) — matches the underlying page's own `roles: []`, i.e. any enabled Frappe user (past the base `_require_enabled_user()` check every tool has). The underlying dashboard's raw SQL selects `cost_of_goods` (Lyfe Order permlevel 4) and `customer` (permlevel 2) into every row with no permission awareness of its own at the query level. As of 2026-09-24, field-stripping (`_strip_sensitive_dashboard_fields`) moved into the backend itself (`lyfe_orders_status_overview.py`) — `get_orders`/`get_reshipments`/`get_active_reshipments` all strip before returning, so the Desk-side whitelisted methods and this MCP tool share one control instead of the MCP layer being the only thing enforcing it. `cost_of_goods` is removed from the response for any caller who lacks Lyfe Order's `cost_of_goods` permlevel access, and `customer` is removed for any caller who lacks the `customer` permlevel — checked independently of the page-level "anyone can see this" access, which governs the rows themselves but not these two specific fields. Administrator is exempt from this stripping.
+**4. Security** — **Lyfe Order read permission required** (since 2026-11-05, audit 3.6; enforced in the delegated function, System Manager and Super Admin always pass; before that there was no gate at all) — matches the underlying page's own `roles: []`, i.e. any enabled Frappe user (past the base `_require_enabled_user()` check every tool has). The underlying dashboard's raw SQL selects `cost_of_goods` (Lyfe Order permlevel 4) and `customer` (permlevel 2) into every row with no permission awareness of its own at the query level. As of 2026-09-24, field-stripping (`_strip_sensitive_dashboard_fields`) moved into the backend itself (`lyfe_orders_status_overview.py`) — `get_orders`/`get_reshipments`/`get_active_reshipments` all strip before returning, so the Desk-side whitelisted methods and this MCP tool share one control instead of the MCP layer being the only thing enforcing it. `cost_of_goods` is removed from the response for any caller who lacks Lyfe Order's `cost_of_goods` permlevel access, and `customer` is removed for any caller who lacks the `customer` permlevel — checked independently of the page-level "anyone can see this" access, which governs the rows themselves but not these two specific fields. Administrator is exempt from this stripping.
 
 ### `get_orders_reshipments`
 
@@ -340,7 +364,7 @@ Every tool is documented with the same four sections:
 
 **3. Technical Details** — `(filters: str | None = None) -> dict`, same filter shape as `get_orders_status_overview`.
 
-**4. Security** — same as `get_orders_status_overview`: no role gate, but field-stripping applies to `reshipment_cogs`/`shipment_cost` (masked by Lyfe Order's `cost_of_goods` permlevel — they represent the same real-world cost data, there's no separate "reshipment cost" permission concept in this business) and `customer` (masked by Lyfe Order's `customer` permlevel).
+**4. Security** — same as `get_orders_status_overview`: Lyfe Order read permission required (since 2026-11-05, audit 3.6), but field-stripping applies to `reshipment_cogs`/`shipment_cost`/`customer_shipment_cost`/`custom_charges`/`additional_charges`/`custom_charges_us`/`additional_charges_us` (masked by Lyfe Order's `cost_of_goods` permlevel — they represent the same real-world cost data, there's no separate "reshipment cost" permission concept in this business) and `customer` (masked by Lyfe Order's `customer` permlevel).
 
 ### `get_active_reshipments`
 
@@ -350,7 +374,17 @@ Every tool is documented with the same four sections:
 
 **3. Technical Details** — `() -> dict`.
 
-**4. Security** — same as the other two tools in this file: no role gate, cost/customer field-stripping applies.
+**4. Security** — same as the other two tools in this file: Lyfe Order read permission required (since 2026-11-05, audit 3.6); cost/customer field-stripping applies.
+
+### `get_active_returns`
+
+**1. API Details** — delegates to `lyfe_orders_status_overview.get_active_returns` (added 2026-10-13).
+
+**2. Functional Details** — all open Lyfe Order Returns (Return Requested / Return In Transit / Return Received) — the Active Returns card; a current snapshot, no filters, max 2000 rows.
+
+**3. Technical Details** — `() -> dict` — `{count, returns: [...]}`.
+
+**4. Security** — same as the other Status Overview tools: Lyfe Order read permission required (since 2026-11-05, audit 3.6); `customer` stripped per-caller by the backend.
 
 **Note on write endpoints:** the underlying Desk page also has `create_gate_pass_for_order` and `mark_orders_ready_for_dispatch` — these are intentionally **not** exposed as MCP tools; this server is read-only at the library level.
 
@@ -426,11 +460,11 @@ Every tool is documented with the same four sections:
 
 ## Part 11 — Founder / Customer Intelligence / Quotation Analysis Dashboard tools
 
-**53 tools total** (25 Founder + 11 Customer Intelligence + 17 Quotation Analysis). Full detail — every tool's exact signature, permission gate, field-level stripping rules, and security rationale — is documented in the companion file **`mcp-dashboard-api-documentation.md`**, organized dashboard-by-dashboard. Summary only, here:
+**61 tools total** (33 Founder + 11 Customer Intelligence + 17 Quotation Analysis). Full detail — every tool's exact signature, permission gate, field-level stripping rules, and security rationale — is documented in the companion file **`mcp-dashboard-api-documentation.md`**, organized dashboard-by-dashboard. Summary only, here:
 
 | Dashboard | Tool prefix | Count | Allowed roles (base gate) |
 |---|---|---|---|
-| Founder Dashboard | `get_founder_*` | 25 | System Manager, Super Admin |
+| Founder Dashboard | `get_founder_*` | 33 | System Manager, Super Admin |
 | Customer Intelligence Dashboard | `get_cid_*` | 11 | System Manager, Super Admin, Customer Service |
 | Quotation Analysis Dashboard | `get_quotation_*` | 17 | System Manager, Sales Manager, Sales User |
 
@@ -440,7 +474,7 @@ All five dashboards' base gate (`require_dashboard_role()`) is backed by the sin
 
 ## Part 12 — Order Analysis Dashboard tools
 
-**File:** `lh/lyfe_hardware/mcp_tools/order_analysis.py` — 14 tools, `get_order_analysis_*` prefix. All 14 delegate to `lh.lyfe_hardware.page.order_analysis.order_analysis` via `frappe.call()`.
+**File:** `lh/lyfe_hardware/mcp_tools/order_analysis.py` — 15 tools, `get_order_analysis_*` prefix. All 15 delegate to `lh.lyfe_hardware.page.order_analysis.order_analysis` via `frappe.call()`.
 
 **Underlying Desk pages — two pages, one backend:** `order_analysis.json` (`roles: []`, open to any Desk user) and `order_analysis_tw.json` (Factory, Customer Service, Super Admin, Engineer, System Manager). This MCP surface mirrors the narrower `order_analysis_tw` role list, not the open `order_analysis` one — see Security below.
 
@@ -532,11 +566,21 @@ One write endpoint on the underlying Desk page — `backfill_item_group` (bulk `
 
 **1. API Details** — delegates to `order_analysis.get_revenue_by_category`.
 
-**2. Functional Details** — the top N item-group categories by total revenue for a date range.
+**2. Functional Details** — the top N item-group categories by total revenue for a date range. Revenue = `total_amount - shopify_refund_amount` (net of Shopify refunds), matching the PnL Dashboard's category drill-down (`pnl_dashboard.get_category_orders`). Fixed 2026-09-25 — previously summed raw `total_amount` with no refund deduction, causing this tool to disagree with the PnL Dashboard by the refund total on affected orders. Also as of 2026-09-25, passing `item_group` (a parent or leaf Item Group name, e.g. "Metal Hardware") returns a single rolled-up total for that group plus all its descendant categories (via `frappe.utils.nestedset.get_descendants_of`), instead of the top-N leaf breakdown — previously a parent group with no directly-assigned items would silently return 0 since categories were matched by exact leaf item_group string only. **Known caveat, fixed same day:** the first version of this `item_group` rollup called a non-existent `frappe.db.get_descendants_of` (correct path is `frappe.utils.nestedset.get_descendants_of`), which raised an unhandled `AttributeError` for any `item_group` value — surfaced to MCP callers as an opaque "internal error occurred" with no detail. Corrected before this tool's schema change had propagated to any live client, so no caller depended on the broken behavior.
 
-**3. Technical Details** — `(from_date: str | None = None, to_date: str | None = None, based_on: str | None = None, top_n: int = 10) -> list`, largest-revenue-first.
+**3. Technical Details** — `(from_date: str | None = None, to_date: str | None = None, based_on: str | None = None, top_n: int = 10, item_group: str | None = None) -> list`, largest-revenue-first (or a single-row rollup when `item_group` is set).
 
 **4. Security** — Factory/Customer Service/Super Admin/Engineer/System Manager. No `customer` field in this aggregate response.
+
+### `get_order_analysis_item_group_tree`
+
+**1. API Details** — delegates to `order_analysis.get_item_group_tree`. Added 2026-09-25.
+
+**2. Functional Details** — every Item Group as a flat list, including parent (group-type) nodes with no items directly assigned. Unlike `get_item_completeness_item_groups` (which only lists leaf groups carrying at least one active item, silently omitting pure parent categories like "Metal Hardware"), this is a direct dump of the `Item Group` doctype — the authoritative way to confirm a group's exact name and its children before calling `get_order_analysis_revenue_by_category(item_group=...)`.
+
+**3. Technical Details** — `() -> list`, each row `{name: str, parent_item_group: str | None, is_group: bool}`, ordered by the doctype's nested-set `lft` (tree order).
+
+**4. Security** — Factory/Customer Service/Super Admin/Engineer/System Manager.
 
 ### `get_order_analysis_order_source_breakdown`
 
@@ -578,6 +622,16 @@ One write endpoint on the underlying Desk page — `backfill_item_group` (bulk `
 
 **4. Security** — Factory/Customer Service/Super Admin/Engineer/System Manager. **`customer` field-stripping applies** per row.
 
+### `get_order_analysis_returns_rto`
+
+**1. API Details** — delegates to `order_analysis.get_returns_rto_data` (added 2026-10-13).
+
+**2. Functional Details** — counts for the Returns & RTO section: `returns_open`, `returns_in_transit`, `returns_refund_pending`, `returns_reship_pending`, `returns_initiated`, `returns_rto` (RTO = `is_rto` flag on the Return) and `returns_avg_cycle_days`. Each count has a matching `card_key` in `get_order_analysis_card_orders` for its row list.
+
+**3. Technical Details** — `(from_date: str | None = None, to_date: str | None = None, based_on: str | None = None) -> dict`.
+
+**4. Security** — Factory/Customer Service/Super Admin/Engineer/System Manager. Aggregate counts only, no `customer` field.
+
 ### `get_order_analysis_sla_task_links`
 
 **1. API Details** — delegates to `order_analysis.get_sla_task_links`.
@@ -587,6 +641,46 @@ One write endpoint on the underlying Desk page — `backfill_item_group` (bulk `
 **3. Technical Details** — `(erp_docnames: str) -> dict`. `erp_docnames` is a JSON array of Lyfe Order (or other ERP doc) names, e.g. `'["LYF-SH-2026-1875"]'`. Returns `{}` for an empty input.
 
 **4. Security** — Factory/Customer Service/Super Admin/Engineer/System Manager. No `customer` field in this response.
+
+## Part 12b — Returns Dashboard tools (added 2026-10-13)
+
+**File:** `lh/lyfe_hardware/mcp_tools/returns_dashboard.py` — 2 tools, delegating to `returns_dashboard.py` via `frappe.call()`.
+
+**Security (both tools):** gated by `DASHBOARD_ROLES["returns_dashboard"]` = System Manager, Customer Service, Factory, Super Admin (the Lyfe Order Return doctype's own read roles — the Desk page itself is `roles: []`, but these tools return refund amounts). `customer` is stripped per-caller from row output.
+
+### `get_returns_dashboard_summary`
+
+**1. API Details** — delegates to `returns_dashboard.get_returns_summary`.
+
+**2. Functional Details** — total returns, pending refunds, pending reshipping, counts by return type and by week, average cycle days, the 20 most recent returns, and the return/reshipment breakdown. Cancelled returns are never counted.
+
+**3. Technical Details** — `(from_date: str | None = None, to_date: str | None = None, return_type: str | None = None, status: str | None = None) -> dict`.
+
+### `get_returns_dashboard_breakdown`
+
+**1. API Details** — delegates to `returns_dashboard.get_return_reship_breakdown`.
+
+**2. Functional Details** — returns with a reshipment vs return-only, reshipment-only, and returns still waiting for a reshipment.
+
+**3. Technical Details** — `(from_date: str | None = None, to_date: str | None = None) -> dict`. Aggregate counts only.
+
+---
+
+## Part 12c — US Warehouse Replenishment tools (added 2026-11-11)
+
+**File:** `lh/lyfe_hardware/mcp_tools/us_replenishment.py` — 3 read-only tools delegating to the page's own endpoints via `frappe.call()` (no calculation repeated). The page's write actions (`sync_now`, `create_draft_transfer`, `export_excel`) have no tool on purpose.
+
+**Security (all 3):** gated by `DASHBOARD_ROLES["us_replenishment"]` = System Manager, Super Admin, US Replenishment Manager (the page's role list), checked in the tool and again in the endpoint. Factory does not pass.
+
+| Tool | Args | Returns (same as the page) |
+|---|---|---|
+| `get_us_replenishment_dashboard` | `item_group?` (includes child groups), `status?` (Urgent / Reorder / OK / Overstock / Not stocked yet), `min_demand=0` | `tiles` {urgent, reorder, overstock, suggested_units, suggested_value}, `sync` {last_success_at, last_attempt_at, status, error, warning}, `unmapped` {lines, units}, `rows[]` (every item: status, reason, confidence, avg_weekly_demand, demand_std_dev, bands, lead_time_weeks, safety_stock, reorder_point, target_stock, available, in_transit, stock_position, weeks_of_cover, pack_size, suggested_qty, rate, suggested_value) |
+| `get_us_replenishment_item_detail` | `item_code` | `row`, `weeks[]` + `demand[]`, `stock_history[]`, `transfers[]` (sent and draft), `lead_parts` |
+| `get_founder_tile_us_replenishment` | none | The Stock Forecast page's US tile: counts, suggested units / value, `sync`, first 10 rows needing action |
+
+Tests: `lh/tests/test_mcp_us_replenishment.py` (tool equals endpoint, gate, no write tools); the tile tool is also in `test_mcp_stock_forecasting.TOOLS`. Functional reference: `us-replenishment-dashboard.md`.
+
+---
 
 ## Part 13 — Search tools
 
@@ -613,3 +707,26 @@ One write endpoint on the underlying Desk page — `backfill_item_group` (bulk `
 **3. Technical Details** — `() -> dict`. Returns `{user, readable_doctypes, dashboards, founder_ai_tools, user_efficiency_leaderboard}`. `readable_doctypes` = allowlist filtered by `frappe.has_permission(dt, "read")` (excludes Singles). `dashboards` = every `DASHBOARD_ROLES` key the caller's roles intersect (all of them for Super Admin/Administrator). `founder_ai_tools`/`user_efficiency_leaderboard` mirror `require_founder_ai_or_super_admin()`'s role set and `get_pm_user_efficiency`'s narrower `{Super Admin, HR User, HR Manager}` gate, respectively.
 
 **4. Security** — no data access at all; purely reflects the caller's own roles/permissions back to them. Nothing here can leak another user's data — every field returned describes the calling user only.
+
+---
+
+## Part 14 — Generic doctype list tool
+
+**File:** `lh/lyfe_hardware/mcp_tools/generic_list.py`, added 2026-09-25.
+
+**Design intent (per explicit instruction):** unlike Part 1's `get_<doctype>`/`list_<doctype>` pairs (one per pre-approved doctype in `_ALLOWLISTED_DOCTYPES`), this is a single tool that accepts any `doctype` at call time — no allowlist to maintain when a new doctype should become reachable. Access to the data is governed entirely by that doctype's own Frappe permissions.
+
+### `list_any_doctype`
+
+**1. API Details** — no delegation; queries directly via `frappe.get_list()` (`frappe.db.get_list()` is a thin passthrough to the same function — confirmed in `frappe/database/database.py`). This is deliberately **not** `frappe.get_all()`, which hardcodes `ignore_permissions=True`; `frappe.get_list()` runs the full `DatabaseQuery` permission path.
+
+**2. Functional Details** — list any doctype's records with caller-chosen top-level columns, filters, sort, and pagination — similar to a Frappe list view. A doctype the caller cannot read at all returns a `PermissionError`; one they can read but only some fields of returns those fields only (see Security).
+
+**3. Technical Details** — `(doctype: str, fields: list[str] | None = None, filters: dict | list | None = None, order_by: str | None = None, limit: int = 20, offset: int = 0) -> list[dict]`. `fields` is capped at 30, top-level fieldnames only — no dotted/child-table/function expressions (`_validate_fields` rejects `.`, `` ` ``, `(` in any fieldname, and validates each named field exists on the doctype via `frappe.get_meta().get_field()`). Defaults to `["name"]` if omitted. Child-table row access is out of scope for this tool — use the doctype's own `get_<doctype>` (Part 1) when its child rows are needed, if that doctype happens to be allowlisted there.
+
+**4. Security — three guards on top of core Frappe, all reused directly from `doctypes.py` (not reimplemented):**
+- **Single/Settings doctypes are hard-blocked** (`_require_not_single()`) regardless of that doctype's own DocPerm — Settings doctypes (`ShipStation Settings`, `CJ Settings`, `LH Settings`, etc.) hold integration credentials and were never reviewed with "reachable via MCP" in mind; DocPerm alone is not trusted to have been configured with that threat model, so this is a blanket block, exempting only Super Admin/Administrator.
+- **Filter/sort-inference blocking** (`_require_no_masked_filter_or_sort()`) — confirmed (2026-09-25, against this bench's installed Frappe) that `DatabaseQuery`'s filter-building path (`build_filter_conditions`/`prepare_filter_condition`) applies **no** permlevel check at all; only the sort/group-by path does (`validate_fieldlevel_permissions_for_sort`). Without this guard, a caller could infer a permlevel-masked field's real value by filtering on it and observing which rows match, even though the field itself is correctly stripped from the output. Rejects the whole call with `PermissionError` if `filters`/`order_by` reference a field the caller can't read at its permlevel.
+- **List-limit clamping** (`_clamp_list_limit()`) — forces `limit` into `[1, 200]` (and `offset` to a non-negative integer) before the query runs, for every caller except Super Admin/Administrator, so this tool can't be used to dump an entire table in one call.
+
+**Confirmed, not assumed (2026-09-25):** `DatabaseQuery.sanitize_fields()` (`frappe/model/db_query.py`) already strips permlevel-restricted fields from the OUTPUT on its own — including explicitly-named fields, not just `fields=["*"]` expansion (`self.remove_field(i)` for both top-level and child-table columns) — so `list_any_doctype` does not need its own output-masking pass the way Part 1's `_strip_masked_keys()` does for the vendored fork's `get_`/`list_` handlers. This contradicts an older comment elsewhere in this codebase claiming `frappe.db.get_list()` "never applies permlevel masking at all" — that claim does not hold against the Frappe version installed in this bench; do not assume it without re-verifying against the actual `DatabaseQuery` source if this is ever revisited.
