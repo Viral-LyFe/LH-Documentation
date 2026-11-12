@@ -4,11 +4,29 @@
 |---|---|
 | **For** | Founder and management review |
 | **Prepared by** | Viral Kansodiya, with Claude (AI assistant) |
-| **Date** | Friday 6 November 2026 |
-| **Period covered** | 21 October – 6 November 2026 (206 code changes reviewed) |
-| **Code version** | `apps/lh`, branch `prod`. Last application change `415c4583` (pushed). One later commit, `3c3f5b5e`, changes tests only and is not pushed yet. Changes up to 5 Nov are deployed; the 6 Nov changes deploy on 7 Nov |
+| **Date** | Friday 6 November 2026. **Updated Thursday 12 November 2026** (see "Update of 12 November" below) |
+| **Period covered** | 21 October – 6 November 2026 (206 code changes reviewed), plus 3 audit changes made on 12 November (Appendix A1) |
+| **Code version** | `apps/lh`, branch `prod`. Last audit change `5feeb5aa` (12 Nov, committed on `prod`, **not pushed yet**). Everything up to `12844570` is pushed, including `415c4583` and the tests-only `3c3f5b5e`. Changes up to 6 Nov are deployed and migrated on the live site (confirmed by Viral, 12 Nov). The three 12 Nov changes (`31c9bbab`, `12844570`, `5feeb5aa`) deploy with the next release |
 | **Task** | Asana: "Security audit fixes: lh app (26–31 Oct)" |
 | **Supporting files** | `LH Documentation/pending_final.md` (item-by-item tracker), `LH Documentation/lh/REPORT.md` (technical findings and the 6 Nov re-check), `LH Documentation/lh/SCHEDULE.md` (plan and tracker) |
+
+---
+
+## Update of 12 November 2026
+
+Status at 12 November. The findings did not change; these items moved.
+
+| Item | Status on 6 Nov | Status on 12 Nov |
+|---|---|---|
+| **3.5** Old invoice PDFs private | Patch committed, runs on the 7 Nov deploy | **Complete.** Deployed and migrated on the live site; the patch has run (confirmed by Viral) |
+| **H2 part B** S3 files opened by key | Deployed, check pending | **Complete.** Checked with several users on a restored copy of the live database; behaved as expected |
+| **5.5 rest** Escaping in dashboards and print formats | Open | **Complete.** The five dashboards, 19 print formats and the pick-pack PDF now escape customer text. Checked on the restored copy with test text containing `&`, `'`, `<b>` and a link: all showed as plain text, with line breaks kept. One change was reverted after checking: the Factory Quotation dashboard address is Frappe-rendered HTML with line breaks, so it stays as it was (`5feeb5aa`) |
+| **5.2** POST-only | Mostly done; last GET links pending | **Closed by decision (Viral, 12 Nov).** Nothing more will change: the three email-link endpoints (`approve_quotation`, `track_email_open`, `track_quotation_link`), the two Excel download links and the Shopify, 17Track and Gorgias webhooks stay as they are, because changing any API or webhook could break a live integration. Risk accepted: these endpoints still answer GET requests |
+| **Automated retest on the restored live copy** | Not run on live data | **Passed:** 97 tests in 8 modules, all OK (1 skipped): API access audit 5, whitelist authorization 13, S3 download access 4, dashboard backend gates 4, MCP dashboard gates 12, MCP field masking 47, invoice-PDF patch 4, output escaping 8 |
+
+**Still pending:** the retest of every Critical and High by hand with the two test users on live data (6.2) and the live-site smoke tests (3.8, 5.10). The automated part of the retest passed (above). The manual checks of webhooks without a signature, and of allowed-user cases that would write or send, were not run on the copy because they would act on live systems.
+
+**How the checks were done.** Instead of waiting for a Frappe Cloud copy, the latest live database was restored on the development machine and migrated. Outgoing email was off, Slack posting was disabled, and test data was written only to that copy and restored afterwards. Shopify, ShipStation and similar keys were left live and used only for reading.
 
 ---
 
@@ -24,10 +42,10 @@
 |---|---|
 | Critical findings (could cause financial loss or data theft) | **6 of 6 fixed** |
 | High findings | **13 of 13 fixed or closed by a recorded decision** |
-| Medium and Low findings | **All fixed or closed by a recorded decision, except a few small items listed in section 7 (print-format escaping, the last GET links, and running the invoice-PDF patch)** |
-| Work items in the tracker | **56 rows: 37 fully complete (66%), 14 complete in code and waiting for a check on a copy of the live site (25%), 2 partly done (4%), 3 verification-only rows not started (5%)** |
-| Code work complete | **about 91%** (51 of 56 rows); the rest is two small items plus the checks |
-| Checks that need the real site | 5 of 20 done; **15 are intentionally pending** (section 7) |
+| Medium and Low findings | **All fixed or closed by a recorded decision, except the live-site checks listed in section 7. Since 6 Nov, print-format escaping and the invoice-PDF patch are complete, and the last GET links were closed by decision** |
+| Work items in the tracker | **56 rows. On 6 Nov: 37 fully complete (66%), 14 complete in code and waiting for a check (25%), 2 partly done (4%), 3 verification-only rows not started (5%). On 12 Nov, after 3.5, H2 part B, 5.5 rest and 5.2 were completed or closed by decision: about 41 complete (73%), 12 complete in code and waiting for a check (21%), 0 partly done, 3 verification-only rows (5%)** |
+| Code work complete | **all code rows (53 of 56 on 12 Nov)**; the remaining 3 rows are live-site verification only |
+| Checks that need the real site | 5 of 20 done on 6 Nov; on 12 Nov the invoice-PDF check (item 20) and the S3 check are also done; **the rest are still pending** (section 7) |
 | Leaked secrets | All of them were rotated (replaced). The old values still exist in the code history, which cannot be rewritten, but they no longer work |
 | New protections | An automatic check now blocks any new action that has no permission check, and a secret scanner blocks passwords and keys from being committed |
 
@@ -51,6 +69,8 @@ The 23 October report listed the items below (its own tables group them this way
 | **Low** | 7 | **3** | 2 | 2 | 0 |
 | Systemic fixes recommended | 6 | **4** | 1 | 1 | 0 |
 | **Total** | **50** | **37 (74%)** | **9 (18%)** | **4 (8%)** | **0** |
+
+*The counts in this table are as of 6 November and were not recomputed on 12 November. The moves since then are in the update section at the top.*
 
 How to read it:
 - **Fully fixed** = changed in the code, tested, pushed.
@@ -148,7 +168,7 @@ Status key: **Fixed** = changed in the code, tested, pushed. **Verify on copy** 
 | Quotation approval link used the database password as its key, never expired, could approve from any state | Links are signed with a dedicated secret (`approval_link_secret`, no fallback) and expire after 45 days. **Existing quotations created before 30 Oct keep working with the old key** (decision, section 7); the GET-changes-state behaviour also stays (decision) | `be7e3c9a` | **Fixed for new quotations / Decision for old ones** |
 | Automation rules could run arbitrary code with full access | The `frappe` module was removed from the rule evaluator | `f30f3d9f` | **Fixed** |
 | Arbitrary S3 files readable by key | Access checks the file record; a print-template helper and a file hook are no longer web endpoints | `a0611537` `20b0c718` | **Fixed** (print formats and upload to verify on copy) |
-| Sales Invoice PDFs saved as public files | New PDFs are private. A patch makes the old ones private (78 on the local copy), with a rollback | `78dbd84a` `415c4583` | **Fixed for new; patch for old committed, runs on migrate** |
+| Sales Invoice PDFs saved as public files | New PDFs are private. A patch made the old ones private, with a rollback | `78dbd84a` `415c4583` | **Fixed** (patch has run on the live site, 12 Nov) |
 | MCP (the AI connector): hidden cost fields could be inferred through filters; some tools had no role gate | Filter guard now catches every form; the status-overview tools need Lyfe Order read | `a2504e19` `07c68446` | **Fixed** |
 | Status overview, returns and turnaround dashboards had no backend role check | Each now checks the caller | `07c68446` | **Fixed** |
 | Task field copying, bulk-complete column, manager points, HR dashboard scope | Bulk-complete and points gated; the rest left by decision | `10459745` | **Fixed / Decision** |
@@ -164,10 +184,10 @@ Status key: **Fixed** = changed in the code, tested, pushed. **Verify on copy** 
 |---|---|---|
 | `ss_api_key` and Slack webhook fields stored as normal text | Decision: no change (they do not reveal confidential data) | **Decision** |
 | Tokens and signatures written to the Error Log | Removed from the two places the audit named (Shopify signature check, token rotation) | **Fixed** |
-| Customer text shown without escaping in print formats and dashboard scripts | Emails and comment mentions are escaped. **Print-format address fields and dashboard scripts remain** (section 7) | **Partly fixed** |
+| Customer text shown without escaping in print formats and dashboard scripts | Emails and comment mentions were escaped on 5 Nov; print-format address and description fields, the dashboard scripts and the pick-pack PDF on 12 Nov. Frappe-rendered address blocks were left as they are on purpose | `93970d25` `31c9bbab` `12844570` `5feeb5aa` | **Fixed** (checked on a restored copy, 12 Nov) |
 | The Slack install page printed an error text without escaping | Escaped | **Fixed** |
 | The bank-transfer tracking link re-sends its email on every click | Decision: left as is | **Decision** |
-| State-changing actions could be triggered by a crafted link (not POST-only) | 24 + 67 actions are now POST-only and 19 were removed; a few GET links stay on purpose | **Mostly fixed** |
+| State-changing actions could be triggered by a crafted link (not POST-only) | 24 + 67 actions are now POST-only and about 40 were removed as endpoints; a few GET links stay on purpose | **Closed by decision** (12 Nov): the remaining GET links and webhooks stay as they are so no integration breaks |
 | Link-search queries trusted a caller-supplied document type | Now use the correct type | **Fixed** |
 
 ### 4.5 Safeguards added so the problems do not come back
@@ -187,7 +207,7 @@ Status key: **Fixed** = changed in the code, tested, pushed. **Verify on copy** 
 | 1. A check that fails when an outside-callable action has no permission check | **Done** (the whitelist authorization check, a pre-commit hook and a test) |
 | 2. One webhook-verification routine that rejects when the secret is missing | **Done** (each receiver rejects a missing secret; the ShipStation one was deleted) |
 | 3. Record-level permission hooks for Task, Project, Quotation, CRM Lead and Deal | **Decision: not added** (H8) |
-| 4. POST-only for state-changing actions | **Mostly done** (the rest is pending) |
+| 4. POST-only for state-changing actions | **Done**, except the links and webhooks left on purpose (decision 12 Nov) |
 | 5. Avoid `ignore_permissions` in code an action reaches, unless the role was checked | **Done where reached** (removed from the gated order, Gate Pass, Purchase Order, Item and BOM paths) |
 | 6. Secrets hygiene: nothing in docs or patches, pre-commit scanner | **Done** (documents deleted, patch cleaned, gitleaks hook) |
 
@@ -205,7 +225,7 @@ Each change below was approved by the business owner. This list is for support s
 | **Track Order / Track Reship / Track Return** | Need permission to edit the Lyfe Order |
 | **Put On Hold** | Customer Service, System Manager, Super Admin only, and not once the order is shipped or completed |
 | **Costs and profit** | P&L: System Manager and Super Admin. Item cost of goods: Factory, System Manager, Super Admin (other roles see no cost field at all) |
-| **Files** | Attachments on S3 open only for people allowed to read the file. New invoice PDFs are private; old ones become private when the patch runs |
+| **Files** | Attachments on S3 open only for people allowed to read the file. Invoice PDFs are private, old ones included (patch has run) |
 | **Removed buttons / actions** | "Sync Item Groups", "Re-run Validation", "Skip Image Upload"; the Fetch Shopify Details and backfill helpers (nothing used them) |
 | **Quotation links** | New quotation emails use the new signing key, and approval links expire after 45 days. Old quotations keep working as before |
 | **Slack** | A disabled ERP user can no longer approve, send back, look up orders or add notes from Slack. Notes from Slack users with no ERP account show their name in the text |
@@ -230,15 +250,12 @@ Each change below was approved by the business owner. This list is for support s
 
 ## 7. What is still pending, and why (intentional)
 
-**Decision (Viral, 6 Nov):** everything below stays pending until a copy of the live site exists on Frappe Cloud. The checks and any fixes will be done there.
+**Update 12 Nov:** the invoice-PDF patch (3.5), print-format and dashboard escaping (5.5 rest) and the last POST-only links (5.2, closed by decision) are no longer pending; they were removed from this table. **Decision (Viral, 6 Nov):** everything below stays pending until a copy of the live site exists on Frappe Cloud. The checks and any fixes will be done there.
 
 | Item | What it is | Risk while pending |
 |---|---|---|
 | **Retest of every Critical and High with the two test users (6.2)** | Confirms each fix on the real site and data | Medium: fixes are tested locally and by script, not on live data |
 | **Live-site smoke tests (3.8, 5.10)** | Shopify payment to Won, CJ label, ShipStation sync, 1Click posting, dashboards, exports, S3 upload, print formats with signatures | Medium: a role change could block a legitimate user; the 15 pending checks are listed in `pending_final.md` |
-| **Invoice PDF patch (3.5)** | Make the old public invoice PDFs private (runs with `bench migrate` on the 7 Nov deploy; has a rollback command) | Low: the file link contains a hard-to-guess key |
-| **Print-format address fields and dashboard scripts (5.5 rest)** | Customer text shown without escaping in some print formats and dashboard scripts | Low: Frappe cleans the text on save |
-| **POST-only for the last few links (5.2 rest)** | A few GET links left on purpose (two Excel downloads, three email links) | Low |
 | **Dependencies** | LMS and Insights versions; live-site versions | Medium for LMS (published advisories), to be decided after the live versions are known |
 
 **Items closed by recorded decision (risk accepted):**
@@ -252,6 +269,7 @@ Each change below was approved by the business owner. This list is for support s
 | 4.2 part C (order-visibility default), 4.6 parts 1, 3, 4, `get_cogs_based_rate`, `mark_order_as_shipped`, `item_image` | Left as is by decision |
 | 5.8 paid-API limits | `rerun_validation` removed (integration disabled); 1Click stock check is a free API |
 | 6.4 Rewriting the code history to remove old keys | Not possible; all leaked keys were rotated so the old values are dead |
+| **POST-only for the last links and the webhooks (5.2)** | Closed 12 Nov (Viral): the three email-link endpoints, the two Excel download links and the Shopify, 17Track and Gorgias webhooks stay as they are, because changing any API or webhook could break a live integration. Risk accepted: they still answer GET requests |
 
 **Known issues found (not caused by the audit work).** Each failing test was investigated on 6 November; none points to a fault in the application code:
 
@@ -289,7 +307,7 @@ Run on the local copy of the site on 6 November. "Tests" is the number of automa
 | `test_slack_unmapped_user_name` | 4 | OK |
 | `test_link_search_doctype` | 2 | OK |
 | `test_error_log_no_secrets` | 1 | OK |
-| `test_output_escaping` | 8 | OK (skipped=1) |
+| `test_output_escaping` | 8 | OK (skipped=1; re-run 12 Nov on the restored live copy: OK) |
 | `test_assign_condition` | 6 | OK |
 | `test_external_learning_record_access` | 2 | OK |
 | `quotation_e2e.test_api_access` | 8 | OK |
@@ -332,10 +350,10 @@ These decisions were taken by the product owner (Viral Kansodiya) during the wor
 | # | Decision or plan | Status |
 |---|---|---|
 | 1 | The remaining items (section 7) stay pending **on purpose** until a copy of the live site exists on Frappe Cloud; the checks and any fixes are done there | Decided 6 Nov |
-| 2 | Changes up to 5 Nov are deployed; the changes made on 6 Nov are deployed on 7 Nov (they include the invoice-PDF patch, which runs automatically and has a rollback command). The S3 and print-format checks follow on the Frappe Cloud copy | Planned for 7 Nov |
+| 2 | Changes up to 6 Nov are deployed and migrated on the live site (invoice-PDF patch included). The three 12 Nov changes deploy with the next release; the S3 check was done on 12 Nov | Done (6 Nov changes); next release (12 Nov changes) |
 | 3 | The recorded risks in section 7 are accepted, mainly: old quotations keep the old link key (not changed, because it is not certain a change would cause no problem for them), H8, and the other items listed there | Decided (30 Oct – 6 Nov) |
 | 4 | LMS (2.45.2, 2 published critical advisories) and Insights (2.2.14): update or restrict them once the live-site versions are known | **Still to be decided by us** after the Frappe Cloud copy shows the live versions |
-| 5 | Who runs the Frappe Cloud checks and by when | **Still to be set** once the copy exists |
+| 5 | Who runs the remaining live-site checks (6.2, 3.8, 5.10) and by when | **Still to be set** (the automated part passed on a restored copy on 12 Nov) |
 | 6 | One question for the quotation owner: should a quotation item with a zero list price also need approval? The code does not (since an earlier change); not confirmed as intended | Open question |
 
 No action is needed from you unless you want to change something above.
@@ -344,7 +362,7 @@ No action is needed from you unless you want to change something above.
 
 ## Appendix A. Security audit changes (all, newest first by date in each group)
 
-### A1. Audit fixes, safeguards and removals (68)
+### A1. Audit fixes, safeguards and removals (71)
 
 | Commit | Date | Change |
 |---|---|---|
@@ -405,6 +423,9 @@ No action is needed from you unless you want to change something above.
 | `07c68446` | 2026-11-06 | fix(security): dashboard backends check who is calling (audit 3.6) |
 | `20b0c718` | 2026-11-06 | fix(security): get_s3_image_url and custom_file_upload_to_s3 are no longer web APIs (audit 2.1, M8) |
 | `415c4583` | 2026-11-06 | fix(security): patch makes invoice PDFs created before 30 Oct private, with rollback (audit 3.5) |
+| `31c9bbab` | 2026-11-12 | fix(security): escape customer data in Desk JS dashboards (audit 5.5) |
+| `12844570` | 2026-11-12 | fix(security): escape free-text fields in print formats and pick-pack PDF (audit 5.5) |
+| `5feeb5aa` | 2026-11-12 | fix(factory-dashboard): do not escape Frappe-rendered display_address (audit 5.5) |
 | `49ee0c0e` | 2026-11-06 | fix(security): order, quotation and shipping-rate APIs check access to the record they read (audit 2.1) |
 | `89370477` | 2026-11-06 | fix(security): three read-only-checked functions that still write now need write (audit H4) |
 | `9cf8121a` | 2026-11-06 | feat(security): gitleaks pre-commit hook and a secrets rule (audit 5.9) |

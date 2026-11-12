@@ -55,6 +55,10 @@ Run `bench --site lyfelocal.com run-tests --app lh --module lh.tests.test_output
 
 ---
 
+**Result 12 Nov (Viral):** A1 and A2 passed, except the Factory dashboard address, which was reverted (`5feeb5aa`); pick-pack PDF passed. **Part B, automated (12 Nov):** 97 tests in 8 modules passed (API access audit 5, whitelist authorization 13, S3 download access 4, dashboard backend gates 4, MCP dashboard gates 12, MCP field masking 47, invoice-PDF patch 4, output escaping 8, 1 skipped). Part B by hand (webhooks without a signature, allowed-user cases that write or send) and Part C are not run yet.
+
+---
+
 ## Part B: Critical and High retest (6.2)
 
 For each endpoint call it as the user shown. **Refused** = HTTP 403 (or a permission error); **Works** = HTTP 200.
