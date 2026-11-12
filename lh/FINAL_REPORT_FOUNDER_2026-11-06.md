@@ -6,7 +6,7 @@
 | **Prepared by** | Viral Kansodiya, with Claude (AI assistant) |
 | **Date** | Friday 6 November 2026. **Updated Thursday 12 November 2026** (see "Update of 12 November" below) |
 | **Period covered** | 21 October – 6 November 2026 (206 code changes reviewed), plus 3 audit changes made on 12 November (Appendix A1) |
-| **Code version** | `apps/lh`, branch `prod`. Last audit change `5feeb5aa` (12 Nov, committed on `prod`, **not pushed yet**). Everything up to `12844570` is pushed, including `415c4583` and the tests-only `3c3f5b5e`. Changes up to 6 Nov are deployed and migrated on the live site (confirmed by Viral, 12 Nov). The three 12 Nov changes (`31c9bbab`, `12844570`, `5feeb5aa`) deploy with the next release |
+| **Code version** | `apps/lh`, branch `prod`. Last audit change `5feeb5aa` (12 Nov, committed on `prod`; shows as pushed to `origin/prod` in the local git reference, which could not be refreshed here). Everything up to `12844570` is pushed, including `415c4583` and the tests-only `3c3f5b5e`. Changes up to 6 Nov are deployed and migrated on the live site (confirmed by Viral, 12 Nov). The three 12 Nov changes (`31c9bbab`, `12844570`, `5feeb5aa`) deploy with the next release |
 | **Task** | Asana: "Security audit fixes: lh app (26–31 Oct)" |
 | **Supporting files** | `LH Documentation/pending_final.md` (item-by-item tracker), `LH Documentation/lh/REPORT.md` (technical findings and the 6 Nov re-check), `LH Documentation/lh/SCHEDULE.md` (plan and tracker) |
 
