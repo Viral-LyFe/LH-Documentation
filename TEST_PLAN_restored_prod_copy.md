@@ -14,13 +14,19 @@ Mark each row ✅ / ❌ and note the record you used. Anything ❌ is fixed on t
 ## Part A: 5.5 escaping (new, 12 Nov)
 
 ### A0. Prepare test data (local copy only)
-1. Create or pick one Quotation, one Lyfe Order, one Lyfe Order Return and one Sales Invoice, and set the customer name to each of these, one test each:
-   - `D J Johnson & Co, Inc.`
-   - `O'Brien <b>bold</b>`
-   - `Click <a href="https://example.com">here</a>`
-2. For the print formats, also put the same strings into: the Export Party full address, the consignee and buyer address on a Bulk Transfer Batch, `custom_description_of_goods` on a Sales Invoice, and one shipping address line on a Lyfe Order.
+Frappe blocks `<` and `>` in a **Customer name** (checked 12 Nov: "Name cannot contain special characters like '<', '>'"), and Lyfe Order, Return and Quotation customers are Links to Customer. So test the customer name only with characters that are allowed, and put the markup in the free-text fields Frappe does not block.
 
-**Expected everywhere:** the text shows literally (`<b>bold</b>` visible, link not clickable), `&` shows as `&`, apostrophe shows as `'`, and nothing shows `&amp;` or `&lt;` as visible text.
+1. **Customer name** (allowed characters): create or rename a test Customer to `D J Johnson & Co, Inc.`, and another to `O'Brien`. Use them on one Lyfe Order, one Lyfe Order Return and one Quotation.
+2. **Free-text fields** (put markup here, one record each):
+   - Lyfe Order: `customer_email`, `cj_consignee_name`, `ship_to_street1` and `ship_to_street2`.
+   - Quotation: the shipping address text.
+   - Sales Invoice: `custom_description_of_goods`.
+   - Export Party: full address. Bulk Transfer Batch: consignee and buyer address.
+   - Factory comment text on a quotation.
+   - Use `O'Brien <b>bold</b>` and `Click <a href="https://example.com">here</a>`.
+   - Frappe's save strips scripts and event handlers but keeps `<b>` and `<a>`, so these are the realistic cases.
+
+**Expected everywhere:** the text shows literally (`<b>bold</b>` visible as text, link not clickable), `&` shows as `&`, apostrophe shows as `'`, and nothing shows `&amp;` or `&lt;` as visible text.
 
 ### A1. Desk dashboards (open each page, find the test record)
 | # | Page | Where to look | Pass |
@@ -39,7 +45,7 @@ Mark each row ✅ / ❌ and note the record you used. Anything ❌ is fixed on t
 | 1 | Commercial Invoice, Sample Invoice, LH Tax Invoice, Packing List (Sales Invoice) | goods description with 2 lines: both lines show, a `<br>` break between them | |
 | 2 | Same four | company address and shipping address still lay out as before (Frappe-rendered, left as `\|safe`) | |
 | 3 | BTB Commercial Invoice, BTB Tax Invoice, BTB Sample Invoice, Packing List BTB, Bulk Transfer Batch Packing List (1 and 2) | consignee / buyer / exporter address with a name containing `&` and `<b>` shows literally, multi-line address keeps its line breaks | |
-| 4 | Lyfe Export CI / PL / SI / TI, Packing List Export Doc | exporter and consignee address shows literally, line breaks kept | |
+| 4 | Lyfe Export CI / PL / SI / TI (no records on this copy, consignee is an Address link; optional) | exporter and consignee address shows literally, line breaks kept | |
 | 5 | Empty consignee / buyer address | prints blank, not the word `None` | |
 | 6 | Pick-pack PDF from a Lyfe Order with the test address | each address line shows literally, lines separated | |
 | 7 | Compare one old and one new PDF of the same invoice | layout is the same apart from the escaped text | |
