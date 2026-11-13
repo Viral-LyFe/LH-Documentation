@@ -363,11 +363,11 @@ If the item code contains a recognised finish (e.g. `PB` in `5FT-HRK-PB-200-WR`)
 
 Stock is **still issued from the original item**. Only the Finished Item (what is delivered, used in paperwork) changes. A new SKU, if created, is a copy of the original without its online-store links or barcodes.
 
-### 13.3 Acrylic rod items
+### 13.3 Acrylic rod and sheet items
 
-For cut-length acrylic items (round `ACR-…` or rectangular `RAC-…`), an **Acrylic Cut Pieces** window opens.
+For cut-length acrylic items (round `ACR-…`, rectangular `RAC-…` or sheet `ACS-…`), an **Acrylic Cut Pieces** window opens.
 
-- Round rod: confirm the **diameter**. Rectangular rod: confirm the **width code**.
+- Round rod: confirm the **diameter**. Rectangular rod: confirm the **width code**. Sheet: confirm the **sheet width** (thickness stays the same), e.g. `ACS-075-12-48L` cut to 8" × 30" becomes `ACS-075-08-30L`.
 - Add one line per cut: **cut length** and **number of pieces**. A SKU preview appears (e.g. `ACR-075-24L`).
 - **Save Cuts** creates any missing SKUs and stores the list.
 - At least one cut is needed to submit.
